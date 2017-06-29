@@ -1765,11 +1765,14 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 	switch(reg_addr)
 	{
 		case CHIP_ADDR:
-			g_CHIP_ADDR_reg_value_num[which_chain] = 0;
-
-			for(i=0; i<128; i++)
+			if(update_asic_num)
 			{
-				g_CHIP_ADDR_reg_value[which_chain][i] = 0;
+				g_CHIP_ADDR_reg_value_num[which_chain] = 0;
+
+				for(i=0; i<128; i++)
+				{
+					g_CHIP_ADDR_reg_value[which_chain][i] = 0;
+				}
 			}
 			break;
 
@@ -2082,13 +2085,16 @@ void open_core(void)
     {
         if(dev.chain_exist[which_chain] == 1)
         {
+        	reg_value = 0;
+			
             for(which_core=0; which_core < dev.corenum; which_core++)
             {
-				reg_value = (reg_value << which_core) | 0x00000001;
+				reg_value = (reg_value << 1) | 0x00000001;
 				set_config(dev.dev_fd[which_chain], 1, 0, CORE_ENABLE, reg_value);
 				cgsleep_ms(50);
 				DASH_write(dev.dev_fd[which_chain], &null_work, WORK_INPUT_LENGTH_WITH_CRC);
-				cgsleep_ms(100*1000);
+				cgsleep_ms(100);
+				//applog(LOG_DEBUG, "%s: chain%d core%d reg_value=0x%08x", __FUNCTION__, which_chain, which_core, reg_value);
 			}
         }
     }
@@ -2885,7 +2891,7 @@ void select_core_to_check_temperature(unsigned char diode_mux_sel, unsigned char
 	unsigned int which_chain=0, which_sensor=0;
 	unsigned int regdata = ((diode_mux_sel & 0x0f) << 16) | (vdd_mux_sel & 0x1f);
 	
-	applog(LOG_DEBUG, "%s: diode_mux_sel = %d, vdd_mux_sel = %d\n", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
+	applog(LOG_DEBUG, "%s: diode_mux_sel = %d, vdd_mux_sel = %d", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
 	
 	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2960,7 +2966,7 @@ void calibration_sensor_offset(void)
 				else
 				{
 					not_read_out_temperature = true;
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
+					applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x", __FUNCTION__, which_chain, which_sensor, ret);
 				}
 
 				// write config data to read back LOCAL_TEMPERATURE_VALUE
@@ -2990,7 +2996,7 @@ void calibration_sensor_offset(void)
 				else
 				{
 					not_read_out_temperature = true;
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", 
+					applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x", 
 						__FUNCTION__, which_chain, which_sensor, ret);
 				}
 
@@ -3988,10 +3994,17 @@ rerun_all:
                 pthread_mutex_unlock(&reg_mutex);
 
                 if(reg_addr == CHIP_ADDR)
-                {                	
-					g_CHIP_ADDR_reg_value[chain_id][g_CHIP_ADDR_reg_value_num[chain_id]] = reg_data;
-					g_CHIP_ADDR_reg_value_num[chain_id]++;
-					
+                {  
+                	if(update_asic_num)
+                	{
+						g_CHIP_ADDR_reg_value[chain_id][g_CHIP_ADDR_reg_value_num[chain_id]] = reg_data;						
+						applog(LOG_DEBUG,"%s: Chain%d Chip%d CHIP_ADDR value = 0x%08x", chain_id, reg_data);
+						g_CHIP_ADDR_reg_value_num[chain_id]++;
+                	}
+					else
+					{
+						applog(LOG_DEBUG,"%s: Chain%d CHIP_ADDR value = 0x%08x", chain_id, reg_data);
+					}
                 	#if 0
 					if(update_asic_num == true)
                     {
