@@ -225,9 +225,10 @@
 #define HEART_BEAT_TIME_GAP							10      // 10s
 
 // pic update file
-#define PIC16F1704_PROGRAM_NEW						"/sbin/pic_new.txt"
-#define PIC_PROGRAM									"/sbin/pic.txt"
+#define PIC16F1704_PROGRAM_NEW						"/sbin/pic.txt"
 #define MAX_CHAR_NUM                        		1024
+
+#define PIC_VERSION									0x80
 
 /****************** about PIC16F1704 end ******************/
 
@@ -328,9 +329,9 @@ struct init_config
     uint16_t    chain_min_freq;
     uint16_t    chain_max_freq;
 	uint32_t	misc_control_reg_value;
-	uint32_t	analog_mux_control_reg_value;
 	uint8_t		diode_mux_sel;
 	uint8_t		vdd_mux_sel;
+	uint8_t     reserved3[2];
     uint16_t    crc;
 } __attribute__((packed, aligned(4)));
 

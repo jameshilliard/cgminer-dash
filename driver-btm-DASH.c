@@ -110,6 +110,7 @@ uint64_t rate[BITMAIN_MAX_CHAIN_NUM] = {0};
 unsigned char rate_error[BITMAIN_MAX_CHAIN_NUM] = {0};	// record not receive all ASIC's HASH_RATE register value time
 char displayed_rate[BITMAIN_MAX_CHAIN_NUM][16];
 
+unsigned char pic_version[BITMAIN_MAX_CHAIN_NUM] = {0};
 
 
 
@@ -162,7 +163,7 @@ uint64_t hashboard_average_hash_rate[BITMAIN_MAX_CHAIN_NUM] = {0};
 uint64_t hashboard_real_time_hash_rate[BITMAIN_MAX_CHAIN_NUM] = {0};
 
 
-unsigned char pic_version[BITMAIN_MAX_CHAIN_NUM] = {0};
+
 
 
 
@@ -395,6 +396,8 @@ unsigned char use_new_or_old_PIC16F1704_api(void)
 void *pic_heart_beat_func_new(void * arg)
 {
 	int which_chain = 0;
+
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
     while(1)
     {
@@ -421,7 +424,7 @@ int set_PIC16F1704_flash_pointer_new(unsigned char flash_addr_h, unsigned char f
 	unsigned short crc = 0;
 	unsigned char i,send_data[8] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + SET_PIC_FLASH_POINTER + flash_addr_h + flash_addr_l;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -451,12 +454,12 @@ int set_PIC16F1704_flash_pointer_new(unsigned char flash_addr_h, unsigned char f
 	
 	if((read_back_data[0] != SET_PIC_FLASH_POINTER) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -468,7 +471,7 @@ int send_data_to_PIC16F1704_new(unsigned char *buf)
 	unsigned short crc = 0;
 	unsigned char i,send_data[22] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + SEND_DATA_TO_PIC;
 	for(i=0; i<16; i++)
@@ -504,12 +507,12 @@ int send_data_to_PIC16F1704_new(unsigned char *buf)
 	
 	if((read_back_data[0] != SEND_DATA_TO_PIC) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -521,7 +524,7 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + GET_PIC_FLASH_POINTER;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -558,13 +561,13 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
 		crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3];
 		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[4]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[5]))
 		{
-			printf("\n--- %s failed! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
+			applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
 			read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
 			return 0;	// error
 		}
 		*flash_addr_h = read_back_data[2];
 		*flash_addr_l = read_back_data[3];
-		printf("\n--- %s ok! flash_addr_h = 0x%02x, flash_addr_l = 0x%02x\n\n", __FUNCTION__, *flash_addr_h, *flash_addr_l);
+		applog(LOG_DEBUG,"%s ok! flash_addr_h = 0x%02x, flash_addr_l = 0x%02x\n\n", __FUNCTION__, *flash_addr_h, *flash_addr_l);
 		return 1;	// ok
 	}
 }
@@ -575,7 +578,7 @@ int read_PIC16F1704_flash_data_new(unsigned char *buf)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + READ_DATA_FROM_PIC_FLASH;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -601,7 +604,7 @@ int read_PIC16F1704_flash_data_new(unsigned char *buf)
 	}
 	pthread_mutex_unlock(&i2c_mutex);
 
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
+	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
 		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x, \
 		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x, \
 		read_back_data[12] = 0x%x, read_back_data[13] = 0x%x, read_back_data[14] = 0x%x, read_back_data[15] = 0x%x, \
@@ -614,7 +617,7 @@ int read_PIC16F1704_flash_data_new(unsigned char *buf)
 	
 	if((read_back_data[1] != READ_DATA_FROM_PIC_FLASH) || (read_back_data[0] != 20))
 	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s failed!\n\n", __FUNCTION__);
 		return 0;	// error
 	}
 	else
@@ -625,14 +628,14 @@ int read_PIC16F1704_flash_data_new(unsigned char *buf)
 
 		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[18]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[19]))
 		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
+			applog(LOG_ERR,"%s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
 			return 0;	// error
 		}
 		for(i=0; i<16; i++)
 		{
 			*(buf + i) = read_back_data[2 + i];
 		}
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -644,7 +647,7 @@ int erase_PIC16F1704_flash_new(void)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + ERASE_PIC_FLASH;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -674,12 +677,12 @@ int erase_PIC16F1704_flash_new(void)
 	
 	if((read_back_data[0] != ERASE_PIC_FLASH) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok\n\n", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -691,7 +694,7 @@ int write_data_into_PIC16F1704_flash_new(void)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + WRITE_DATA_INTO_FLASH;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -721,12 +724,12 @@ int write_data_into_PIC16F1704_flash_new(void)
 	
 	if((read_back_data[0] != WRITE_DATA_INTO_FLASH) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok\n\n", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -738,7 +741,7 @@ int jump_from_loader_to_app_PIC16F1704_new(void)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + JUMP_FROM_LOADER_TO_APP;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -768,12 +771,12 @@ int jump_from_loader_to_app_PIC16F1704_new(void)
 	
 	if((read_back_data[0] != JUMP_FROM_LOADER_TO_APP) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -785,7 +788,7 @@ int reset_PIC16F1704_pic_new(void)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + RESET_PIC;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -815,12 +818,12 @@ int reset_PIC16F1704_pic_new(void)
 	
 	if((read_back_data[0] != RESET_PIC) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -832,7 +835,7 @@ int set_PIC16F1704_voltage_new(unsigned char voltage)
 	unsigned short crc = 0;
 	unsigned char i,send_data[7] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + SET_VOLTAGE + voltage;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -863,12 +866,12 @@ int set_PIC16F1704_voltage_new(unsigned char voltage)
 	
 	if((read_back_data[0] != SET_VOLTAGE) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok, voltage = 0x%02x\n\n", __FUNCTION__, voltage);
+		applog(LOG_DEBUG,"%s ok, voltage = 0x%02x", __FUNCTION__, voltage);
 		return 1;	// ok
 	}
 }
@@ -880,7 +883,7 @@ int write_hash_ID_PIC16F1704_new(unsigned char *buf)
 	unsigned short crc = 0;
 	unsigned char i,send_data[18] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + SET_HASH_BOARD_ID;
 	for(i=0; i<12; i++)
@@ -918,12 +921,12 @@ int write_hash_ID_PIC16F1704_new(unsigned char *buf)
 	
 	if((read_back_data[0] != SET_HASH_BOARD_ID) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -935,7 +938,7 @@ int read_hash_id_PIC16F1704_new(unsigned char *buf)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + READ_HASH_BOARD_ID;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -961,7 +964,7 @@ int read_hash_id_PIC16F1704_new(unsigned char *buf)
 	}
 	pthread_mutex_unlock(&i2c_mutex);
 
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x,\
+	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x,\
 		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x,\
 		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x,\
 		read_back_data[12] = 0x%x, read_back_data[13] = 0x%x, read_back_data[14] = 0x%x, read_back_data[15] = 0x%x\n", __FUNCTION__,\
@@ -971,7 +974,7 @@ int read_hash_id_PIC16F1704_new(unsigned char *buf)
 
 	if((read_back_data[1] != READ_HASH_BOARD_ID) || (read_back_data[0] != 16))
 	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s failed!\n\n", __FUNCTION__);
 		return 0;	// error
 	}
 	else
@@ -982,14 +985,14 @@ int read_hash_id_PIC16F1704_new(unsigned char *buf)
 
 		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[14]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[15]))
 		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
+			applog(LOG_ERR,"%s failed! crc = 0x%04x", __FUNCTION__, crc);
 			return 0;	// error
 		}
 		for(i=0; i<12; i++)
 		{
 			*(buf + i) = read_back_data[2 + i];
 		}
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1001,8 +1004,8 @@ int enable_PIC16F1704_dc_dc_new(unsigned char enable)
 	unsigned short crc = 0;
 	unsigned char i,send_data[7] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
-
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
+	
 	crc = length + ENABLE_VOLTAGE + enable;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
 	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
@@ -1030,12 +1033,12 @@ int enable_PIC16F1704_dc_dc_new(unsigned char enable)
 
 	if((read_back_data[0] != ENABLE_VOLTAGE) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1047,7 +1050,7 @@ int heart_beat_PIC16F1704_new(void)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + SEND_HEART_BEAT;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -1071,19 +1074,18 @@ int heart_beat_PIC16F1704_new(void)
 	{
 		read(dev.i2c_fd, read_back_data+i, 1);
 	}
-	pthread_mutex_unlock(&i2c_mutex);
-	
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n", 
-		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
+	pthread_mutex_unlock(&i2c_mutex);	
 	
 	if((read_back_data[1] != SEND_HEART_BEAT) || (read_back_data[2] != 1))
 	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s failed!", __FUNCTION__);
+		applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n", 
+		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1095,7 +1097,7 @@ int get_PIC16F1704_software_version_new(unsigned char *version)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + READ_PIC_SOFTWARE_VERSION;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -1123,12 +1125,12 @@ int get_PIC16F1704_software_version_new(unsigned char *version)
 
 	usleep(200*1000);
 	
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x\n", 
+	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x", 
 		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
 
 	if((read_back_data[1] != READ_PIC_SOFTWARE_VERSION) || (read_back_data[0] != 5))
 	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s failed!", __FUNCTION__);
 		return 0;	// error
 	}
 	else
@@ -1136,11 +1138,11 @@ int get_PIC16F1704_software_version_new(unsigned char *version)
 		crc = read_back_data[0] + read_back_data[1] + read_back_data[2];
 		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[3]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[4]))
 		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
+			applog(LOG_ERR,"%s failed! crc = 0x%04x", __FUNCTION__, crc);
 			return 0;	// error
 		}
 		*version = read_back_data[2];
-		printf("\n--- %s ok, version = 0x%02x\n\n", __FUNCTION__, *version);
+		applog(LOG_DEBUG,"%s ok, version = 0x%02x", __FUNCTION__, *version);
 		return 1;	// ok
 	}
 }
@@ -1152,7 +1154,7 @@ int get_PIC16F1704_voltage_new(unsigned char *voltage)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + GET_VOLTAGE;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -1178,12 +1180,12 @@ int get_PIC16F1704_voltage_new(unsigned char *voltage)
 	}
 	pthread_mutex_unlock(&i2c_mutex);
 	
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x\n", 
+	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x\n", 
 		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
 
 	if((read_back_data[1] != GET_VOLTAGE) || (read_back_data[0] != 5))
 	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s failed!", __FUNCTION__);
 		return 0;	// error
 	}
 	else
@@ -1191,11 +1193,11 @@ int get_PIC16F1704_voltage_new(unsigned char *voltage)
 		crc = read_back_data[0] + read_back_data[1] + read_back_data[2];
 		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[3]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[4]))
 		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
+			applog(LOG_ERR,"%s failed! crc = 0x%04x", __FUNCTION__, crc);
 			return 0;	// error
 		}
 		*voltage = read_back_data[2];
-		printf("\n--- %s ok, voltage = 0x%02x\n\n", __FUNCTION__, *voltage);
+		applog(LOG_DEBUG,"%s ok, voltage = 0x%02x", __FUNCTION__, *voltage);
 		return 1;	// ok
 	}
 }
@@ -1207,7 +1209,7 @@ int write_temperature_offset_PIC16F1704_new(unsigned char *buf)
 	unsigned short crc = 0;
 	unsigned char i,send_data[14] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + WR_TEMP_OFFSET_VALUE;
 	for(i=0; i<8; i++)
@@ -1245,12 +1247,12 @@ int write_temperature_offset_PIC16F1704_new(unsigned char *buf)
 	
 	if((read_back_data[0] != WR_TEMP_OFFSET_VALUE) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1263,7 +1265,7 @@ int read_temperature_offset_PIC16F1704_new(unsigned char *buf)
 	unsigned char i = 0;
 	unsigned char send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	crc = length + RD_TEMP_OFFSET_VALUE;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -1289,7 +1291,7 @@ int read_temperature_offset_PIC16F1704_new(unsigned char *buf)
 	}
 	pthread_mutex_unlock(&i2c_mutex);
 
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
+	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
 		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x, \
 		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x\n", __FUNCTION__,\
 		read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5], \
@@ -1297,7 +1299,7 @@ int read_temperature_offset_PIC16F1704_new(unsigned char *buf)
 
 	if((read_back_data[1] != RD_TEMP_OFFSET_VALUE) || (read_back_data[0] != 0x0c))
 	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s failed!", __FUNCTION__);
 		return 0;	// error
 	}
 	else
@@ -1307,14 +1309,14 @@ int read_temperature_offset_PIC16F1704_new(unsigned char *buf)
 
 		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[10]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[11]))
 		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
+			applog(LOG_ERR,"%s failed! crc = 0x%04x", __FUNCTION__, crc);
 			return 0;	// error
 		}
 		for(i=0; i<8; i++)
 		{
 			*(buf + i) = read_back_data[2 + i];
 		}
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1328,11 +1330,13 @@ unsigned char erase_PIC16F1704_app_flash_new(void)
 	unsigned char end_addr_h = PIC_FLASH_POINTER_END_ADDRESS_H, end_addr_l = PIC_FLASH_POINTER_END_ADDRESS_L;
 	unsigned int pic_flash_length=0;
 
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
+
 	set_PIC16F1704_flash_pointer_new(PIC_FLASH_POINTER_START_ADDRESS_H_NEW, PIC_FLASH_POINTER_START_ADDRESS_L_NEW);
 
 	pic_flash_length = (((unsigned int)end_addr_h << 8) + end_addr_l) - (((unsigned int)start_addr_h << 8) + start_addr_l) + 1;
 	erase_loop = pic_flash_length/PIC_FLASH_SECTOR_LENGTH;
-	printf("%s: erase_loop = %d\n", __FUNCTION__, erase_loop);
+	applog(LOG_DEBUG,"%s: erase_loop = %d\n", __FUNCTION__, erase_loop);
 
 	for(i=0; i<erase_loop; i++)
 	{
@@ -1354,20 +1358,20 @@ int PIC1704_update_pic_app_program_new(void)
 	unsigned int pic_flash_length=0;
 	int ret=0;
 	
-	printf("\n--- update pic program\n");
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 
 	// read upgrade file first, if it is wrong, don't erase pic, but just return;
 	pic_program_file = fopen(PIC16F1704_PROGRAM_NEW, "r");
 	if(!pic_program_file)
 	{
-		printf("\n%s: open pic16f1704_app_new.txt failed\n", __FUNCTION__);
+		applog(LOG_ERR,"%s: open pic16f1704_app_new.txt failed\n", __FUNCTION__);
 		return;
 	}
 	fseek(pic_program_file,0,SEEK_SET);
 	memset(program_data, 0x0, 5000);
 
 	pic_flash_length = (((unsigned int)end_addr_h << 8) + end_addr_l) - (((unsigned int)start_addr_h << 8) + start_addr_l) + 1;
-	printf("pic_flash_length = %d\n", pic_flash_length);
+	applog(LOG_ERR,"%s: pic_flash_length = %d\n", __FUNCTION__, pic_flash_length);
 	
 	for(i=0; i<pic_flash_length; i++)
 	{
@@ -1386,21 +1390,21 @@ int PIC1704_update_pic_app_program_new(void)
 	ret = reset_PIC16F1704_pic_new();
 	if(ret == 0)
 	{
-		printf("!!! %s: reset pic error!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s: reset pic error!\n\n", __FUNCTION__);
 		return 0;
 	}
 	
 	ret = erase_PIC16F1704_app_flash_new();
 	if(ret == 0)
 	{
-		printf("!!! %s: erase flash error!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s: erase flash error!\n\n", __FUNCTION__);
 		return 0;
 	}
 
 	ret = set_PIC16F1704_flash_pointer_new(PIC_FLASH_POINTER_START_ADDRESS_H_NEW, PIC_FLASH_POINTER_START_ADDRESS_L_NEW);
 	if(ret == 0)
 	{
-		printf("!!! %s: set flash pointer error!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s: set flash pointer error!\n\n", __FUNCTION__);
 		return 0;
 	}
 
@@ -1408,13 +1412,12 @@ int PIC1704_update_pic_app_program_new(void)
 	{
 		memcpy(buf, program_data+i*16, 16);
 		/**/
-		printf("send pic program time: %d\n",i);
+		applog(LOG_DEBUG,"send pic program time: %d\n",i);
 		for(j=0;j<16;j++)
 		{
-			printf("buf[%d] = 0x%02x\n", j, *(buf+j));
+			applog(LOG_DEBUG,"buf[%d] = 0x%02x\n", j, *(buf+j));
 		}
-		printf("\n");
-		
+				
 		send_data_to_PIC16F1704_new(buf);
 		write_data_into_PIC16F1704_flash_new();
 	}
@@ -1422,7 +1425,7 @@ int PIC1704_update_pic_app_program_new(void)
 	ret = reset_PIC16F1704_pic_new();
 	if(ret == 0)
 	{
-		printf("!!! %s: reset pic error!\n\n", __FUNCTION__);
+		applog(LOG_ERR,"%s: reset pic error!\n\n", __FUNCTION__);
 		return 0;
 	}
 
@@ -1433,6 +1436,8 @@ int PIC1704_update_pic_app_program_new(void)
 void every_chain_reset_PIC16F1704_pic_new(void)
 {
 	unsigned char which_chain;
+
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -1453,6 +1458,8 @@ void every_chain_reset_PIC16F1704_pic_new(void)
 void every_chain_jump_from_loader_to_app_PIC16F1704_new(void)
 {
 	unsigned char which_chain;
+
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -1473,6 +1480,8 @@ void every_chain_jump_from_loader_to_app_PIC16F1704_new(void)
 void every_chain_enable_PIC16F1704_dc_dc_new(unsigned char enable)
 {
 	unsigned char which_chain;
+
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
 	for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -1502,75 +1511,76 @@ int send_heart_beat_to_every_chain(void)
 }
 
 
-void every_chain_update_pic_program()
+void check_whether_need_update_pic_program(void)
 {
-	unsigned char i = 0;
-	bool version_error = false;
-	
-	for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
-    {
-        if(dev.chain_exist[i] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[i] >> 1 ) < 0))
-                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-            //pic_read_pic_software_version(&pic_version[i]);
-            get_PIC16F1704_software_version_new(&pic_version[i]);
-            applog(LOG_NOTICE, "Chain %d PIC Version 0x%x", i, pic_version[i]);
-            if(pic_version[i] != 0x3)
-            {
-                //update_pic_program();
-                PIC1704_update_pic_app_program_new();
-                version_error = true;
-            }
-            pthread_mutex_unlock(&iic_mutex);
-        }
-    }
+	unsigned char which_chain, pic_update_counter = 0;
+	bool need_update_pic = false;
 
-    cgsleep_ms(1000);
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 
-    for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
-    {
-        if(dev.chain_exist[i] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[i] >> 1 ) < 0))
-                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-            //reset_iic_pic();
-            reset_PIC16F1704_pic_new();
-            pthread_mutex_unlock(&iic_mutex);
-        }
-    }
+	while(pic_update_counter < 3)	// max update for 3 times
+	{
+		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+	    {
+	        if(dev.chain_exist[which_chain] == 1)
+	        {
+	            pthread_mutex_lock(&iic_mutex);
+	            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+	                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+	            reset_PIC16F1704_pic_new();
+				cgsleep_ms(100);
+				jump_from_loader_to_app_PIC16F1704_new();
+				cgsleep_ms(100);
+				get_PIC16F1704_software_version_new(&pic_version[which_chain]);
+	            pthread_mutex_unlock(&iic_mutex);
 
-    cgsleep_ms(1000);
+				if(pic_version[which_chain] < PIC_VERSION)
+				{
+					need_update_pic = true;
+				}
+	        }
+	    }
 
-    for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
-    {
-        if(dev.chain_exist[i] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[i] >> 1 ) < 0))
-                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-            //jump_to_app_from_loader();
-            jump_from_loader_to_app_PIC16F1704_new();
-            pthread_mutex_unlock(&iic_mutex);
-        }
-    }
+		if(need_update_pic)
+		{
+			need_update_pic = false;
+			pic_update_counter++;
+		
+			for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+		    {
+		        if(dev.chain_exist[which_chain] == 1)
+		        {
+		            pthread_mutex_lock(&iic_mutex);
+		            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+		                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+		            PIC1704_update_pic_app_program_new();
+					cgsleep_ms(100);
+					jump_from_loader_to_app_PIC16F1704_new();
+					cgsleep_ms(100);
+					get_PIC16F1704_software_version_new(&pic_version[which_chain]);
+		            pthread_mutex_unlock(&iic_mutex);
 
-    cgsleep_ms(1000);
+					if(pic_version[which_chain] < PIC_VERSION)
+					{
+						need_update_pic = true;
+					}
+		        }
+		    }
+		}
+		else
+		{
+			break;
+		}
+	}
 
-    if(version_error)
-    {
-        cgsleep_ms(200);
-        version_error = false;
-        //goto update;
-    }
+	applog(LOG_DEBUG, "%s: pic update for %d times",__FUNCTION__, pic_update_counter);
 }
-
 
 void check_every_chain_asic_number(bool whether_update_asic_num)
 {
 	unsigned char which_chain;
+
+	applog(LOG_DEBUG,"%s", __FUNCTION__);
 
     for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -1701,7 +1711,7 @@ void get_status(unsigned int fd, unsigned char mode, unsigned char chip_addr, un
 	buf[3] = reg_addr;
 	buf[4] = CRC5(buf, 8*(CMD_LENTH - 1));
 
-	applog(LOG_DEBUG, "get status reg %02x : %02x%02x%02x%02x%02x%02x%02x%02x%02x" ,reg_addr, buf[0], buf[1], buf[2], buf[3], buf[4]);
+	applog(LOG_DEBUG, "%s: reg_addr: 0x%02x : 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x" ,__FUNCTION__, reg_addr, buf[0], buf[1], buf[2], buf[3], buf[4]);
 	
     DASH_write(fd, buf, CMD_LENTH);
 }
@@ -1738,7 +1748,7 @@ void set_config(unsigned int fd, unsigned char mode, unsigned char asic_addr, un
 	buf[7] = (unsigned char)((reg_data >> 0) & 0xff);
 	buf[8] = CRC5(buf, 8*(CONFIG_LENTH - 1));
 
-    applog(LOG_DEBUG, "Set config reg %02x : %02x%02x%02x%02x%02x%02x%02x%02x%02x" ,reg_addr,buf[0], buf[1], buf[2],
+    applog(LOG_DEBUG, "%s: reg_addr: 0x%02x : 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x" ,__FUNCTION__, reg_addr,buf[0], buf[1], buf[2],
            buf[3],buf[4], buf[5], buf[6], buf[7],buf[8]);
 	
     DASH_write(fd, buf, CONFIG_LENTH);
@@ -1792,7 +1802,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 			break;
 
 		default:
-			applog(LOG_DEBUG, "!!! %s: the input register is not correct, please check it. the input register is 0x%02x\n", reg_addr);
+			applog(LOG_DEBUG, "!!! %s: the input register is not correct, please check it. the input register is 0x%02x", reg_addr);
 			break;
 	}
 	
@@ -1815,11 +1825,11 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 				else
 				{
 					not_receive_reg_value_counter++;
-					applog(LOG_DEBUG, "--- %s: not receive CHIP_ADDR register value for %d time\n", __FUNCTION__, not_receive_reg_value_counter);
+					applog(LOG_DEBUG, "%s: not receive CHIP_ADDR register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
 				}
 			}
 
-			applog(LOG_DEBUG, "--- %s: Chain%d has %d ASICs\n", __FUNCTION__, which_chain, g_CHIP_ADDR_reg_value_num[which_chain]);
+			applog(LOG_DEBUG, "%s: Chain%d has %d ASICs", __FUNCTION__, which_chain, g_CHIP_ADDR_reg_value_num[which_chain]);
 			
 			if(update_asic_num)
 			{
@@ -1845,7 +1855,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 				else
 				{
 					not_receive_reg_value_counter++;
-					applog(LOG_DEBUG, "--- %s: not receive GENERAL_I2C_COMMAND register value for %d time\n", __FUNCTION__, not_receive_reg_value_counter);
+					applog(LOG_DEBUG, "%s: not receive GENERAL_I2C_COMMAND register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
 				}
 			}
 			break;
@@ -1863,7 +1873,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 				else
 				{
 					not_receive_reg_value_counter++;
-					applog(LOG_DEBUG, "--- %s: not receive HASH_RATE register value for %d time\n", __FUNCTION__, not_receive_reg_value_counter);
+					applog(LOG_DEBUG, "%s: not receive HASH_RATE register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
 				}
 			}
 			break;
@@ -1881,14 +1891,14 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 				else
 				{
 					not_receive_reg_value_counter++;
-					applog(LOG_DEBUG, "--- %s: not receive CHIP_STATUS register value for %d time\n", __FUNCTION__, not_receive_reg_value_counter);
+					applog(LOG_DEBUG, "%s: not receive CHIP_STATUS register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
 				}
 			}
 			break;
 
 
 		default:
-			applog(LOG_DEBUG, "!!! %s: the input register is not correct, please check it. the input register is 0x%02x\n", reg_addr);
+			applog(LOG_ERR, "!!! %s: the input register is not correct, please check it. the input register is 0x%02x\n", reg_addr);
 			break;
 	}
 }
@@ -2029,7 +2039,7 @@ void set_ticket_mask(unsigned int ticket_mask)
 {
 	unsigned char which_chain;
 
-	applog(LOG_DEBUG,"%s ticket_mask= 0x%08x",__FUNCTION__, ticket_mask);
+	applog(LOG_DEBUG,"%s ticket_mask = 0x%08x",__FUNCTION__, ticket_mask);
 
 	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2678,14 +2688,14 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 	// check parameters
     if(config_parameter.token_type != INIT_CONFIG_TYPE)
     {
-        applog(LOG_DEBUG,"%s: config_parameter.token_type != 0x%x, it is 0x%x", __FUNCTION__, INIT_CONFIG_TYPE, config_parameter.token_type);
+        applog(LOG_ERR,"%s: config_parameter.token_type != 0x%x, it is 0x%x", __FUNCTION__, INIT_CONFIG_TYPE, config_parameter.token_type);
         return -1;
     }
 
-    crc = crc_itu_t(0xff,(uint8_t*)(&config_parameter), sizeof(struct init_config) - sizeof(uint16_t));
+    crc = crc_itu_t(0xff, (uint8_t*)(&config_parameter), sizeof(struct init_config) - sizeof(uint16_t));
     if(crc != config_parameter.crc)
     {
-        applog(LOG_DEBUG,"%s: config_parameter.crc = 0x%x, but we calculate it as 0x%x", __FUNCTION__, config_parameter.crc, crc);
+        applog(LOG_ERR,"%s: config_parameter.crc = 0x%x, but we calculate it as 0x%x", __FUNCTION__, config_parameter.crc, crc);
         return -2;
     }
 
@@ -2708,12 +2718,10 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 
 	// init i2c
     i2c_init(info);
-     
-    every_chain_reset_PIC16F1704_pic_new();
- 
-#ifdef UPDATE_PIC
-	every_chain_update_pic_program();
-#endif
+   
+	check_whether_need_update_pic_program();
+	
+	every_chain_reset_PIC16F1704_pic_new();
 
 	every_chain_jump_from_loader_to_app_PIC16F1704_new();
 
@@ -2761,7 +2769,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 	check_every_chain_asic_number(false);
 
 	// about temperature sensor
-	enable_read_temperature_from_asic(config_parameter.analog_mux_control_reg_value);
+	enable_read_temperature_from_asic(config_parameter.misc_control_reg_value);
 	select_core_to_check_temperature(DIODE_MUX_SEL_DEFAULT_VALUE, VDD_MUX_SEL_DEFAULT_VALUE);
     calibration_sensor_offset();
 	set_temperature_offset_value();
@@ -2853,7 +2861,7 @@ void enable_read_temperature_from_asic(unsigned int misc_control_reg_value)
 {
 	unsigned int which_chain=0, which_sensor=0;
 
-	applog(LOG_DEBUG, "--- %s", __FUNCTION__);
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
 	
 	misc_control_reg_value |= (RFS | TFS(3)); 
 	
@@ -2877,7 +2885,7 @@ void select_core_to_check_temperature(unsigned char diode_mux_sel, unsigned char
 	unsigned int which_chain=0, which_sensor=0;
 	unsigned int regdata = ((diode_mux_sel & 0x0f) << 16) | (vdd_mux_sel & 0x1f);
 	
-	applog(LOG_DEBUG, "--- %s: diode_mux_sel = %d, vdd_mux_sel = %d\n", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
+	applog(LOG_DEBUG, "%s: diode_mux_sel = %d, vdd_mux_sel = %d\n", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
 	
 	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -3945,9 +3953,13 @@ rerun_all:
         cgsleep_ms(3);
 
         pthread_mutex_lock(&reg_mutex);
-        reg_value_num = reg_fifo.reg_value_num;
-        applog(LOG_DEBUG,"%s: reg_value_num = %d", __FUNCTION__, reg_value_num);
+        reg_value_num = reg_fifo.reg_value_num;		
         pthread_mutex_unlock(&reg_mutex);
+
+		if(reg_value_num > 0)
+		{
+        	applog(LOG_DEBUG,"%s: reg_value_num = %d", __FUNCTION__, reg_value_num);
+		}
 		
         if(reg_value_num >= MAX_NONCE_NUMBER_IN_FIFO || reg_fifo.p_rd >= MAX_NONCE_NUMBER_IN_FIFO)
         {
