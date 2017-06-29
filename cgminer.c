@@ -1516,7 +1516,7 @@ static struct opt_table opt_config_table[] =
     "Record work test data to file"),
 #endif
 
-#ifdef USE_BITMAIN_DASH
+#ifdef USE_BITMAIN_D1
     OPT_WITHOUT_ARG("--bitmain-fan-ctrl",
     opt_set_bool, &opt_bitmain_fan_ctrl,
     "Enable bitmain miner fan controlling"),
