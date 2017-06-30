@@ -71,7 +71,7 @@
 /******************** about D1 Hash board ********************/
 
 // how many BM1760 on 1 D1 Hash board
-#define D1_MINER_ASIC_NUM_EACH_CHAIN			60
+#define D1_MINER_ASIC_NUM_EACH_CHAIN			2
 #define ASIC_NUM_EACH_CHAIN						D1_MINER_ASIC_NUM_EACH_CHAIN
 //#define CHAIN_ASIC_NUM                  		60
 
@@ -84,7 +84,7 @@
 #define D1_MINER_REAL_TEMP_CHIP_NUM				1
 #define BITMAIN_REAL_TEMP_CHIP_NUM				D1_MINER_REAL_TEMP_CHIP_NUM		
 
-#define TEMP_CHIP_0_LOCATION					5	// the 1st temperature sensor connect to the 5th ASIC(count from 1)
+#define TEMP_CHIP_0_LOCATION					1	// the 1st temperature sensor connect to the 5th ASIC(count from 1)
 #define TEMP_CHIP_1_LOCATION					0	// 0 means no temperature sensor
 #define TEMP_CHIP_2_LOCATION					0	// 0 means no temperature sensor
 
@@ -100,7 +100,7 @@
 /******************** about BM1760 ASIC ********************/
 
 // how many cores in BM1760
-#define BM1760_CORE_NUM								8
+#define BM1760_CORE_NUM								1
 
 // BM1760 ASIC input/output data header
 #define INPUT_HEADER_1								0x55
@@ -247,6 +247,9 @@
 #define EXT_TEMP_VALUE_LOW_BYTE     				0x10
 #define EXT_TEMP_OFFSET_HIGH_BYTE   				0x11
 #define EXT_TEMP_OFFSET_LOW_BYTE    				0x12
+#define MANUFACTURER_ID								0xFE
+#define MANUFACTURER_ID_ECT218						0x1A
+
 
 /************** about temperature sensor end **************/
 
