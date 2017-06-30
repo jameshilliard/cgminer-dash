@@ -2807,7 +2807,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
         {
             applog(LOG_NOTICE, "frequency = '%d'", dev.frequency);
             // timeout = 2^32 / (256 / AddrInterval) / Freq / core number
-            dev.timeout = 0xffffffff / (0x100 / dev.addrInterval) / (dev.frequency*1000000) / dev.corenum * 0.95;
+            dev.timeout = 0xffffffff / (0x100 / dev.addrInterval) / dev.frequency / dev.corenum * 0.95 * 40;
             applog(LOG_NOTICE,"dev.timeout = %d us", dev.timeout);
         }
         else
@@ -4338,7 +4338,7 @@ void *DASH_fill_work(void *usrdata)
         cgtime(&send_start);
         timersub(&send_start, &last_send, &send_elapsed);
 		
-        if(new_block[chainid] || send_elapsed.tv_sec*1000 + send_elapsed.tv_usec/1000  >= (dev.timeout*1000)/*40000*/ )
+        if(new_block[chainid] || send_elapsed.tv_sec*1000000 + send_elapsed.tv_usec  >= dev.timeout )
         {
             cgtime(&last_send);
         more_work:
