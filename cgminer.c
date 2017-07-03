@@ -8301,7 +8301,7 @@ static void submit_work_async(struct work *work)
 
 void inc_hw_errors(struct thr_info *thr)
 {
-    forcelog(LOG_INFO, "%s %d: invalid nonce - HW error", thr->cgpu->drv->name,
+    forcelog(LOG_INFO, "%s: %s%d: invalid nonce - HW error", __FUNCTION__, thr->cgpu->drv->name,
              thr->cgpu->device_id);
 
     mutex_lock(&stats_lock);
@@ -8314,7 +8314,7 @@ void inc_hw_errors(struct thr_info *thr)
 
 void inc_hw_errors_with_diff(struct thr_info *thr, int diff)
 {
-    applog(LOG_ERR, "%s%d: invalid nonce - HW error", thr->cgpu->drv->name,
+    applog(LOG_ERR, "%s: %s%d: invalid nonce - HW error", __FUNCTION__, thr->cgpu->drv->name,
            thr->cgpu->device_id);
 
     mutex_lock(&stats_lock);
@@ -8341,23 +8341,28 @@ static void rebuild_nonce(struct work *work, uint32_t nonce)
 
     uint32_t *work_nonce = (uint32_t *)(work->data + 64 + 12);
 
-
-
     *work_nonce = htole32(nonce);
     rebuild_hash(work);
-
-
 }
 
 /* For testing a nonce against diff 1 */
 bool test_nonce(struct work *work, uint32_t nonce)
 {
-
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
+	
     uint32_t *hash_32 = (uint32_t *)(work->hash + 28);
     uint32_t diff1targ;
 
+	applog(LOG_DEBUG, "%s: 1 *hash_32 = 0x%08x", __FUNCTION__, *hash_32);
+
     rebuild_nonce(work, nonce);
+
+	applog(LOG_DEBUG, "%s: 2 *hash_32 = 0x%08x", __FUNCTION__, *hash_32);
+
+	applog(LOG_DEBUG, "%s opt_scrypt = %d", __FUNCTION__, opt_scrypt);
+	
     diff1targ = opt_scrypt ? 0x0000ffffUL : 0;
+	applog(LOG_DEBUG, "%s: diff1targ = 0x%08x", __FUNCTION__, diff1targ);
 //    unsigned char* tmp = (unsigned char*)(work->data + 76);
 
     return (le32toh(*hash_32) <= diff1targ);
@@ -8446,7 +8451,7 @@ static bool new_nonce(struct thr_info *thr, uint32_t nonce)
 
     if (unlikely(cgpu->last_nonce == nonce))
     {
-        applog(LOG_INFO, "%s %d duplicate share detected as HW error",
+        applog(LOG_ERR, "%s %d duplicate share detected as HW error",
                cgpu->drv->name, cgpu->device_id);
         return false;
     }
@@ -8458,6 +8463,15 @@ static bool new_nonce(struct thr_info *thr, uint32_t nonce)
  * nonce submitted by this device. */
 bool submit_nonce(struct thr_info *thr, struct work *work, uint32_t nonce)
 {
+	bool ret = false;
+
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
+
+	ret = new_nonce(thr, nonce);
+	applog(LOG_DEBUG, "%s ret1 = %d", __FUNCTION__, ret);
+
+	ret = test_nonce(work, nonce);
+	applog(LOG_DEBUG, "%s ret2 = %d", __FUNCTION__, ret);
 
     if (new_nonce(thr, nonce) && test_nonce(work, nonce))
         submit_tested_work(thr, work);
@@ -8475,8 +8489,12 @@ bool submit_nonce(struct thr_info *thr, struct work *work, uint32_t nonce)
 
 bool submit_nonce_1(struct thr_info *thr, struct work *work, uint32_t nonce, int * nofull)
 {
+	bool ret = false;
+	
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
 
     if(nofull) *nofull = 0;
+
     if (test_nonce(work, nonce))
     {
         // unsigned char* tmp = (unsigned char*)(work->data + 76);
@@ -8501,6 +8519,7 @@ bool submit_nonce_1(struct thr_info *thr, struct work *work, uint32_t nonce, int
 
 void submit_nonce_2(struct work *work)
 {
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
 
     struct work *work_out;
     work_out = copy_work(work);

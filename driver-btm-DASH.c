@@ -2339,7 +2339,7 @@ void calculate_address_interval(void)
 	// according to the address interval, calculate out the chip/core offset
 	//gChipOffset = (0x01 << 1) * ((0x01 << 31) / temp_asic_number / dev.addrInterval);	// 2^32 / temp_asic_number / dev.addrInterval
 	//gChipOffset = 0x1000000;	// 2^32 / 0x100 (0x100 = temp_asic_number * dev.addrInterval)
-	gChipOffset = 0x80000000;
+	gChipOffset = 0x1000000;
 	gCoreOffset = gChipOffset / BM1760_CORE_NUM;
 	applog(LOG_NOTICE,"%s: CHIP_OFFSET = 0x%08x, CORE_OFFSET = 0x%08x", __FUNCTION__, gChipOffset, gCoreOffset);	
 }
@@ -2833,7 +2833,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 	//update_asic_num = false;
 
 	// set core ticket mask
-	set_ticket_mask(DEVICE_DIFF);	// if we set this register value as 0x16, we will not need to set
+	//set_ticket_mask(DEVICE_DIFF);	// if we set this register value as 0x16, we will not need to set
 
     //set core number
     dev.corenum = BM1760_CORE_NUM;
@@ -3668,7 +3668,7 @@ void *bitmain_scanhash(void *arg)
     struct bitmain_DASH_info *info = bitmain_DASH->device_data;
     struct timeval current;
     uint8_t nonce_bin[4],crc_check,which_asic_nonce;
-    uint32_t nonce;
+    uint32_t nonce, i;
     int submitfull = 0;
     bool submitnonceok = true;
 	unsigned char work_id = 0, chain_id = 0, nonce_diff = 0, nonce_crc5 = 0;
@@ -3692,8 +3692,8 @@ void *bitmain_scanhash(void *arg)
 		
         if(crc_check != nonce_crc5)
         {
-            applog(LOG_ERR,"crc5 error,should be 0x%02x,but check as 0x%02x", nonce_crc5, crc_check);
-            applog(LOG_NOTICE,"get nonce: 0x%08x, wc: 0x%02x, diff: 0x%02x, crc5: 0x%02x, chainid: 0x%02x", nonce, work_id, nonce_diff, nonce_crc5, chain_id);
+            applog(LOG_ERR,"%s: crc5 error,should be 0x%02x,but check as 0x%02x", __FUNCTION__, nonce_crc5, crc_check);
+            applog(LOG_NOTICE,"%s: get nonce: 0x%08x, diff: 0x%02x, wc: 0x%02x, crc5: 0x%02x, chainid: 0x%02x", __FUNCTION__, nonce, nonce_diff, work_id, crc_check, chain_id);
 
             //if signature enabled,check SIG_INFO register
             goto crc_error;
@@ -3702,6 +3702,10 @@ void *bitmain_scanhash(void *arg)
         work = info->work_queue[work_id];
         if(work)
         {
+			applog(LOG_ERR,"%s: work_id = 0x%02x", __FUNCTION__, work_id);
+			hexdump((uint8_t *)&work->data, 128);
+
+			/*
             submitfull = 0;
             if(submit_nonce_1(thr, work, nonce, &submitfull))
             {
@@ -3719,11 +3723,12 @@ void *bitmain_scanhash(void *arg)
                     submitnonceok = false;
                     if ( chain_id > BITMAIN_MAX_CHAIN_NUM )
 					{
-						applog( LOG_ERR, "Chain_ID [%d] Error!", chain_id);
+						applog( LOG_ERR, "%s: Chain_ID [%d] Error!", __FUNCTION__, chain_id);
                     }
                     dev.chain_hw[chain_id] ++;
                 }
             }
+            */
 			
             if(submitnonceok)
             {
@@ -3749,7 +3754,7 @@ void *bitmain_scanhash(void *arg)
         }
         else
         {
-            applog(LOG_ERR, "%s%d: work %02x not find error", bitmain_DASH->drv->name, bitmain_DASH->device_id, work_id);
+            applog(LOG_ERR, "%s %d: work %02x not find error", bitmain_DASH->drv->name, bitmain_DASH->device_id, work_id);
         }
     crc_error:
         if(nonce_fifo.p_rd < MAX_NONCE_NUMBER_IN_FIFO)
@@ -4528,7 +4533,7 @@ void *DASH_fill_work(void *usrdata)
             if ( workid >= BITMAIN_MAX_QUEUE_NUM ) applog(LOG_ERR, "WorkID Error![%d]", workid);
             info->work_queue[workid] = copy_work(work);
 			
-            applog(LOG_DEBUG, "ChainID[%d] Wirte Work", chainid);
+            applog(LOG_DEBUG, "ChainID[%d] Wirte Work. workid=%d", chainid, workid);
             DASH_write(info->dev_fd[chainid], (uint8_t *)&workdata, WORK_INPUT_LENGTH_WITH_CRC);
             // cg_runlock(&info->update_lock);
             gBegin_get_nonce = true;
@@ -4597,7 +4602,7 @@ void *get_asic_response(void* arg)
 				for(j=0; j<len; j++)
 				{
 					data_buf[data_buf_w_p++] = receive_buf[j];	// store the received data into data_buf
-					//applog(LOG_DEBUG, "%s: 0x%02x",__FUNCTION__,receive_buf[j]);
+					applog(LOG_DEBUG, "%s: 0x%02x",__FUNCTION__,receive_buf[j]);
 				}
 				//printf("\n");
 				//printf("\ndata_buf_w_p = %d\n\n", data_buf_w_p);
@@ -4701,9 +4706,9 @@ void *get_asic_response(void* arg)
 	                        memcpy((unsigned char *)(&nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce), &temp_buf[2], 4);	// we do not swap32 here, but swap it when we analyse nonce
 	                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff           = temp_buf[6];
 	                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc             = temp_buf[7] & 0x7f;
-	                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5           = temp_buf[8] & 0x1f;
+	                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5           = temp_buf[8];
 	                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid        = chainid;
-	                        applog(LOG_DEBUG,"get nonce 0x%08x%, wc 0x%02x, diff 0x%02x, crc5 0x%02x, chainid 0x%02x",nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce, \
+	                        applog(LOG_DEBUG,"%s: get nonce 0x%08x, diff 0x%02x, wc 0x%02x, crc5 0x%02x, chainid 0x%02x", __FUNCTION__, Swap32(nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce), \
 	                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc,  \
 	                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid);		                               
 
