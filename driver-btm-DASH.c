@@ -3744,14 +3744,43 @@ void *bitmain_scanhash(void *arg)
 			*work_nonce = nonce;
 			applog(LOG_DEBUG,"%s:2 *work_nonce = 0x%08x", __FUNCTION__, *work_nonce);
 
-			memcpy(pworkdata, work->data, 80);
+
 			
+			memcpy(pworkdata, work->data, 80);
+
+			for(i=0;i<WORK_DATA_INPUT_LENGTH; i++)
+			{
+				applog(LOG_NOTICE, "%s: work->data[%d] = 0x%02x", __FUNCTION__, i, work->data[i]);
+			}
+
+			/**/
 			for (k=0; k < 20; k++)
 			{
-				//endiandata[k] = Swap32(((uint32_t*)pworkdata)[k]);
 				endiandata[k] = ((uint32_t*)pworkdata)[k];
+				if(k != 19)
+					endiandata[k] = Swap32(endiandata[k]);
 				applog(LOG_DEBUG,"%s: endiandata[%d] = 0x%08x", __FUNCTION__, k, endiandata[k]);
 			}
+			
+
+			/*
+			for(i=0; i<WORK_DATA_INPUT_LENGTH/4; i++)
+			{
+				buf[i*4 + 3] = work->data[i*4 + 0];
+				buf[i*4 + 2] = work->data[i*4 + 1];
+				buf[i*4 + 1] = work->data[i*4 + 2];
+				buf[i*4 + 0] = work->data[i*4 + 3];
+			}
+						
+			memcpy(buf, work->data, WORK_DATA_INPUT_LENGTH);
+
+			for(i=0;i<WORK_DATA_INPUT_LENGTH; i++)
+			{
+				applog(LOG_NOTICE, "%s: buf[%d] = 0x%02x", __FUNCTION__, i, buf[i]);
+			}
+			*/
+
+			
 			
 #if 0			
 			for (k=0; k < 20; k++)
@@ -3762,9 +3791,10 @@ void *bitmain_scanhash(void *arg)
 			}
 #endif
 
-			submit_nonce_direct(thr,work,Swap32(nonce));
+				
 			
 			Xhash(hash1, endiandata);
+			//Xhash(hash1, buf);
 			memcpy(work->hash, hash1, 32);
 			for (i=0; i < 8; i++)
 			{
@@ -3776,7 +3806,7 @@ void *bitmain_scanhash(void *arg)
 				if (fulltest(hash1, work->target))
 				{					
 					submitnonceok = true;
-					submit_nonce_direct(thr,work,nonce);
+					submit_nonce_direct(thr,work,Swap32(nonce));
 				}
 			}
 			else
