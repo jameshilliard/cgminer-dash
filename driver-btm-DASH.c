@@ -2142,7 +2142,7 @@ void calculate_hash_rate(void)
 	bool find_asic = false, avg_hash_rate = false, rt_hash_rate = false;
 	uint64_t tmp_rate = 0;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 
 	// check if we received all ASIC's HASH_RATE register value
 	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
@@ -2219,12 +2219,15 @@ void calculate_hash_rate(void)
 				}
 				else
 				{
-					if((g_HASH_RATE_reg_value[which_chain][which_asic] & 0x80000000) != 1)
+					for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
 					{
-						avg_hash_rate = false;
-						rt_hash_rate = false;
-						applog(LOG_DEBUG,"%s: Chain%d ASIC%d is not avg hash rate", __FUNCTION__, which_chain, which_asic);
-						break;
+						if((g_HASH_RATE_reg_value[which_chain][which_asic] & 0x80000000) != 0x80000000)
+						{
+							avg_hash_rate = false;
+							rt_hash_rate = false;
+							applog(LOG_DEBUG,"%s: Chain%d ASIC%d is not avg hash rate", __FUNCTION__, which_chain, which_asic);
+							break;
+						}
 					}
 				}
 
@@ -2243,12 +2246,13 @@ void calculate_hash_rate(void)
 					for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
 					{
 						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
+						applog(LOG_DEBUG,"%s: RT g_HASH_RATE_reg_value[%d][%d] = 0x%08x\n", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
 					}
 					
 					rate_error[which_chain] = 0;
 					rate[which_chain] = tmp_rate;
                     suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);                    
+					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %dMHz/s\n", __FUNCTION__, which_chain, rate[which_chain]);                    
 				}
 
 				// the ASIC's avg hash rate just displayed in log
@@ -2257,10 +2261,11 @@ void calculate_hash_rate(void)
 					for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
 					{
 						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
+						applog(LOG_DEBUG,"%s: avg g_HASH_RATE_reg_value[%d][%d] = 0x%08x\n", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
 					}
 					
 					suffix_string_DASH(tmp_rate, (char * )displayed_avg_rate[which_chain], sizeof(displayed_avg_rate[which_chain]), 6, true);
-					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_avg_rate[which_chain]);
+					applog(LOG_DEBUG,"%s: chain%d AVG hash rate is %dMHz/s\n", __FUNCTION__, which_chain, tmp_rate);
 				}
 			}
         }
@@ -2688,7 +2693,7 @@ void set_PWM(unsigned char pwm_percent)
     dev.duty_ns = PWM_PERIOD_NS * temp_pwm_percent /100;
     dev.pwm_percent = temp_pwm_percent;
 	
-    applog(LOG_DEBUG,"set pwm duty_ns %d",dev.duty_ns);
+    //applog(LOG_DEBUG,"set pwm duty_ns %d",dev.duty_ns);
     sprintf(buf,PWM_CTRL_TEMPLATE,dev.duty_ns);
     system(buf);
 }
@@ -2833,7 +2838,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 	//update_asic_num = false;
 
 	// set core ticket mask
-	//set_ticket_mask(DEVICE_DIFF);	// if we set this register value as 0x16, we will not need to set
+	set_ticket_mask(DEVICE_DIFF);	// if we set this register value as 0x16, we will not need to set
 
     //set core number
     dev.corenum = BM1760_CORE_NUM;
@@ -3618,6 +3623,18 @@ void clear_nonce_fifo()
 }
 
 
+static inline void my_be32enc(void *pp, uint32_t x)
+{
+	uint8_t *p = (uint8_t *)pp;
+	p[3] = x & 0xff;
+	p[2] = (x >> 8) & 0xff;
+	p[1] = (x >> 16) & 0xff;
+	p[0] = (x >> 24) & 0xff;
+}
+
+
+
+
 /**************** about other functions end ****************/
 
 
@@ -3668,10 +3685,26 @@ void *bitmain_scanhash(void *arg)
     struct bitmain_DASH_info *info = bitmain_DASH->device_data;
     struct timeval current;
     uint8_t nonce_bin[4],crc_check,which_asic_nonce;
-    uint32_t nonce, i;
+    uint32_t nonce, i,k, *work_nonce=NULL;
     int submitfull = 0;
     bool submitnonceok = true;
 	unsigned char work_id = 0, chain_id = 0, nonce_diff = 0, nonce_crc5 = 0;
+	unsigned char pworkdata[128]={0},  hash1[32]={0};
+	unsigned int endiandata[32]={0};
+	unsigned char *ob_hex=NULL;
+
+	unsigned char buf[80] = {
+	0x00,0x00,0x00,0x20,0xD8,0xC4,0x6A,0xAE,
+	0x69,0x2C,0x0D,0xA5,0x5F,0xEA,0xB7,0x74,
+	0x15,0x67,0xD6,0x4E,0x42,0x8E,0xBB,0x90,
+	0x4B,0x68,0x49,0x5D,0xD5,0x05,0x00,0x00,
+	0x00,0x00,0x00,0x00,0x2E,0x29,0x56,0x66,
+	0x91,0x76,0xDD,0xE1,0x8D,0x08,0x9E,0x89,
+	0x8B,0x76,0xF8,0x35,0xB4,0xC1,0xB4,0xF6,
+	0x28,0xDB,0xA4,0x2F,0x35,0x2F,0xA9,0xA8,
+	0xF1,0xAE,0x3E,0xD9,0x70,0x23,0x5A,0x59,
+	0xCD,0x4A,0x53,0x1A,0x00,0x30,0xD9,0x1A
+	};
 
     struct work *work = NULL;
     cgtime(&current);
@@ -3684,7 +3717,7 @@ void *bitmain_scanhash(void *arg)
         nonce_fifo.nonce_num--;
 		
         crc_check = CRC5((uint8_t *)&(nonce_fifo.nonce_buffer[nonce_fifo.p_rd]), ASIC_RETURN_DATA_LENGTH_WITHOUT_HEADER*8-5);
-		nonce = Swap32(nonce_fifo.nonce_buffer[nonce_fifo.p_rd].nonce);
+		nonce = (nonce_fifo.nonce_buffer[nonce_fifo.p_rd].nonce);
 		work_id = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].wc;
 		chain_id = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].chainid;
 		nonce_diff = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].diff;
@@ -3702,19 +3735,58 @@ void *bitmain_scanhash(void *arg)
         work = info->work_queue[work_id];
         if(work)
         {
-			applog(LOG_ERR,"%s: work_id = 0x%02x", __FUNCTION__, work_id);
-			hexdump((uint8_t *)&work->data, 128);
+        	applog(LOG_ERR,"%s: work_id = 0x%02x", __FUNCTION__, work_id);
+			
+			submitfull = 0;
+			//hexdump((uint8_t *)&work->data, 128);
 
-			/*
-            submitfull = 0;
-            if(submit_nonce_1(thr, work, nonce, &submitfull))
-            {
-                submitnonceok = true;
-                submit_nonce_2(work);
-            }
-            else
-            {
-                if(submitfull)
+			work_nonce = (uint32_t *)(work->data + 64 + 12);
+			*work_nonce = nonce;
+			applog(LOG_DEBUG,"%s:2 *work_nonce = 0x%08x", __FUNCTION__, *work_nonce);
+
+			memcpy(pworkdata, work->data, 80);
+			
+			for (k=0; k < 20; k++)
+			{
+				//endiandata[k] = Swap32(((uint32_t*)pworkdata)[k]);
+				endiandata[k] = ((uint32_t*)pworkdata)[k];
+				applog(LOG_DEBUG,"%s: endiandata[%d] = 0x%08x", __FUNCTION__, k, endiandata[k]);
+			}
+			
+#if 0			
+			for (k=0; k < 20; k++)
+			{
+				my_be32enc(&endiandata[k], ((uint32_t*)buf)[k]);
+				endiandata[k] = Swap32(endiandata[k]);
+				applog(LOG_ERR,"%s: endiandata[%d] = 0x%08x", __FUNCTION__, k, endiandata[k]);
+			}
+#endif
+
+			submit_nonce_direct(thr,work,Swap32(nonce));
+			
+			Xhash(hash1, endiandata);
+			memcpy(work->hash, hash1, 32);
+			for (i=0; i < 8; i++)
+			{
+				applog(LOG_DEBUG,"%s: work->hash[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->hash) + i));
+			}
+
+			if(*((uint32_t *)(&work->hash) + 7) < DEVICE_DIFF_MASK)
+			{
+				if (fulltest(hash1, work->target))
+				{					
+					submitnonceok = true;
+					submit_nonce_direct(thr,work,nonce);
+				}
+			}
+			else
+			{
+				applog(LOG_WARNING,"got a hw");
+				ob_hex = bin2hex((uint8_t *)(endiandata), 80);
+				applog(LOG_WARNING, "workdata %s", ob_hex);
+				free(ob_hex);
+
+				if(submitfull)
                 {
                     submitnonceok = true;
                 }
@@ -3727,8 +3799,8 @@ void *bitmain_scanhash(void *arg)
                     }
                     dev.chain_hw[chain_id] ++;
                 }
-            }
-            */
+			}
+
 			
             if(submitnonceok)
             {
@@ -4212,7 +4284,7 @@ rerun_all:
 
                 if ( reg_addr == GENERAL_I2C_COMMAND)
                 {
-					applog(LOG_ERR,"%s: the Chip%d GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id, chip_addr/dev.addrInterval);
+					//applog(LOG_ERR,"%s: the Chip%d GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id, chip_addr/dev.addrInterval);
                     //ProcessTempData(reg_data, chip_addr, chain_id);
                     
                     g_GENERAL_I2C_COMMAND_reg_value[chain_id][g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]] = reg_data;
@@ -4224,6 +4296,7 @@ rerun_all:
                 	g_HASH_RATE_reg_value[chain_id][g_HASH_RATE_reg_value_num[chain_id]] = reg_data;
 					g_HASH_RATE_reg_value_from_which_asic[chain_id][g_HASH_RATE_reg_value_num[chain_id]] = chip_addr/dev.addrInterval;
                     g_HASH_RATE_reg_value_num[chain_id]++;
+					applog(LOG_ERR,"%s: the Chip%d HASH_RATE reg_value = 0x%08x @chain%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id);
                 }
 
 				if(reg_addr == CHIP_STATUS)
@@ -4476,10 +4549,21 @@ void *DASH_fill_work(void *usrdata)
     struct thr_info * thr = info->thr;
     struct timeval send_start, last_send, send_elapsed;
     struct work_dash workdata;
-    unsigned char workbuf[WORK_DATA_INPUT_LENGTH];
+    unsigned int workbuf[WORK_DATA_INPUT_LENGTH/4];
     struct work *work = NULL;
     unsigned char workid = 0;
 	unsigned int i = 0;
+	unsigned char test_work_data[80] = {
+					0x00, 0x00, 0x00, 0x20, 0xf2, 0xef, 0x22, 0xeb,
+					0x7b, 0x28, 0xae, 0x6a, 0x03, 0x99, 0xb9, 0x73,
+					0xf2, 0x3a, 0x4c, 0x25, 0x26, 0x00, 0x8a, 0x20,
+					0xe3, 0x11, 0xdb, 0xbc, 0x80, 0x09, 0x00, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0xdb, 0x61, 0x29, 0x8c,
+					0xd3, 0x1c, 0x00, 0x77, 0x19, 0xb9, 0xf2, 0xb7,
+					0x3f, 0xf1, 0x34, 0x8c, 0xf9, 0x2c, 0x7f, 0xab,
+					0x1e, 0x23, 0x24, 0x51, 0x03, 0xf6, 0x11, 0x6c,
+					0x32, 0xb1, 0x63, 0x93, 0x6e, 0x93, 0x5b, 0x59,
+					0xf4, 0x48, 0x50, 0x1a, 0x55, 0x63, 0xea, 0x6a};
 
     applog(LOG_DEBUG, "Start To Fill Work!ChainIndex:[%d]", chainid);
 
@@ -4494,28 +4578,55 @@ void *DASH_fill_work(void *usrdata)
 
         cgtime(&send_start);
         timersub(&send_start, &last_send, &send_elapsed);
+		//applog(LOG_DEBUG, "send_elapsed.tv_sec = %d, send_elapsed.tv_usec = %d, dev.timeout = %d", send_elapsed.tv_sec, send_elapsed.tv_usec, dev.timeout);
 		
         if(new_block[chainid] || send_elapsed.tv_sec*1000000 + send_elapsed.tv_usec  >= dev.timeout )
-        {
+        {        	
             cgtime(&last_send);
         more_work:
             work = get_work(thr, thr->id);
             if (unlikely(!work))
             {
+            	applog(LOG_ERR, "Work Error![%d]", workid);
                 goto more_work;
             }
-
+			applog(LOG_DEBUG, "new_block[chainid] = %d", new_block[chainid]);
+			applog(LOG_DEBUG, "ChainIndex:[%d], workid = %d", chainid, (work->id & 0x7f));
             workid = work->id & 0x7f;
             new_block[chainid] = false;
             memset((void *)(&workdata), 0, sizeof(workdata));
 
+			/*
+			//memcpy(work->data, test_work_data, WORK_DATA_INPUT_LENGTH);
+
             memcpy(workbuf, work->data, WORK_DATA_INPUT_LENGTH);
+			for(i=0;i<WORK_DATA_INPUT_LENGTH; i++)
+			{
+				applog(LOG_NOTICE, "%s: work->data[%d] = 0x%02x", __FUNCTION__, i, work->data[i]);
+			}
+			
 			for(i=0; i<WORK_DATA_INPUT_LENGTH/4; i++)
 			{
-				Swap32(*((int *)workbuf + i));
+				Swap32(workbuf + i));
 			}
+		
 
             memcpy(workdata.work, workbuf, WORK_DATA_INPUT_LENGTH);
+            */
+
+			for(i=0; i<WORK_DATA_INPUT_LENGTH/4; i++)
+			{
+				workdata.work[i*4 + 3] = work->data[i*4 + 0];
+				workdata.work[i*4 + 2] = work->data[i*4 + 1];
+				workdata.work[i*4 + 1] = work->data[i*4 + 2];
+				workdata.work[i*4 + 0] = work->data[i*4 + 3];
+			}
+			/*
+			for(i=0;i<WORK_DATA_INPUT_LENGTH; i++)
+			{
+				applog(LOG_NOTICE, "%s: workdata.work[%d] = 0x%02x", __FUNCTION__, i, workdata.work[i]);
+			}
+			*/
             workdata.type = WORK_INPUT_TYPE_WITHOUT_SNO;
             workdata.wc = workid;
             workdata.crc16 = crc_itu_t(0xffff,(uint8_t *) &workdata, WORK_INPUT_LENGTH_WITHOUT_CRC);
@@ -4537,7 +4648,7 @@ void *DASH_fill_work(void *usrdata)
             DASH_write(info->dev_fd[chainid], (uint8_t *)&workdata, WORK_INPUT_LENGTH_WITH_CRC);
             // cg_runlock(&info->update_lock);
             gBegin_get_nonce = true;
-            hexdump((uint8_t *)&workdata, WORK_INPUT_LENGTH_WITH_CRC);
+            //hexdump((uint8_t *)&workdata, WORK_INPUT_LENGTH_WITH_CRC);
 
             cgtime(&tv_send_job);
 
@@ -4602,7 +4713,7 @@ void *get_asic_response(void* arg)
 				for(j=0; j<len; j++)
 				{
 					data_buf[data_buf_w_p++] = receive_buf[j];	// store the received data into data_buf
-					applog(LOG_DEBUG, "%s: 0x%02x",__FUNCTION__,receive_buf[j]);
+					//applog(LOG_DEBUG, "%s: 0x%02x",__FUNCTION__,receive_buf[j]);
 				}
 				//printf("\n");
 				//printf("\ndata_buf_w_p = %d\n\n", data_buf_w_p);
@@ -4733,7 +4844,7 @@ void *get_asic_response(void* arg)
 							
 							pthread_mutex_unlock(&nonce_mutex);
 							
-	                        applog(LOG_DEBUG,"get nonce num %d",nonce_fifo.nonce_num);
+	                        //applog(LOG_DEBUG,"get nonce num %d",nonce_fifo.nonce_num);
 	                    }
 					}
 					else	// get a register value
@@ -4754,7 +4865,7 @@ void *get_asic_response(void* arg)
 
 	                    if(reg_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO )
 	                    {
-	                        applog(LOG_DEBUG,"%s: p_wr = %d reg_value_num = %d", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);
+	                        //applog(LOG_DEBUG,"%s: p_wr = %d reg_value_num = %d", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);
 	                        reg_fifo.p_wr++;
 	                    }
 	                    else

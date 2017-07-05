@@ -480,7 +480,7 @@ static struct stratum_share *stratum_shares = NULL;
 
 char *opt_socks_proxy = NULL;
 int opt_suggest_diff;
-int opt_multi_version = 1;
+int opt_multi_version = 0;
 static const char def_conf[] = "cgminer.conf";
 static char *default_config;
 static bool config_loaded;
@@ -7214,6 +7214,7 @@ static void *stratum_sthread(void *userdata)
     uint64_t last_nonce2 = 0;
     uint32_t last_nonce = 0;
     char threadname[16];
+	uint32_t i=0;
 
     pthread_detach(pthread_self());
 
@@ -7253,8 +7254,11 @@ static void *stratum_sthread(void *userdata)
 
 
         nonce = *((uint32_t *)(work->data + 76));
+		applog(LOG_DEBUG, "%s: nonce = 0x%08x", __FUNCTION__, nonce);
         nonce2_64 = (uint64_t *)nonce2;
         *nonce2_64 = htole64(work->nonce2);
+		applog(LOG_DEBUG, "%s: *nonce2_64 = 0x%x", __FUNCTION__, *nonce2_64);
+		
         /* Filter out duplicate shares */
         if (unlikely(nonce == last_nonce && *nonce2_64 == last_nonce2))
         {
@@ -7276,7 +7280,18 @@ static void *stratum_sthread(void *userdata)
         sshare = calloc(sizeof(struct stratum_share), 1);
         hash32 = (uint32_t *)work->hash;
         submitted = false;
-
+		/*
+		applog(LOG_DEBUG, "%s: *hash32 = 0x%x", __FUNCTION__, *hash32);
+		for (i=0; i < 20; i++)
+		{
+			applog(LOG_DEBUG,"%s: work->data[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->data) + i));
+		}
+		for (i=0; i < 8; i++)
+		{
+			applog(LOG_DEBUG,"%s: work->hash[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->hash) + i));
+		}
+		*/
+		
         sshare->sshare_time = time(NULL);
         /* This work item is freed in parse_stratum_response */
         sshare->work = work;
@@ -7933,6 +7948,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
     uint64_t nonce2le;
     int i;
 	char strInfo[1024];
+	char *p = NULL;
 
     cg_wlock(&pool->data_lock);
 
@@ -7940,7 +7956,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
      * from left to right and prevent overflow errors with small n2sizes */
     nonce2le = htole64(pool->nonce2);
     memcpy(pool->coinbase + pool->nonce2_offset, &nonce2le, pool->n2size);
-    work->nonce2 = pool->nonce2++;
+    work->nonce2 = pool->nonce2++;	
     work->nonce2_len = pool->n2size;
 
     /* Downgrade to a read lock to read off the pool variables */
@@ -7989,6 +8005,11 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
 
     // calc_midstate(work);     // DASH do not need it
     set_target(work->target, work->sdiff);
+	/*
+	applog(LOG_NOTICE, "work->sdiff = 0x%x", work->sdiff);
+	p = bin2hex((const unsigned char *)work->target, 32);
+	applog(LOG_NOTICE, "work->target %s", p);
+	*/
 
     local_work++;
     if((time(NULL) - local_work_lasttime) > 5)
@@ -8227,8 +8248,6 @@ struct work *get_work(struct thr_info *thr, const int thr_id)
 /* Submit a copy of the tested, statistic recorded work item asynchronously */
 static void submit_work_async(struct work *work)
 {
-
-
     uint32_t* tmp = (uint32_t*)(work->data + 76);
     if ( *tmp == 0 )
     {
@@ -8524,6 +8543,7 @@ void submit_nonce_2(struct work *work)
     struct work *work_out;
     work_out = copy_work(work);
     submit_work_async(work_out);
+	applog(LOG_DEBUG, "%s end", __FUNCTION__);
 }
 
 bool submit_nonce_direct(struct thr_info *thr, struct work *work, uint32_t nonce)
@@ -9959,6 +9979,16 @@ static void clean_up(bool restarting)
 
     curl_global_cleanup();
 }
+
+int BinToHexStr(char *pStr, unsigned char *data, int len)
+{
+	int i;
+	int sigLen=0;
+	for(i=0;i<len;i++)
+		sigLen+=sprintf(pStr+sigLen,"%02X",data[i]);
+	return sigLen;
+}
+
 
 /* Should all else fail and we're unable to clean up threads due to locking
  * issues etc, just silently exit. */

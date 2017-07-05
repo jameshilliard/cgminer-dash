@@ -23,7 +23,11 @@
 #define BITMAIN_DEFAULT_BAUD            115200
 
 // default ticket mask
+//#define DEVICE_DIFF                     0x1B
+//#define DEVICE_DIFF_MASK				0x31
 #define DEVICE_DIFF                     0x16
+#define DEVICE_DIFF_MASK				0x3ff
+
 
 // something about fan
 #define BITMAIN_MAX_FAN_NUM             2

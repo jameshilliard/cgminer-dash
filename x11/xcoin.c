@@ -120,6 +120,8 @@ static void simdHash(unsigned char *input, unsigned char *outhash)
 
 void Xhash(void *state, const void *input)
 {
+	printf("-----------------Xhash-------------------\n");
+
     DATA_ALIGN16(unsigned char hashbuf[128]);
     DATA_ALIGN16(size_t hashptr);
     DATA_ALIGN16(sph_u64 hashctA);
