@@ -1871,7 +1871,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 		case HASH_RATE:
 			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
 			{
-				usleep(100*1000);
+				usleep(1000*1000);
 
 				if(temp_counter != g_HASH_RATE_reg_value_num[which_chain])
 				{
@@ -2127,20 +2127,11 @@ void init_asic_display_status()
 
 void calculate_hash_rate(void)
 {
-	/*
-	unsigned int i, j, not_reg_data_time = 0;
-    unsigned int reg_value_num = 0, reg_data = 0, received_reg_num = 0;
-    unsigned char crc_check, chip_addr, reg_addr,chain_id;
-    int read_num = 0;
-    uint64_t tmp_rate = 0, temp_average_rate = 0, temp_real_time_rate = 0, Hashboard_temp_average_rate = 0, Hashboard_temp_real_time_rate = 0;
-	uint64_t temp_hash_rate = 0;
-	*/
-	
 	unsigned int i;
 	unsigned int which_chain, which_asic;
 	char displayed_avg_rate[BITMAIN_MAX_CHAIN_NUM][16];
 	bool find_asic = false, avg_hash_rate = false, rt_hash_rate = false;
-	uint64_t tmp_rate = 0;
+	uint64_t tmp_rate = 0, tmp_rt_rate_all_chain = 0;
 
 	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 
@@ -2246,13 +2237,13 @@ void calculate_hash_rate(void)
 					for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
 					{
 						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
-						applog(LOG_DEBUG,"%s: RT g_HASH_RATE_reg_value[%d][%d] = 0x%08x\n", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
+						//applog(LOG_DEBUG,"%s: RT g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
 					}
+					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %0.2fMHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1024);                    
 					
 					rate_error[which_chain] = 0;
-					rate[which_chain] = tmp_rate;
-                    suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %dMHz/s\n", __FUNCTION__, which_chain, rate[which_chain]);                    
+					rate[which_chain] = tmp_rate * 1024;
+                    suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 5, false);             
 				}
 
 				// the ASIC's avg hash rate just displayed in log
@@ -2261,15 +2252,19 @@ void calculate_hash_rate(void)
 					for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
 					{
 						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
-						applog(LOG_DEBUG,"%s: avg g_HASH_RATE_reg_value[%d][%d] = 0x%08x\n", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
+						//applog(LOG_DEBUG,"%s: avg g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
 					}
+					applog(LOG_DEBUG,"%s: chain%d avg hash rate is %0.2fMHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1024);
 					
-					suffix_string_DASH(tmp_rate, (char * )displayed_avg_rate[which_chain], sizeof(displayed_avg_rate[which_chain]), 6, true);
-					applog(LOG_DEBUG,"%s: chain%d AVG hash rate is %dMHz/s\n", __FUNCTION__, which_chain, tmp_rate);
+					//suffix_string_DASH(tmp_rate, (char * )displayed_avg_rate[which_chain], sizeof(displayed_avg_rate[which_chain]), 6, true);
 				}
 			}
+
+			tmp_rt_rate_all_chain += rate[which_chain];
         }
 	}
+
+	suffix_string_DASH(tmp_rt_rate_all_chain, (char * )displayed_hash_rate, sizeof(displayed_hash_rate), 5,false);
 }
 
 
@@ -3813,7 +3808,7 @@ void *bitmain_scanhash(void *arg)
 			
             if(submitnonceok)
             {
-                h += 0x1UL << DEVICE_DIFF;
+                h += 0x1UL << (DEVICE_DIFF - 22);
 				
                 which_asic_nonce = (((nonce >> (20)) & 0xff) / dev.addrInterval);
                 applog(LOG_DEBUG,"%s: chain %d which_asic_nonce %d ", __FUNCTION__, chain_id, which_asic_nonce);
@@ -3855,10 +3850,10 @@ void *bitmain_scanhash(void *arg)
 
     if(h != 0)
     {
-        applog(LOG_DEBUG,"%s: hashes %"PRIu64"...", __FUNCTION__,h * 0x0000ffffull);
+        applog(LOG_DEBUG,"%s: hashes %"PRIu64"...", __FUNCTION__,h * 0x003fffffull);
     }
 
-    h = h * 0x0000ffffull;
+    h = h * 0x003fffffull;
     return 0;
 }
 
@@ -4238,42 +4233,6 @@ rerun_all:
 					{						
 						applog(LOG_DEBUG,"%s: Chain%d CHIP_ADDR value = 0x%08x", __FUNCTION__, chain_id, reg_data);						
 					}
-                	#if 0
-					if(update_asic_num == true)
-                    {
-                    	if(zero_asic_num)
-                    	{
-                        	dev.chain_asic_num[chain_id] = 0;
-                        	zero_asic_num = false;
-                    	}
-						
-						dev.chain_asic_num[chain_id]++;
-						applog(LOG_ERR,"%s: the %02dth CHIP_ADDR reg_value = 0x%08x @chain%d", __FUNCTION__, dev.chain_asic_num[chain_id], reg_data, chain_id);
-					
-						if(dev.chain_asic_num[chain_id] > dev.max_asic_num_in_one_chain)
-	                    {
-	                        dev.max_asic_num_in_one_chain = dev.chain_asic_num[chain_id];
-	                    }
-
-						/*
-						if (dev.chain_asic_num[chain_id] == ASIC_NUM_EACH_CHAIN)
-						{
-                        	applog(LOG_DEBUG,"chian %d get asicnum %d", chain_id, ASIC_NUM_EACH_CHAIN);
-							zero_asic_num = true;
-							update_asic_num = false;
-						}
-						*/
-					}
-					else
-					{
-						received_reg_num++;
-						applog(LOG_ERR,"%s: the %02dth CHIP_ADDR reg_value = 0x%08x @chain%d", __FUNCTION__, received_reg_num, reg_data, chain_id);
-						if(received_reg_num >= ASIC_NUM_EACH_CHAIN)
-						{
-							received_reg_num = 0;
-						}
-					}
-					#endif
                 }
 
                 if(reg_addr == PLL_PARAMETER)
@@ -4605,24 +4564,6 @@ void *DASH_fill_work(void *usrdata)
             new_block[chainid] = false;
             memset((void *)(&workdata), 0, sizeof(workdata));
 
-			/*
-			//memcpy(work->data, test_work_data, WORK_DATA_INPUT_LENGTH);
-
-            memcpy(workbuf, work->data, WORK_DATA_INPUT_LENGTH);
-			for(i=0;i<WORK_DATA_INPUT_LENGTH; i++)
-			{
-				applog(LOG_NOTICE, "%s: work->data[%d] = 0x%02x", __FUNCTION__, i, work->data[i]);
-			}
-			
-			for(i=0; i<WORK_DATA_INPUT_LENGTH/4; i++)
-			{
-				Swap32(workbuf + i));
-			}
-		
-
-            memcpy(workdata.work, workbuf, WORK_DATA_INPUT_LENGTH);
-            */
-
 			for(i=0; i<WORK_DATA_INPUT_LENGTH/4; i++)
 			{
 				workdata.work[i*4 + 3] = work->data[i*4 + 0];
@@ -4630,6 +4571,7 @@ void *DASH_fill_work(void *usrdata)
 				workdata.work[i*4 + 1] = work->data[i*4 + 2];
 				workdata.work[i*4 + 0] = work->data[i*4 + 3];
 			}
+			
 			/*
 			for(i=0;i<WORK_DATA_INPUT_LENGTH; i++)
 			{
