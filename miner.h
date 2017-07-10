@@ -1532,6 +1532,7 @@ extern int share_work_tdiff(struct cgpu_info *cgpu);
 extern bool submit_nonce_1(struct thr_info *thr, struct work *work, uint32_t nonce, int * nofull);
 extern void submit_nonce_2(struct work *work);
 extern bool submit_nonce_direct(struct thr_info *thr, struct work *work, uint32_t nonce);
+extern void update_work_stats(struct thr_info *thr, struct work *work);
 extern bool submit_noffset_nonce(struct thr_info *thr, struct work *work, uint32_t nonce, int noffset);
 extern struct work *get_work(struct thr_info *thr, const int thr_id);
 extern void __add_queued(struct cgpu_info *cgpu, struct work *work);

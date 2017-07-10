@@ -26,6 +26,9 @@
 #include "util.h"
 #include "klist.h"
 
+#include "logging.h"
+
+
 #if defined(USE_BFLSC) || defined(USE_AVALON) || defined(USE_AVALON2) || defined(USE_AVALON4) || \
   defined(USE_HASHFAST) || defined(USE_BITFURY) || defined(USE_BLOCKERUPTER) || defined(USE_KLONDIKE) || \
     defined(USE_KNC) || defined(USE_BAB) || defined(USE_DRILLBIT) || \
@@ -2686,6 +2689,7 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
         root = api_add_escape(root, "User", pool->rpc_user, false);
         //root = api_add_time(root, "Last Share Time", &(pool->last_share_time), false);
         root = api_add_string(root, "Last Share Time", lasttime, false);
+		sprintf(pool->diff,("%8.4f"),pool->sdiff);
         root = api_add_string(root, "Diff", pool->diff, false);
         root = api_add_int64(root, "Diff1 Shares", &(pool->diff1), false);
         if (pool->rpc_proxy)
@@ -2786,26 +2790,35 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
 
     // stop hashmeter() changing some while copying
     mutex_lock(&hash_lock);
-#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3)
+	
+#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3) || defined(USE_BITMAIN_D1)
     total_diff1 = total_diff_accepted + total_diff_rejected + total_diff_stale;
+	applog(LOG_ERR, "%s: total_diff1 = %lld, total_diff_accepted = %f, total_diff_rejected = %f, total_diff_stale = %f",
+		__FUNCTION__, total_diff1, total_diff_accepted, total_diff_rejected, total_diff_stale);
 #endif
 
     utility = total_accepted / ( total_secs ? total_secs : 1 ) * 60;
+	applog(LOG_ERR, "%s: utility = %f, total_accepted = %lld, total_secs = %f", __FUNCTION__, utility, total_accepted, total_secs);
 
 #if defined USE_BITMAIN_L3 || defined(USE_BITMAIN_D1)
     ghs = total_mhashes_done / 1 / total_secs;
+	applog(LOG_ERR, "%s: ghs = %f, total_mhashes_done = %f, total_secs = %f", __FUNCTION__, ghs, total_mhashes_done, total_secs);
 #else
     ghs = total_mhashes_done / 1000 / total_secs;
 #endif
 
     work_utility = total_diff1 / ( total_secs ? total_secs : 1 ) * 60;
+	applog(LOG_ERR, "%s: work_utility = %f, total_diff1 = %lld, total_secs = %f", __FUNCTION__, work_utility, total_diff1, total_secs);
 
     root = api_add_elapsed(root, "Elapsed", &(total_secs), true);
+	
 #if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3) || defined(USE_BITMAIN_D1)
     root = api_add_string(root, "GHS 5s", displayed_hash_rate, false);
+	applog(LOG_ERR, "%s: GHS 5s = %s", __FUNCTION__, displayed_hash_rate);
 #else
     root = api_add_mhs(root, "GHS 5s", &(g_displayed_rolling), false);
 #endif
+
     root = api_add_mhs(root, "GHS av", &(ghs), false);
     root = api_add_uint(root, "Found Blocks", &(found_blocks), true);
     root = api_add_int64(root, "Getworks", &(total_getworks), true);
@@ -2825,20 +2838,49 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     root = api_add_diff(root, "Difficulty Rejected", &(total_diff_rejected), true);
     root = api_add_diff(root, "Difficulty Stale", &(total_diff_stale), true);
     root = api_add_uint64(root, "Best Share", &(best_diff), true);
+	
     double hwp = (hw_errors + total_diff1) ?
                  (double)(hw_errors) / (double)(hw_errors + total_diff1) : 0;
     root = api_add_percent(root, "Device Hardware%", &hwp, false);
+	
     double rejp = total_diff1 ?
                   (double)(total_diff_rejected) / (double)(total_diff1) : 0;
     root = api_add_percent(root, "Device Rejected%", &rejp, false);
+	
     double prejp = (total_diff_accepted + total_diff_rejected + total_diff_stale) ?
                    (double)(total_diff_rejected) / (double)(total_diff_accepted + total_diff_rejected + total_diff_stale) : 0;
     root = api_add_percent(root, "Pool Rejected%", &prejp, false);
+	
     double stalep = (total_diff_accepted + total_diff_rejected + total_diff_stale) ?
                     (double)(total_diff_stale) / (double)(total_diff_accepted + total_diff_rejected + total_diff_stale) : 0;
     root = api_add_percent(root, "Pool Stale%", &stalep, false);
+	
     root = api_add_time(root, "Last getwork", &last_getwork, false);
 
+
+	applog(LOG_ERR, "%s: GHS av = %f", __FUNCTION__, ghs);
+	applog(LOG_ERR, "%s: Found Blocks = %d", __FUNCTION__, found_blocks);
+	applog(LOG_ERR, "%s: Getworks = %lld", __FUNCTION__, total_getworks);
+	applog(LOG_ERR, "%s: Accepted = %lld", __FUNCTION__, total_accepted);
+	applog(LOG_ERR, "%s: Rejected = %lld", __FUNCTION__, total_rejected);
+	applog(LOG_ERR, "%s: Hardware Errors = %d", __FUNCTION__, hw_errors);
+	applog(LOG_ERR, "%s: Utility = %f", __FUNCTION__, utility);
+	applog(LOG_ERR, "%s: Discarded = %lld", __FUNCTION__, total_discarded);
+	applog(LOG_ERR, "%s: Stale = %lld", __FUNCTION__, total_stale);
+	applog(LOG_ERR, "%s: Get Failures = %d", __FUNCTION__, total_go);
+	applog(LOG_ERR, "%s: Local Work = %d", __FUNCTION__, local_work);
+	applog(LOG_ERR, "%s: Remote Failures = %f", __FUNCTION__, work_utility);
+	applog(LOG_ERR, "%s: Network Blocks = %d", __FUNCTION__, new_blocks);
+	applog(LOG_ERR, "%s: Total MH = %lld", __FUNCTION__, total_stale);
+	applog(LOG_ERR, "%s: Difficulty Accepted = %f", __FUNCTION__, total_diff_accepted);
+	applog(LOG_ERR, "%s: Difficulty Rejected = %f", __FUNCTION__, total_diff_rejected);
+	applog(LOG_ERR, "%s: Difficulty Stale = %f", __FUNCTION__, total_diff_stale);
+	applog(LOG_ERR, "%s: Best Share = %lld", __FUNCTION__, best_diff);
+	applog(LOG_ERR, "%s: Device Hardware% = %f", __FUNCTION__, hwp);
+	applog(LOG_ERR, "%s: Device Rejected% = %f", __FUNCTION__, rejp);
+	applog(LOG_ERR, "%s: Pool Rejected% = %f", __FUNCTION__, prejp);
+	applog(LOG_ERR, "%s: Pool Stale% = %f", __FUNCTION__, stalep);
+	
     mutex_unlock(&hash_lock);
 
     root = print_data(io_data, root, isjson, false);

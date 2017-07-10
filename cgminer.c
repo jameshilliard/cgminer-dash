@@ -6716,9 +6716,13 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
         copy_time(&cgpu->last_message_tv, &total_tv_end);
         thr_mhs = (double)hashes_done / device_tdiff / 1000000;
 
+		//applog(LOG_DEBUG, "%s: hashes_done = %lld", __FUNCTION__, hashes_done);
+
         hashes_done /= 1000000;
-        applog(LOG_DEBUG, "[thread %d: %"PRIu64" hashes, %.1f mhash/sec]",
-               thr_id, hashes_done, thr_mhs);
+
+		//applog(LOG_DEBUG, "--- %s: hashes_done = %lld", __FUNCTION__, hashes_done);
+		
+        applog(LOG_DEBUG, "[thread %d: %"PRIu64" Mhashes, %.1f mhash/sec]", thr_id, hashes_done, thr_mhs);
 
         mutex_lock(&hash_lock);
         cgpu->total_mhashes += hashes_done;
@@ -8399,7 +8403,7 @@ bool test_nonce_diff(struct work *work, uint32_t nonce, double diff)
     return (le64toh(*hash64) <= diff64);
 }
 
-static void update_work_stats(struct thr_info *thr, struct work *work)
+void update_work_stats(struct thr_info *thr, struct work *work)
 {
     double test_diff = current_diff;
 
@@ -9152,6 +9156,8 @@ void hash_driver_work(struct thr_info *mythr)
 
 
         hashes_done += hashes;
+		//if(hashes_done != 0)
+		//	applog(LOG_DEBUG, "%s: hashes_done = %lld", __FUNCTION__, hashes_done);
 
         cgtime(&tv_end);
         timersub(&tv_end, &tv_start, &diff);
@@ -9159,6 +9165,7 @@ void hash_driver_work(struct thr_info *mythr)
         if ((hashes_done && (diff.tv_sec > 0 || diff.tv_usec > 200000)) ||
             diff.tv_sec >= opt_log_interval)
         {
+        	//applog(LOG_DEBUG, "--- %s: hashes_done = %lld", __FUNCTION__, hashes_done);
             hashmeter(thr_id, hashes_done);
             hashes_done = 0;
             copy_time(&tv_start, &tv_end);

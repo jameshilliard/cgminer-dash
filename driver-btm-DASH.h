@@ -23,10 +23,13 @@
 #define BITMAIN_DEFAULT_BAUD            115200
 
 // default ticket mask
-//#define DEVICE_DIFF                     0x1B
-//#define DEVICE_DIFF_MASK				0x31
-#define DEVICE_DIFF                     0x16
-#define DEVICE_DIFF_MASK				0x3ff
+//#define DEVICE_DIFF_SET					0x1B
+//#define DEVICE_DIFF_SET_MASK			0x31
+#define DEVICE_DIFF_SET					0x16
+#define DEVICE_DIFF_SET_MASK			0x3ff
+
+#define DEVICE_DIFF_STANDARD			0x16
+#define DEVICE_DIFF_STANDARD_MASK		0x003fffffull
 
 
 // something about fan
@@ -85,10 +88,12 @@
 #define BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM		3
 
 // the real number sensor on each hash board
-#define D1_MINER_REAL_TEMP_CHIP_NUM				1
+#define D1_MINER_REAL_TEMP_CHIP_NUM				2
 #define BITMAIN_REAL_TEMP_CHIP_NUM				D1_MINER_REAL_TEMP_CHIP_NUM		
 
-#define TEMP_CHIP_0_LOCATION					1	// the 1st temperature sensor connect to the 5th ASIC(count from 1)
+// about temperature sensor
+#define D1
+#define TEMP_CHIP_0_LOCATION					0	// the 1st temperature sensor connect to the 5th ASIC(count from 0)
 #define TEMP_CHIP_1_LOCATION					0	// 0 means no temperature sensor
 #define TEMP_CHIP_2_LOCATION					0	// 0 means no temperature sensor
 

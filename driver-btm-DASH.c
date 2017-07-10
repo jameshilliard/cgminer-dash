@@ -1853,7 +1853,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 		case GENERAL_I2C_COMMAND:
 			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
 			{
-				usleep(100*1000);
+				usleep(500*1000);
 
 				if(temp_counter != g_GENERAL_I2C_COMMAND_reg_value_num[which_chain])
 				{
@@ -1865,6 +1865,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 					not_receive_reg_value_counter++;
 					//applog(LOG_DEBUG, "%s: not receive GENERAL_I2C_COMMAND register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
 				}
+				usleep(500*1000);
 			}
 			break;
 
@@ -2239,11 +2240,13 @@ void calculate_hash_rate(void)
 						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
 						//applog(LOG_DEBUG,"%s: RT g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
 					}
-					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %0.2fMHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1024);                    
+					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %0.2fMHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000);                    
 					
 					rate_error[which_chain] = 0;
-					rate[which_chain] = tmp_rate * 1024;
-                    suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 5, false);             
+					rate[which_chain] = tmp_rate * 1000;
+                    suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 5, false);
+					
+					//applog(LOG_DEBUG,"%s: chain%d rate = %lld, displayed_rate is %s", __FUNCTION__, which_chain, rate[which_chain], displayed_rate[which_chain]);
 				}
 
 				// the ASIC's avg hash rate just displayed in log
@@ -2833,7 +2836,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 	//update_asic_num = false;
 
 	// set core ticket mask
-	set_ticket_mask(DEVICE_DIFF);	// if we set this register value as 0x16, we will not need to set
+	set_ticket_mask(DEVICE_DIFF_SET);	// if we set this register value as 0x16, we will not need to set
 
     //set core number
     dev.corenum = BM1760_CORE_NUM;
@@ -2942,11 +2945,11 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 
 void enable_read_temperature_from_asic(unsigned int misc_control_reg_value)
 {
-	unsigned int which_chain=0, which_sensor=0;
-
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+	unsigned int which_chain=0, which_sensor=0, reg_value = 0;	
 	
-	misc_control_reg_value |= (RFS | TFS(3)); 
+	reg_value = misc_control_reg_value | RFS | TFS(3);
+
+	applog(LOG_DEBUG, "%s: reg_value = 0x%08x", __FUNCTION__, reg_value);
 	
 	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2954,7 +2957,7 @@ void enable_read_temperature_from_asic(unsigned int misc_control_reg_value)
         {
             for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++)
             {
-                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], MISC_CONTROL, misc_control_reg_value);
+                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], MISC_CONTROL, reg_value);
                 cgsleep_ms(2);
             }
         }
@@ -3775,8 +3778,10 @@ void *bitmain_scanhash(void *arg)
 			}
 			*/
 
-			if(*((uint32_t *)(&work->hash) + 7) < DEVICE_DIFF_MASK)
+			if(*((uint32_t *)(&work->hash) + 7) < DEVICE_DIFF_SET_MASK)
 			{
+				update_work_stats(thr, work);
+				
 				if (fulltest(hash1, work->target))
 				{					
 					submitnonceok = true;
@@ -3789,6 +3794,8 @@ void *bitmain_scanhash(void *arg)
 				ob_hex = bin2hex((uint8_t *)(endiandata), 80);
 				applog(LOG_WARNING, "workdata %s", ob_hex);
 				free(ob_hex);
+
+				inc_hw_errors(thr);
 
 				if(submitfull)
                 {
@@ -3808,19 +3815,21 @@ void *bitmain_scanhash(void *arg)
 			
             if(submitnonceok)
             {
-                h += 0x1UL << (DEVICE_DIFF - 22);
+                h += 0x1UL << (DEVICE_DIFF_SET- DEVICE_DIFF_STANDARD);
 				
                 which_asic_nonce = (((nonce >> (20)) & 0xff) / dev.addrInterval);
                 applog(LOG_DEBUG,"%s: chain %d which_asic_nonce %d ", __FUNCTION__, chain_id, which_asic_nonce);
 				
-                if ( chain_id > BITMAIN_MAX_CHAIN_NUM )
+                if (( chain_id > BITMAIN_MAX_CHAIN_NUM ) || (!dev.chain_exist[chain_id]))
 				{
 					applog(LOG_ERR, "ChainID Cause Error! ChainID:[%d]", chain_id);
+					goto crc_error;
                 }
 				
-                if ( which_asic_nonce > D1_MINER_ASIC_NUM_EACH_CHAIN )
+                if ( which_asic_nonce >= D1_MINER_ASIC_NUM_EACH_CHAIN )
 				{
 					applog(LOG_ERR, "Which Nonce Cause Err![%d]", which_asic_nonce);
+					goto crc_error;
                 }
 				
                 dev.chain_asic_nonce[chain_id][which_asic_nonce]++;
@@ -3850,10 +3859,10 @@ void *bitmain_scanhash(void *arg)
 
     if(h != 0)
     {
-        applog(LOG_DEBUG,"%s: hashes %"PRIu64"...", __FUNCTION__,h * 0x003fffffull);
+        applog(LOG_DEBUG,"%s: hashes %"PRIu64"...", __FUNCTION__,h * DEVICE_DIFF_STANDARD_MASK);
     }
 
-    h = h * 0x003fffffull;
+    h = h * DEVICE_DIFF_STANDARD_MASK;
     return 0;
 }
 
@@ -4058,7 +4067,7 @@ void *check_miner_status(void *arg)
             }
 
             ghs = total_mhashes_done / 1 / total_secs;
-            if((ghs < (double)((dev.chain_num * ASIC_NUM_EACH_CHAIN * dev.frequency * dev.corenum * 0.95) / 2500 * 0.8)) && (!status_error))
+            if((ghs < (double)((dev.chain_num * ASIC_NUM_EACH_CHAIN * dev.frequency * dev.corenum * 0.95) / 40 * 0.8)) && (!status_error))
                 system("echo \"Rate too low, reboot!!\" >> /usr/bin/already_reboot");
             copy_time(&tv_start, &tv_end);
         }
@@ -4125,7 +4134,7 @@ void *get_hash_rate()
 	
     while(42)
     {
-        pthread_mutex_lock(&reg_read_mutex);
+        //pthread_mutex_lock(&reg_read_mutex);
 		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
 	    {
 	        if(dev.chain_exist[which_chain])
@@ -4135,7 +4144,7 @@ void *get_hash_rate()
 	        cgsleep_ms(10);
 	    }
         check_rate = true;
-        pthread_mutex_unlock(&reg_read_mutex);
+        //pthread_mutex_unlock(&reg_read_mutex);
 
 		calculate_hash_rate();
 		
@@ -4252,7 +4261,7 @@ rerun_all:
 
                 if ( reg_addr == GENERAL_I2C_COMMAND)
                 {
-					//applog(LOG_ERR,"%s: the Chip%d GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id, chip_addr/dev.addrInterval);
+					applog(LOG_ERR,"%s: the Chip%d GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id, chip_addr/dev.addrInterval);
                     //ProcessTempData(reg_data, chip_addr, chain_id);
                     
                     g_GENERAL_I2C_COMMAND_reg_value[chain_id][g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]] = reg_data;
@@ -4309,7 +4318,7 @@ void *read_temp_func()
 
 	while(1)
 	{
-		pthread_mutex_lock(&reg_read_mutex);
+		//pthread_mutex_lock(&reg_read_mutex);
 		
 		for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
 	    {
@@ -4357,6 +4366,7 @@ void *read_temp_func()
 					if((ret & 0xc0000000) == 0)
 					{
 						remote_temp = (signed char)(ret & 0xff);
+						applog(LOG_DEBUG, "%s: Chain%d Sensor%d remote_temp is %d", __FUNCTION__, which_chain, which_sensor, remote_temp);
 					}
 					else
 					{
@@ -4387,12 +4397,12 @@ void *read_temp_func()
 					if((ret & 0xc0000000) == 0)
 					{
 						local_temp = (signed char)(ret & 0xff);
+						applog(LOG_DEBUG, "%s: Chain%d Sensor%d local_temp is %d", __FUNCTION__, which_chain, which_sensor, local_temp);
 					}
 					else
 					{
 						not_read_out_temperature = true;
-						applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", 
-							__FUNCTION__, which_chain, which_sensor, ret);
+						applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
 					}
 
 					dev.chain_asic_temp[which_chain][which_sensor][0] = local_temp;
@@ -4401,7 +4411,7 @@ void *read_temp_func()
 	        }
 	    }
 		
-		pthread_mutex_unlock(&reg_read_mutex);
+		//pthread_mutex_unlock(&reg_read_mutex);
 		
 		sleep(READ_TEMPERATURE_TIME_GAP);
 	}
@@ -5300,6 +5310,11 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
     root = api_add_string(root, "frequency", dev.frequency_t, copy_data);
     root = api_add_uint8(root, "fan_num", &(dev.fan_num), copy_data);
 
+	dev.fan_speed_value[0] = 4000;
+	dev.fan_speed_value[1] = 5000;
+
+	// dev.fan_speed_value[0] is FAN1
+	// dev.fan_speed_value[1] is FAN2
     for(i = 0; i < BITMAIN_MAX_FAN_NUM; i++)
     {
         char fan_name[12];
@@ -5308,11 +5323,17 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
     }
 
     root = api_add_uint8(root, "temp_num", &(dev.chain_num), copy_data);
+
+	dev.chain_asic_temp[0][0][0] = 50;
+	dev.chain_asic_temp[0][0][1] = 70;
+	dev.chain_asic_temp[0][0][0] = 55;
+	dev.chain_asic_temp[0][0][1] = 75;
+	
     for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
     {
         char temp_name[12];
         sprintf(temp_name,"temp%d",i+1);
-        root = api_add_int16(root, temp_name, &(dev.chain_asic_temp[i][2][0]), copy_data);
+        root = api_add_int16(root, temp_name, &(dev.chain_asic_temp[i][0][0]), copy_data);
     }
 
 
@@ -5320,9 +5341,10 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
     {
         char temp2_name[12];
         sprintf(temp2_name,"temp2_%d",i+1);
-        root = api_add_int16(root, temp2_name, &(dev.chain_asic_temp[i][2][1]), copy_data);
+        root = api_add_int16(root, temp2_name, &(dev.chain_asic_temp[i][0][1]), copy_data);
     }
-#ifdef L3_P
+	
+#ifdef D1
     for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
     {
         char temp_name[12];
@@ -5338,10 +5360,13 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
         root = api_add_int16(root, temp2_name, &(dev.chain_asic_temp[i][1][1]), copy_data);
     }
 #endif
+
     root = api_add_uint32(root, "temp_max", &(dev.temp_top1), copy_data);
+
     total_diff1 = total_diff_accepted + total_diff_rejected + total_diff_stale;
     double hwp = (hw_errors + total_diff1) ?
                  (double)(hw_errors) / (double)(hw_errors + total_diff1) : 0;
+	
     root = api_add_percent(root, "Device Hardware%", &hwp, false);
     root = api_add_int(root, "no_matching_work", &hw_errors, false);
 
