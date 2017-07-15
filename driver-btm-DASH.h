@@ -25,8 +25,11 @@
 // default ticket mask
 //#define DEVICE_DIFF_SET					0x1B
 //#define DEVICE_DIFF_SET_MASK			0x31
-#define DEVICE_DIFF_SET					0x16
-#define DEVICE_DIFF_SET_MASK			0x3ff
+//#define DEVICE_DIFF_SET					0x16
+//#define DEVICE_DIFF_SET_MASK			0x3ff
+#define DEVICE_DIFF_SET					0x18
+#define DEVICE_DIFF_SET_MASK			0xff
+
 
 #define DEVICE_DIFF_STANDARD			0x16
 #define DEVICE_DIFF_STANDARD_MASK		0x003fffffull
@@ -78,7 +81,7 @@
 /******************** about D1 Hash board ********************/
 
 // how many BM1760 on 1 D1 Hash board
-#define D1_MINER_ASIC_NUM_EACH_CHAIN			2
+#define D1_MINER_ASIC_NUM_EACH_CHAIN			60
 #define ASIC_NUM_EACH_CHAIN						D1_MINER_ASIC_NUM_EACH_CHAIN
 //#define CHAIN_ASIC_NUM                  		60
 
@@ -88,12 +91,12 @@
 #define BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM		3
 
 // the real number sensor on each hash board
-#define D1_MINER_REAL_TEMP_CHIP_NUM				2
+#define D1_MINER_REAL_TEMP_CHIP_NUM				1
 #define BITMAIN_REAL_TEMP_CHIP_NUM				D1_MINER_REAL_TEMP_CHIP_NUM		
 
 // about temperature sensor
 #define D1
-#define TEMP_CHIP_0_LOCATION					0	// the 1st temperature sensor connect to the 5th ASIC(count from 0)
+#define TEMP_CHIP_0_LOCATION					4	// the 1st temperature sensor connect to the 4th ASIC(count from 0)
 #define TEMP_CHIP_1_LOCATION					0	// 0 means no temperature sensor
 #define TEMP_CHIP_2_LOCATION					0	// 0 means no temperature sensor
 
@@ -109,7 +112,7 @@
 /******************** about BM1760 ASIC ********************/
 
 // how many cores in BM1760
-#define BM1760_CORE_NUM								1
+#define BM1760_CORE_NUM								8
 
 // BM1760 ASIC input/output data header
 #define INPUT_HEADER_1								0x55
@@ -674,6 +677,7 @@ void calibration_sensor_offset(void);
 void set_temperature_offset_value(void);
 void suffix_string_DASH(uint64_t val, char *buf, size_t bufsiz, int sigdigits,bool display);
 void clear_register_value_buf(void);
+void check_sensor_ID(void);
 
 
 

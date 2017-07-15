@@ -412,7 +412,7 @@ pthread_mutex_t stats_lock;
 
 int hw_errors;
 int g_max_fan, g_max_temp;
-int64_t total_accepted, total_rejected, total_diff1;
+double total_accepted, total_rejected, total_diff1;
 int64_t total_getworks, total_stale, total_discarded;
 double total_diff_accepted, total_diff_rejected, total_diff_stale;
 static int staged_rollable;
@@ -450,7 +450,7 @@ struct timeval block_timeval;
 static char best_share[8] = "0";
 double current_diff = 0xFFFFFFFFFFFFFFFFULL;
 static char block_diff[8];
-uint64_t best_diff = 0;
+double best_diff = 0;
 
 struct block
 {
@@ -3487,9 +3487,14 @@ share_result(json_t *val, json_t *res, json_t *err, const struct work *work,
         cgpu->accepted++;
         total_accepted++;
         pool->accepted++;
-        cgpu->diff_accepted += work->work_difficulty;
-        total_diff_accepted += work->work_difficulty;
-        pool->diff_accepted += work->work_difficulty;
+        //cgpu->diff_accepted += work->work_difficulty;
+        //total_diff_accepted += work->work_difficulty;		
+        //pool->diff_accepted += work->work_difficulty;
+
+		cgpu->diff_accepted += pool->sdiff;
+		total_diff_accepted += pool->sdiff;
+		pool->diff_accepted += pool->sdiff;
+		
         mutex_unlock(&stats_lock);
 
         pool->seq_rejects = 0;
@@ -4958,11 +4963,11 @@ static bool stale_work(struct work *work, bool share)
     return false;
 }
 
-uint64_t share_diff(const struct work *work)
+double share_diff(const struct work *work)
 {
     bool new_best = false;
     double d64, s64;
-    uint64_t ret;
+    double ret;
 
     d64 = truediffone;
     if (opt_scrypt)

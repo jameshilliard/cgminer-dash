@@ -1214,7 +1214,7 @@ extern char displayed_hash_rate[16];
 extern unsigned int new_blocks;
 extern unsigned int found_blocks;
 extern int g_max_fan, g_max_temp;
-extern int64_t total_accepted, total_rejected, total_diff1;
+extern double total_accepted, total_rejected, total_diff1;
 extern int64_t total_getworks, total_stale, total_discarded;
 extern double total_diff_accepted, total_diff_rejected, total_diff_stale;
 extern unsigned int local_work;
@@ -1224,7 +1224,7 @@ extern int opt_log_interval;
 extern unsigned long long global_hashrate;
 extern char current_hash[68];
 extern double current_diff;
-extern uint64_t best_diff;
+extern double best_diff;
 extern struct timeval block_timeval;
 extern char *workpadding;
 
@@ -1317,7 +1317,7 @@ struct pool {
 
 	time_t last_share_time;
 	double last_share_diff;
-	uint64_t best_diff;
+	double best_diff;
 
 	struct cgminer_stats cgminer_stats;
 	struct cgminer_pool_stats cgminer_pool_stats;
@@ -1595,7 +1595,7 @@ extern void _free_work(struct work *work);
 extern void set_work_ntime(struct work *work, int ntime);
 extern struct work *copy_work_noffset(struct work *base_work, int noffset);
 #define copy_work(work_in) copy_work_noffset(work_in, 0)
-extern uint64_t share_diff(const struct work *work);
+extern double share_diff(const struct work *work);
 extern struct thr_info *get_thread(int thr_id);
 extern struct cgpu_info *get_devices(int id);
 

@@ -2605,7 +2605,7 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
 {
     struct api_data *root = NULL;
     bool io_open = false;
-    char *status, *lp;
+    char *status, *lp, buf[8] = {0};
     int i;
     int hour = 0;
     int minute = 0;
@@ -2691,7 +2691,9 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
         root = api_add_string(root, "Last Share Time", lasttime, false);
 		sprintf(pool->diff,("%8.4f"),pool->sdiff);
         root = api_add_string(root, "Diff", pool->diff, false);
-        root = api_add_int64(root, "Diff1 Shares", &(pool->diff1), false);
+        //root = api_add_int64(root, "Diff1 Shares", &(pool->diff1), false);
+        sprintf(buf,("%8.4f"),pool->diff1);
+        root = api_add_string(root, "Diff1 Shares", buf, false);
         if (pool->rpc_proxy)
         {
             root = api_add_const(root, "Proxy Type", proxytype(pool->rpc_proxytype), false);
@@ -2713,7 +2715,10 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
         else
             root = api_add_const(root, "Stratum URL", BLANK, false);
         root = api_add_bool(root, "Has GBT", &(pool->has_gbt), false);
-        root = api_add_uint64(root, "Best Share", &(pool->best_diff), true);
+
+		sprintf(buf,("%8.4f"),pool->best_diff);
+		root = api_add_string(root, "Best Share", buf, false);
+        //root = api_add_uint64(root, "Best Share", &(pool->best_diff), true);
         double rejp = (pool->diff_accepted + pool->diff_rejected + pool->diff_stale) ?
                       (double)(pool->diff_rejected) / (double)(pool->diff_accepted + pool->diff_rejected + pool->diff_stale) : 0;
         root = api_add_percent(root, "Pool Rejected%", &rejp, false);
@@ -2784,6 +2789,7 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     struct api_data *root = NULL;
     bool io_open;
     double utility, ghs, work_utility;
+	unsigned char buf[8]={0};
 
     message(io_data, MSG_SUMM, 0, NULL, isjson);
     io_open = io_add(io_data, isjson ? COMSTR JSON_SUMMARY : _SUMMARY COMSTR);
@@ -2822,8 +2828,15 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     root = api_add_mhs(root, "GHS av", &(ghs), false);
     root = api_add_uint(root, "Found Blocks", &(found_blocks), true);
     root = api_add_int64(root, "Getworks", &(total_getworks), true);
-    root = api_add_int64(root, "Accepted", &(total_accepted), true);
-    root = api_add_int64(root, "Rejected", &(total_rejected), true);
+
+	sprintf(buf, ("%8.4f"), total_accepted);
+	root = api_add_string(root, "Accepted", buf, false);
+    //root = api_add_int64(root, "Accepted", &(total_accepted), true);
+
+	sprintf(buf,("%8.4f"),total_rejected);
+	root = api_add_string(root, "Rejected", buf, false);
+    //root = api_add_int64(root, "Rejected", &(total_rejected), true);
+	
     root = api_add_int(root, "Hardware Errors", &(hw_errors), true);
     root = api_add_utility(root, "Utility", &(utility), false);
     root = api_add_int64(root, "Discarded", &(total_discarded), true);
@@ -2837,7 +2850,8 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     root = api_add_diff(root, "Difficulty Accepted", &(total_diff_accepted), true);
     root = api_add_diff(root, "Difficulty Rejected", &(total_diff_rejected), true);
     root = api_add_diff(root, "Difficulty Stale", &(total_diff_stale), true);
-    root = api_add_uint64(root, "Best Share", &(best_diff), true);
+    //root = api_add_uint64(root, "Best Share", &(best_diff), true);
+	root = api_add_diff(root, "Best Share", &(best_diff), true);
 	
     double hwp = (hw_errors + total_diff1) ?
                  (double)(hw_errors) / (double)(hw_errors + total_diff1) : 0;
@@ -4348,6 +4362,7 @@ static void lcddata(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     struct pool *pool = NULL;
     char *rpc_url = "none", *rpc_user = "";
     int i;
+	unsigned char buf[8]={0};
 
     message(io_data, MSG_LCD, 0, NULL, isjson);
     io_open = io_add(io_data, isjson ? COMSTR JSON_LCD : _LCD COMSTR);
@@ -4402,7 +4417,11 @@ static void lcddata(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     root = api_add_temp(root, "Temperature", &temp, false);
     root = api_add_diff(root, "Last Share Difficulty", &last_share_diff, false);
     root = api_add_time(root, "Last Share Time", &last_share_time, false);
-    root = api_add_uint64(root, "Best Share", &best_diff, true);
+
+	sprintf(buf,("%8.4f"),best_diff);
+	root = api_add_string(root, "Best Share", buf, false);
+    //root = api_add_uint64(root, "Best Share", &best_diff, true);
+    
     root = api_add_time(root, "Last Valid Work", &last_device_valid_work, false);
     root = api_add_uint(root, "Found Blocks", &found_blocks, true);
     root = api_add_escape(root, "Current Pool", rpc_url, true);

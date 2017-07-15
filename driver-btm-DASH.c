@@ -1823,7 +1823,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 		case CHIP_ADDR:
 			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
 			{
-				usleep(1000*1000);
+				usleep(300*1000);
 
 				if(temp_counter != g_CHIP_ADDR_reg_value_num[which_chain])
 				{
@@ -1853,7 +1853,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 		case GENERAL_I2C_COMMAND:
 			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
 			{
-				usleep(500*1000);
+				usleep(300*1000);
 
 				if(temp_counter != g_GENERAL_I2C_COMMAND_reg_value_num[which_chain])
 				{
@@ -1865,14 +1865,14 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 					not_receive_reg_value_counter++;
 					//applog(LOG_DEBUG, "%s: not receive GENERAL_I2C_COMMAND register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
 				}
-				usleep(500*1000);
+				//usleep(500*1000);
 			}
 			break;
 
 		case HASH_RATE:
 			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
 			{
-				usleep(1000*1000);
+				usleep(300*1000);
 
 				if(temp_counter != g_HASH_RATE_reg_value_num[which_chain])
 				{
@@ -1890,7 +1890,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 		case CHIP_STATUS:
 			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
 			{
-				usleep(100*1000);
+				usleep(300*1000);
 
 				if(temp_counter != g_CHIP_STATUS_reg_value_num[which_chain])
 				{
@@ -2331,6 +2331,7 @@ void calculate_address_interval(void)
     }
 
     dev.addrInterval = 0x100 / temp_asic_number;
+	dev.addrInterval = 1;
     applog(LOG_NOTICE, "%s: temp_asic_number = %d, addrInterval = %d", __FUNCTION__, temp_asic_number, dev.addrInterval);
 
 
@@ -2342,7 +2343,7 @@ void calculate_address_interval(void)
 	// according to the address interval, calculate out the chip/core offset
 	//gChipOffset = (0x01 << 1) * ((0x01 << 31) / temp_asic_number / dev.addrInterval);	// 2^32 / temp_asic_number / dev.addrInterval
 	//gChipOffset = 0x1000000;	// 2^32 / 0x100 (0x100 = temp_asic_number * dev.addrInterval)
-	gChipOffset = 0x1000000;
+	gChipOffset = 0x04000000;
 	gCoreOffset = gChipOffset / BM1760_CORE_NUM;
 	applog(LOG_NOTICE,"%s: CHIP_OFFSET = 0x%08x, CORE_OFFSET = 0x%08x", __FUNCTION__, gChipOffset, gCoreOffset);	
 }
@@ -2704,7 +2705,7 @@ void set_PWM_according_to_temperature(void)
     temp_highest = dev.temp_top1;
     if(temp_highest >= MAX_FAN_TEMP)
     {
-        applog(LOG_DEBUG,"%s: Temperature is higher than %d 'C", __FUNCTION__, temp_highest);
+        //applog(LOG_DEBUG,"%s: Temperature is higher than %d 'C", __FUNCTION__, temp_highest);
     }
 
     if(dev.fan_eft)
@@ -2722,7 +2723,7 @@ void set_PWM_according_to_temperature(void)
     {
         set_PWM(MAX_PWM_PERCENT);
         dev.fan_pwm = MAX_PWM_PERCENT;
-        applog(LOG_DEBUG,"%s: Set PWM percent : MAX_PWM_PERCENT", __FUNCTION__);
+        //applog(LOG_DEBUG,"%s: Set PWM percent : MAX_PWM_PERCENT", __FUNCTION__);
         return;
     }
 
@@ -2730,7 +2731,7 @@ void set_PWM_according_to_temperature(void)
     {
         set_PWM(MIN_PWM_PERCENT);
         dev.fan_pwm = MIN_PWM_PERCENT;
-        applog(LOG_DEBUG,"%s: Set PWM percent : MIN_PWM_PERCENT", __FUNCTION__);
+        //applog(LOG_DEBUG,"%s: Set PWM percent : MIN_PWM_PERCENT", __FUNCTION__);
         return;
     }
 
@@ -2800,7 +2801,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 
 	// init i2c
     i2c_init(info);
-#if 0
+#if 1
 	check_whether_need_update_pic_program();
 	
 	every_chain_reset_PIC16F1704_pic_new();
@@ -2887,7 +2888,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
         {
             applog(LOG_NOTICE, "frequency = '%d'", dev.frequency);
             // timeout = 2^32 / (256 / AddrInterval) / Freq / core number
-            dev.timeout = 0xffffffff / (0x100 / dev.addrInterval) / dev.frequency / dev.corenum * 0.95 * 40;
+            dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.95 * 40;
             applog(LOG_NOTICE,"dev.timeout = %d us", dev.timeout);
         }
         else
@@ -3817,7 +3818,8 @@ void *bitmain_scanhash(void *arg)
             {
                 h += 0x1UL << (DEVICE_DIFF_SET- DEVICE_DIFF_STANDARD);
 				
-                which_asic_nonce = (((nonce >> (20)) & 0xff) / dev.addrInterval);
+                //which_asic_nonce = (((nonce >> (20)) & 0xff) / dev.addrInterval);
+				which_asic_nonce = ((nonce & 0x3FFFFFF) >> 26) / dev.addrInterval;
                 applog(LOG_DEBUG,"%s: chain %d which_asic_nonce %d ", __FUNCTION__, chain_id, which_asic_nonce);
 				
                 if (( chain_id > BITMAIN_MAX_CHAIN_NUM ) || (!dev.chain_exist[chain_id]))
@@ -4132,7 +4134,7 @@ void *get_hash_rate()
 {
 	uint32_t which_chain = 0;
 	
-    while(42)
+    while(0)
     {
         //pthread_mutex_lock(&reg_read_mutex);
 		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
@@ -4168,7 +4170,7 @@ int create_bitmain_get_hash_rate_pthread(void)
 
 void *bitmain_scanreg(void* args)
 {
-    unsigned int j, not_reg_data_time = 0;
+    unsigned int i,j, not_reg_data_time = 0;
     unsigned int reg_value_num = 0, reg_data = 0, received_reg_num = 0;
     unsigned char crc_check, chip_addr, reg_addr,chain_id;
     int read_num = 0;
@@ -4218,16 +4220,30 @@ rerun_all:
 				reg_data = Swap32(reg_fifo.reg_buffer[reg_fifo.p_rd].reg_value);
                 chip_addr = reg_fifo.reg_buffer[reg_fifo.p_rd].chipaddr;
                 reg_addr = reg_fifo.reg_buffer[reg_fifo.p_rd].regaddr;
-                chain_id = reg_fifo.reg_buffer[reg_fifo.p_rd].chainid;
+                chain_id = reg_fifo.reg_buffer[reg_fifo.p_rd].chainid;				
 
                 crc_check = CRC5((uint8_t *)&(reg_fifo.reg_buffer[reg_fifo.p_rd]), ASIC_RETURN_DATA_LENGTH_WITHOUT_HEADER*8-5);
                 if(crc_check != (reg_fifo.reg_buffer[reg_fifo.p_rd].crc5 & 0x1f))
                 {
-                    applog(LOG_ERR,"%s: crc5 error,should be %02x,but check as %02x",__FUNCTION__,reg_fifo.reg_buffer[reg_fifo.p_rd].crc5 & 0x1f,crc_check);
-                    applog(LOG_ERR,"%s: reg_value = 0x%08x", __FUNCTION__, reg_data);
+                    applog(LOG_ERR,"%s: reg_value = 0x%08x crc5 error,should be %02x,but check as %02x",__FUNCTION__,reg_data, reg_fifo.reg_buffer[reg_fifo.p_rd].crc5 & 0x1f,crc_check);
+
+					reg_fifo.p_rd++;
+	                reg_fifo.reg_value_num--;
+	                if(reg_fifo.p_rd >= MAX_NONCE_NUMBER_IN_FIFO)
+	                {
+	                    reg_fifo.p_rd = 0;
+	                }
+				
 					pthread_mutex_unlock(&reg_mutex);
 					continue;
-                }               
+                }
+
+				reg_fifo.p_rd++;
+                reg_fifo.reg_value_num--;
+                if(reg_fifo.p_rd >= MAX_NONCE_NUMBER_IN_FIFO)
+                {
+                    reg_fifo.p_rd = 0;
+                }
                 pthread_mutex_unlock(&reg_mutex);
 
                 if(reg_addr == CHIP_ADDR)
@@ -4235,7 +4251,7 @@ rerun_all:
                 	if(update_asic_num)
                 	{
 						g_CHIP_ADDR_reg_value[chain_id][g_CHIP_ADDR_reg_value_num[chain_id]] = reg_data;						
-						applog(LOG_DEBUG,"%s: Chain%d CHIP_ADDR value = 0x%08x", __FUNCTION__, chain_id, reg_data);
+						//applog(LOG_DEBUG,"%s: Chain%d CHIP_ADDR value = 0x%08x", __FUNCTION__, chain_id, reg_data);
 						g_CHIP_ADDR_reg_value_num[chain_id]++;
                 	}
 					else
@@ -4261,8 +4277,7 @@ rerun_all:
 
                 if ( reg_addr == GENERAL_I2C_COMMAND)
                 {
-					applog(LOG_ERR,"%s: the Chip%d GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id, chip_addr/dev.addrInterval);
-                    //ProcessTempData(reg_data, chip_addr, chain_id);
+					//applog(LOG_ERR,"%s: the Chip%d GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id, chip_addr/dev.addrInterval);
                     
                     g_GENERAL_I2C_COMMAND_reg_value[chain_id][g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]] = reg_data;
                     g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]++;
@@ -4281,13 +4296,15 @@ rerun_all:
                 	g_CHIP_STATUS_reg_value[chain_id][g_CHIP_STATUS_reg_value_num[chain_id]] = reg_data;					
                     g_CHIP_STATUS_reg_value_num[chain_id]++;
                 }
-                
+
+				/*
                 reg_fifo.p_rd++;
                 reg_fifo.reg_value_num--;
                 if(reg_fifo.p_rd >= MAX_NONCE_NUMBER_IN_FIFO)
                 {
                     reg_fifo.p_rd = 0;
                 }
+                */
             }
         }
     }
@@ -4316,7 +4333,7 @@ void *read_temp_func()
 
 	applog(LOG_DEBUG, "%s", __FUNCTION__);
 
-	while(1)
+	while(0)
 	{
 		//pthread_mutex_lock(&reg_read_mutex);
 		
@@ -4646,7 +4663,7 @@ void *get_asic_response(void* arg)
 	unsigned char reg_buf[ASIC_RETURN_DATA_LENGTH] = {0};			// the reg data ready to check
 	unsigned int receive_buf_p=0, data_buf_w_p=0, data_buf_r_p=0, remaining_len=0;
 	int fs_sel, j=0, m=0, get_9_bytes_counter=0, is_nonce = -1, ret;
-	unsigned int i=0, error_counter=0;
+	unsigned int i=0, error_counter=0, t=0;
 	bool find_header = false, less_then_9_bytes = false;
 	ssize_t len=0;
 
@@ -4664,10 +4681,18 @@ void *get_asic_response(void* arg)
 		{
 			memset(receive_buf,0,sizeof(receive_buf));
 			len = DASH_read(fd, receive_buf, ASIC_RETURN_DATA_LENGTH*64);
-			//applog(LOG_DEBUG, "%s: len = %d",__FUNCTION__,len);
 
 			if(len > 0)
 			{
+				/*
+				printf("%s: uart received data: 0x", __FUNCTION__);
+				for(t=0; t<len; t++)
+				{
+					printf("%02x", receive_buf[t]);
+				}
+				printf("\n");
+				*/
+			
 				// step 1: store the received data throuth UART
 				//printf("receive_buf: len = %d, data_buf_w_p = %d\n", len, data_buf_w_p);
 				//printf("receive_buf: ");
@@ -4767,7 +4792,7 @@ void *get_asic_response(void* arg)
 					//printf("\n");
 
 					//applog(LOG_DEBUG, "Chain [%d] Read Data", chainid);
-                	//applog(LOG_DEBUG,"get sth %02x%02x%02x%02x%02x%02x%02x%02x%02x",temp_buf[0],temp_buf[1],temp_buf[2],temp_buf[3], temp_buf[4],temp_buf[5],temp_buf[6],temp_buf[7],temp_buf[8]);
+                	//applog(LOG_DEBUG,"get ASIC data 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x",temp_buf[0],temp_buf[1],temp_buf[2],temp_buf[3], temp_buf[4],temp_buf[5],temp_buf[6],temp_buf[7],temp_buf[8]);
 
 					if(is_nonce_or_reg_value(temp_buf[ASIC_RETURN_DATA_LENGTH -1]))	// get a nonce
 					{
@@ -4780,9 +4805,12 @@ void *get_asic_response(void* arg)
 	                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc             = temp_buf[7] & 0x7f;
 	                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5           = temp_buf[8];
 	                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid        = chainid;
+
+							/*
 	                        applog(LOG_DEBUG,"%s: get nonce 0x%08x, diff 0x%02x, wc 0x%02x, crc5 0x%02x, chainid 0x%02x", __FUNCTION__, Swap32(nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce), \
 	                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc,  \
-	                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid);		                               
+	                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid);
+	                        */
 
 	                        if(nonce_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO)
 	                        {
@@ -4849,6 +4877,7 @@ void *get_asic_response(void* arg)
 				}
 
 				get_9_bytes_counter = 0;
+				len = 0;
 			}
 
 #if 0
