@@ -23,12 +23,12 @@
 #define BITMAIN_DEFAULT_BAUD            115200
 
 // default ticket mask
-//#define DEVICE_DIFF_SET					0x1B
-//#define DEVICE_DIFF_SET_MASK			0x31
+#define DEVICE_DIFF_SET					0x1B
+#define DEVICE_DIFF_SET_MASK			0x31
 //#define DEVICE_DIFF_SET					0x16
 //#define DEVICE_DIFF_SET_MASK			0x3ff
-#define DEVICE_DIFF_SET					0x18
-#define DEVICE_DIFF_SET_MASK			0xff
+//#define DEVICE_DIFF_SET					0x18
+//#define DEVICE_DIFF_SET_MASK			0xff
 
 
 #define DEVICE_DIFF_STANDARD			0x16
@@ -272,7 +272,7 @@
 /******************** other MACRO ********************/
 
 #define MAX_RETURNED_NONCE_NUM          			30
-#define MAX_NONCE_NUMBER_IN_FIFO        			(ASIC_NUM_EACH_CHAIN * BITMAIN_MAX_CHAIN_NUM * 3)
+#define MAX_NONCE_NUMBER_IN_FIFO        			(ASIC_NUM_EACH_CHAIN * BITMAIN_MAX_CHAIN_NUM * 30)
 
 #define IIC_SLEEP									200
 

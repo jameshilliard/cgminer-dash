@@ -6744,7 +6744,7 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
             get_statline(logline, sizeof(logline), cgpu);
             if (!curses_active)
             {
-                printf("%s          \r", logline);
+                printf("%s: logline: %s          \r", __FUNCTION__, logline);
                 fflush(stdout);
             }
             else
@@ -6848,7 +6848,7 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
     {
         if (!curses_active)
         {
-            printf("%s          \r", statusline);
+            printf("%s: statusline: %s          \r", __FUNCTION__, statusline);
             fflush(stdout);
         }
         else
@@ -8004,9 +8004,9 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
 
         header = bin2hex(work->data, 112);
         merkle_hash = bin2hex((const unsigned char *)merkle_root, 32);
-        applog(LOG_NOTICE, "Generated stratum merkle %s", merkle_hash);
-        applog(LOG_NOTICE, "Generated stratum header %s", header);
-        applog(LOG_NOTICE, "Work job_id %s nonce2 %"PRIu64" ntime %s", work->job_id,
+        applog(LOG_DEBUG, "Generated stratum merkle %s", merkle_hash);
+        applog(LOG_DEBUG, "Generated stratum header %s", header);
+        applog(LOG_DEBUG, "Work job_id %s nonce2 %"PRIu64" ntime %s", work->job_id,
                work->nonce2, work->ntime);
         free(header);
         free(merkle_hash);

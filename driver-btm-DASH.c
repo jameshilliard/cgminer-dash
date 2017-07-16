@@ -1837,7 +1837,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 				}
 			}
 
-			applog(LOG_DEBUG, "%s: Chain%d has %d ASICs", __FUNCTION__, which_chain, g_CHIP_ADDR_reg_value_num[which_chain]);
+			applog(LOG_WARNING, "%s: Chain%d has %d ASICs", __FUNCTION__, which_chain, g_CHIP_ADDR_reg_value_num[which_chain]);
 			
 			if(update_asic_num)
 			{
@@ -1959,7 +1959,7 @@ void software_set_address()
             cgsleep_ms(30);
 			
             applog(LOG_NOTICE, "Now Set [%d] Chain Address", which_chain);			
-            for(which_asic = 0; which_asic < 0x100/dev.addrInterval; which_asic++)
+            for(which_asic = 0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
             {
                 set_address(which_chain, which_asic * dev.addrInterval);
                 cgsleep_ms(10);
@@ -2511,7 +2511,7 @@ int DASH_read(int fd, unsigned char *buf, size_t bufLen)
 			len = read(fd, buf, (nbytes/ASIC_RETURN_DATA_LENGTH)*ASIC_RETURN_DATA_LENGTH);
 			if(len < (nbytes/ASIC_RETURN_DATA_LENGTH)*ASIC_RETURN_DATA_LENGTH)
 			{
-				applog(LOG_ERR,"!!! %s: There are %d bytes in UART, but we just read out %d bytes\n", __FUNCTION__, (nbytes/ASIC_RETURN_DATA_LENGTH)*ASIC_RETURN_DATA_LENGTH, len);
+				applog(LOG_ERR,"!!! %s: There are %d bytes in UART, but we just read out %d bytes\n", __FUNCTION__, nbytes, len);
 			}
         	return len;
 		}
@@ -3724,8 +3724,8 @@ void *bitmain_scanhash(void *arg)
 		
         if(crc_check != nonce_crc5)
         {
-            applog(LOG_ERR,"%s: crc5 error,should be 0x%02x,but check as 0x%02x", __FUNCTION__, nonce_crc5, crc_check);
-            applog(LOG_NOTICE,"%s: get nonce: 0x%08x, diff: 0x%02x, wc: 0x%02x, crc5: 0x%02x, chainid: 0x%02x", __FUNCTION__, nonce, nonce_diff, work_id, crc_check, chain_id);
+            //applog(LOG_ERR,"%s: crc5 error,should be 0x%02x,but check as 0x%02x", __FUNCTION__, nonce_crc5, crc_check);
+            applog(LOG_ERR,"%s: get nonce: 0x%08x, diff: 0x%02x, wc: 0x%02x, crc_received: 0x%02x, crc_checked: 0x%02x,chainid: 0x%02x", __FUNCTION__, nonce, nonce_diff, work_id, nonce_fifo.nonce_buffer[nonce_fifo.p_rd].crc5, crc_check, chain_id);
 
             //if signature enabled,check SIG_INFO register
             goto crc_error;
@@ -3734,7 +3734,7 @@ void *bitmain_scanhash(void *arg)
         work = info->work_queue[work_id];
         if(work)
         {
-        	applog(LOG_ERR,"%s: work_id = 0x%02x", __FUNCTION__, work_id);
+        	//applog(LOG_ERR,"%s: work_id = 0x%02x", __FUNCTION__, work_id);
 			
 			submitfull = 0;
 			//hexdump((uint8_t *)&work->data, 128);
@@ -3817,9 +3817,8 @@ void *bitmain_scanhash(void *arg)
             if(submitnonceok)
             {
                 h += 0x1UL << (DEVICE_DIFF_SET- DEVICE_DIFF_STANDARD);
-				
-                //which_asic_nonce = (((nonce >> (20)) & 0xff) / dev.addrInterval);
-				which_asic_nonce = ((nonce & 0x3FFFFFF) >> 26) / dev.addrInterval;
+
+				which_asic_nonce = ((nonce & 0xFC000000) >> 26) / (dev.addrInterval * 4);
                 applog(LOG_DEBUG,"%s: chain %d which_asic_nonce %d ", __FUNCTION__, chain_id, which_asic_nonce);
 				
                 if (( chain_id > BITMAIN_MAX_CHAIN_NUM ) || (!dev.chain_exist[chain_id]))
@@ -4134,7 +4133,7 @@ void *get_hash_rate()
 {
 	uint32_t which_chain = 0;
 	
-    while(0)
+    while(1)
     {
         //pthread_mutex_lock(&reg_read_mutex);
 		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
@@ -4256,7 +4255,7 @@ rerun_all:
                 	}
 					else
 					{						
-						applog(LOG_DEBUG,"%s: Chain%d CHIP_ADDR value = 0x%08x", __FUNCTION__, chain_id, reg_data);						
+						//applog(LOG_DEBUG,"%s: Chain%d CHIP_ADDR value = 0x%08x", __FUNCTION__, chain_id, reg_data);						
 					}
                 }
 
@@ -4288,7 +4287,7 @@ rerun_all:
                 	g_HASH_RATE_reg_value[chain_id][g_HASH_RATE_reg_value_num[chain_id]] = reg_data;
 					g_HASH_RATE_reg_value_from_which_asic[chain_id][g_HASH_RATE_reg_value_num[chain_id]] = chip_addr/dev.addrInterval;
                     g_HASH_RATE_reg_value_num[chain_id]++;
-					applog(LOG_ERR,"%s: the Chip%d HASH_RATE reg_value = 0x%08x @chain%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id);
+					applog(LOG_DEBUG,"%s: the Chip%d HASH_RATE reg_value = 0x%08x @chain%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id);
                 }
 
 				if(reg_addr == CHIP_STATUS)
@@ -4333,7 +4332,7 @@ void *read_temp_func()
 
 	applog(LOG_DEBUG, "%s", __FUNCTION__);
 
-	while(0)
+	while(1)
 	{
 		//pthread_mutex_lock(&reg_read_mutex);
 		
@@ -4744,7 +4743,7 @@ void *get_asic_response(void* arg)
 					{
 						find_header = false;
 
-						for(i=1; i<ASIC_RETURN_DATA_LENGTH; i++)
+						for(i=1; i<ASIC_RETURN_DATA_LENGTH; i++)	// check if there are 0xaa, 0x55 in the behind 8 bytes. we think the 0xaa, 0x55 must be the former 2 bytes
 						{
 							if((data_buf[data_buf_r_p + i] == OUTPUT_HEADER_1) && (data_buf[data_buf_r_p + 1 + i] == OUTPUT_HEADER_2))
 							{
@@ -4771,6 +4770,7 @@ void *get_asic_response(void* arg)
 						}
 					}
 				}
+				
 				data_buf_w_p = remaining_len;
 				for(m=0; m<remaining_len; m++)
 				{
@@ -4811,6 +4811,16 @@ void *get_asic_response(void* arg)
 	                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc,  \
 	                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid);
 	                        */
+	                        //applog(LOG_DEBUG,"%s: nonce: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x",__FUNCTION__,temp_buf[0],temp_buf[1],temp_buf[2],temp_buf[3], temp_buf[4],temp_buf[5],temp_buf[6],temp_buf[7],temp_buf[8]);
+
+							/*
+							printf("%s: nonce: 0x", __FUNCTION__);
+							for(t=0; t<ASIC_RETURN_DATA_LENGTH; t++)
+							{
+								printf("%02x", temp_buf[t]);
+							}
+							printf("\n");
+							*/
 
 	                        if(nonce_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO)
 	                        {
@@ -4829,6 +4839,7 @@ void *get_asic_response(void* arg)
 	                        else
 	                        {
 	                            nonce_fifo.nonce_num = MAX_NONCE_NUMBER_IN_FIFO;
+								applog(LOG_WARNING, "%s: nonce fifo full!!!", __FUNCTION__);
 	                        }
 							
 							pthread_mutex_unlock(&nonce_mutex);
@@ -4852,7 +4863,23 @@ void *get_asic_response(void* arg)
 	                    reg_fifo.reg_buffer[reg_fifo.p_wr].crc5				= temp_buf[8] & 0x1f;
 	                    reg_fifo.reg_buffer[reg_fifo.p_wr].chainid			= chainid;
 
-	                    if(reg_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO )
+						/*
+						applog(LOG_DEBUG,"%s: get register 0x%08x, chipaddr 0x%02x, regaddr 0x%02x, crc5 0x%02x, chainid 0x%02x", __FUNCTION__, Swap32(reg_fifo.reg_buffer[reg_fifo.p_wr].reg_value), \
+	                               reg_fifo.reg_buffer[reg_fifo.p_wr].chipaddr, reg_fifo.reg_buffer[reg_fifo.p_wr].regaddr,  \
+	                               reg_fifo.reg_buffer[reg_fifo.p_wr].crc5, reg_fifo.reg_buffer[reg_fifo.p_wr].chainid);
+						*/
+						//applog(LOG_DEBUG,"%s: register: 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x",__FUNCTION__,temp_buf[0],temp_buf[1],temp_buf[2],temp_buf[3], temp_buf[4],temp_buf[5],temp_buf[6],temp_buf[7],temp_buf[8]);
+
+						/*
+						printf("%s: register: 0x", __FUNCTION__);
+						for(t=0; t<ASIC_RETURN_DATA_LENGTH; t++)
+						{
+							printf("%02x", temp_buf[t]);
+						}
+						printf("\n");
+						*/
+
+						if(reg_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO )
 	                    {
 	                        //applog(LOG_DEBUG,"%s: p_wr = %d reg_value_num = %d", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);
 	                        reg_fifo.p_wr++;
@@ -4869,6 +4896,7 @@ void *get_asic_response(void* arg)
 	                    else
 	                    {
 	                        reg_fifo.reg_value_num = MAX_NONCE_NUMBER_IN_FIFO;
+							applog(LOG_WARNING, "%s: reg fifo full!!!", __FUNCTION__);
 	                    }
 						pthread_mutex_unlock(&reg_mutex);
 						
@@ -4877,6 +4905,7 @@ void *get_asic_response(void* arg)
 				}
 
 				get_9_bytes_counter = 0;
+				memset(find_header_data_buf, 0, sizeof(find_header_data_buf));
 				len = 0;
 			}
 
