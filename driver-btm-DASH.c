@@ -2188,7 +2188,7 @@ void calculate_hash_rate(void)
 					{
 						rate[which_chain] = 0;
 						suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-						applog(LOG_DEBUG,"%s: 1 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
+						applog(LOG_ERR,"%s: 1 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
 					}
 				}
 			}
@@ -2227,7 +2227,7 @@ void calculate_hash_rate(void)
 				{
 					rate[which_chain] = 0;
 					suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-					applog(LOG_DEBUG,"%s: 2 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
+					applog(LOG_ERR,"%s: 2 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
 				}
 
 				tmp_rate = 0;
@@ -2240,10 +2240,10 @@ void calculate_hash_rate(void)
 						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
 						//applog(LOG_DEBUG,"%s: RT g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
 					}
-					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %0.2fMHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000);                    
+					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);                    
 					
 					rate_error[which_chain] = 0;
-					rate[which_chain] = tmp_rate * 1000;
+					rate[which_chain] = tmp_rate * 1000 * 1000;
                     suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 5, false);
 					
 					//applog(LOG_DEBUG,"%s: chain%d rate = %lld, displayed_rate is %s", __FUNCTION__, which_chain, rate[which_chain], displayed_rate[which_chain]);
@@ -2257,7 +2257,7 @@ void calculate_hash_rate(void)
 						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
 						//applog(LOG_DEBUG,"%s: avg g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
 					}
-					applog(LOG_DEBUG,"%s: chain%d avg hash rate is %0.2fMHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1024);
+					applog(LOG_DEBUG,"%s: chain%d avg hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);
 					
 					//suffix_string_DASH(tmp_rate, (char * )displayed_avg_rate[which_chain], sizeof(displayed_avg_rate[which_chain]), 6, true);
 				}
@@ -3779,7 +3779,7 @@ void *bitmain_scanhash(void *arg)
 			}
 			*/
 
-			if(*((uint32_t *)(&work->hash) + 7) < DEVICE_DIFF_SET_MASK)
+			if(*((uint32_t *)(&work->hash) + 7) <= DEVICE_DIFF_SET_MASK)
 			{
 				update_work_stats(thr, work);
 				
@@ -5367,9 +5367,6 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
     root = api_add_uint8(root, "miner_count", &(dev.chain_num), copy_data);
     root = api_add_string(root, "frequency", dev.frequency_t, copy_data);
     root = api_add_uint8(root, "fan_num", &(dev.fan_num), copy_data);
-
-	dev.fan_speed_value[0] = 4000;
-	dev.fan_speed_value[1] = 5000;
 
 	// dev.fan_speed_value[0] is FAN1
 	// dev.fan_speed_value[1] is FAN2

@@ -25,6 +25,12 @@
 // default ticket mask
 #define DEVICE_DIFF_SET					0x1B
 #define DEVICE_DIFF_SET_MASK			0x31
+
+//#define DEVICE_DIFF_SET					0x1D
+//#define DEVICE_DIFF_SET_MASK			0x7
+
+
+
 //#define DEVICE_DIFF_SET					0x16
 //#define DEVICE_DIFF_SET_MASK			0x3ff
 //#define DEVICE_DIFF_SET					0x18
