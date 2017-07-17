@@ -48,13 +48,13 @@
 
 /****************** checked ***************************/
 
-int const plug[BITMAIN_MAX_CHAIN_NUM] = {51,48,47};
-int const tty[BITMAIN_MAX_CHAIN_NUM] = {1,2,4};
+int const plug[BITMAIN_MAX_CHAIN_NUM] = {51,48,47,44};
+int const tty[BITMAIN_MAX_CHAIN_NUM] = {1,2,4,5};
 int const beep = 20;
 int const red_led = 45;
 int const green_led = 23;
 int const fan_speed[BITMAIN_MAX_FAN_NUM] = {112,110};
-int const i2c_slave_addr[BITMAIN_MAX_CHAIN_NUM] = {0xa0,0xa2,0xa4};
+int const i2c_slave_addr[BITMAIN_MAX_CHAIN_NUM] = {0xa0,0xa2,0xa4,0xa6};
 
 
 pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;	// used when cpu operates i2c interface
@@ -128,13 +128,13 @@ struct thr_info *read_nonce_reg_id;                 // thread id for read nonce 
 uint64_t h = 0;
 
 unsigned char hash_board_id[BITMAIN_MAX_CHAIN_NUM][12];
-unsigned char voltage[BITMAIN_MAX_CHAIN_NUM] = {0,0,0};
+unsigned char voltage[BITMAIN_MAX_CHAIN_NUM] = {0,0,0,0};
 
 
 
 
-//bool need_recheck[BITMAIN_MAX_CHAIN_NUM] = {false, false, false, false};
-bool need_recheck[BITMAIN_MAX_CHAIN_NUM] = {false, false, false};
+bool need_recheck[BITMAIN_MAX_CHAIN_NUM] = {false, false, false, false};
+
 
 
 
@@ -154,9 +154,7 @@ bool status_error = false;
 bool check_rate = false;
 bool gBegin_get_nonce = false;
 bool send_heart = true;
-//bool new_block[BITMAIN_MAX_CHAIN_NUM] = {false, false, false, false};
-bool new_block[BITMAIN_MAX_CHAIN_NUM] = {false, false, false};
-
+bool new_block[BITMAIN_MAX_CHAIN_NUM] = {false, false, false, false};
 
 
 uint64_t hashboard_average_hash_rate[BITMAIN_MAX_CHAIN_NUM] = {0};
@@ -176,8 +174,7 @@ struct reg_buf reg_fifo;
 
 struct timeval tv_send_job = {0, 0};
 
-//static int g_gpio_data[BITMAIN_MAX_CHAIN_NUM] = {5, 4, 27, 22};
-static int g_gpio_data[BITMAIN_MAX_CHAIN_NUM] = {5, 4, 27};	// this is reset pin
+static int g_gpio_data[BITMAIN_MAX_CHAIN_NUM] = {5, 4, 27, 22};	// this is reset pins
 
 
 
@@ -2244,7 +2241,7 @@ void calculate_hash_rate(void)
 					
 					rate_error[which_chain] = 0;
 					rate[which_chain] = tmp_rate * 1000 * 1000;
-                    suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 5, false);
+                    suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, false);
 					
 					//applog(LOG_DEBUG,"%s: chain%d rate = %lld, displayed_rate is %s", __FUNCTION__, which_chain, rate[which_chain], displayed_rate[which_chain]);
 				}
@@ -2267,7 +2264,7 @@ void calculate_hash_rate(void)
         }
 	}
 
-	suffix_string_DASH(tmp_rt_rate_all_chain, (char * )displayed_hash_rate, sizeof(displayed_hash_rate), 5,false);
+	suffix_string_DASH(tmp_rt_rate_all_chain, (char * )displayed_hash_rate, sizeof(displayed_hash_rate), 6, false);
 }
 
 
@@ -2888,7 +2885,8 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
         {
             applog(LOG_NOTICE, "frequency = '%d'", dev.frequency);
             // timeout = 2^32 / (256 / AddrInterval) / Freq / core number
-            dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.95 * 40;
+            //dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.95 * 40;
+			dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.7 * 40;
             applog(LOG_NOTICE,"dev.timeout = %d us", dev.timeout);
         }
         else
@@ -3818,7 +3816,8 @@ void *bitmain_scanhash(void *arg)
             {
                 h += 0x1UL << (DEVICE_DIFF_SET- DEVICE_DIFF_STANDARD);
 
-				which_asic_nonce = ((nonce & 0xFC000000) >> 26) / (dev.addrInterval * 4);
+				//which_asic_nonce = ((nonce & 0xFC000000) >> 26) / dev.addrInterval;
+				which_asic_nonce = ((Swap32(nonce) & 0xFC000000) >> 26) / dev.addrInterval;
                 applog(LOG_DEBUG,"%s: chain %d which_asic_nonce %d ", __FUNCTION__, chain_id, which_asic_nonce);
 				
                 if (( chain_id > BITMAIN_MAX_CHAIN_NUM ) || (!dev.chain_exist[chain_id]))

@@ -2691,9 +2691,9 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
         root = api_add_string(root, "Last Share Time", lasttime, false);
 		sprintf(pool->diff,("%8.4f"),pool->sdiff);
         root = api_add_string(root, "Diff", pool->diff, false);
-        //root = api_add_int64(root, "Diff1 Shares", &(pool->diff1), false);
-        sprintf(buf,("%8.4f"),pool->diff1);
-        root = api_add_string(root, "Diff1 Shares", buf, false);
+        root = api_add_int64(root, "Diff1 Shares", &(pool->diff1), false);
+        //sprintf(buf,("%8.4f"),pool->diff1);
+        //root = api_add_string(root, "Diff1 Shares", buf, false);
         if (pool->rpc_proxy)
         {
             root = api_add_const(root, "Proxy Type", proxytype(pool->rpc_proxytype), false);
@@ -2799,28 +2799,28 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
 	
 #if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3) || defined(USE_BITMAIN_D1)
     total_diff1 = total_diff_accepted + total_diff_rejected + total_diff_stale;
-	applog(LOG_ERR, "%s: total_diff1 = %lld, total_diff_accepted = %f, total_diff_rejected = %f, total_diff_stale = %f",
-		__FUNCTION__, total_diff1, total_diff_accepted, total_diff_rejected, total_diff_stale);
+	//applog(LOG_ERR, "%s: total_diff1 = %lld, total_diff_accepted = %f, total_diff_rejected = %f, total_diff_stale = %f",
+	//	__FUNCTION__, total_diff1, total_diff_accepted, total_diff_rejected, total_diff_stale);
 #endif
 
     utility = total_accepted / ( total_secs ? total_secs : 1 ) * 60;
-	applog(LOG_ERR, "%s: utility = %f, total_accepted = %lld, total_secs = %f", __FUNCTION__, utility, total_accepted, total_secs);
+	//applog(LOG_ERR, "%s: utility = %f, total_accepted = %lld, total_secs = %f", __FUNCTION__, utility, total_accepted, total_secs);
 
 #if defined USE_BITMAIN_L3 || defined(USE_BITMAIN_D1)
     ghs = total_mhashes_done / 1 / total_secs;
-	applog(LOG_ERR, "%s: ghs = %f, total_mhashes_done = %f, total_secs = %f", __FUNCTION__, ghs, total_mhashes_done, total_secs);
+	//applog(LOG_ERR, "%s: ghs = %f, total_mhashes_done = %f, total_secs = %f", __FUNCTION__, ghs, total_mhashes_done, total_secs);
 #else
     ghs = total_mhashes_done / 1000 / total_secs;
 #endif
 
     work_utility = total_diff1 / ( total_secs ? total_secs : 1 ) * 60;
-	applog(LOG_ERR, "%s: work_utility = %f, total_diff1 = %lld, total_secs = %f", __FUNCTION__, work_utility, total_diff1, total_secs);
+	//applog(LOG_ERR, "%s: work_utility = %f, total_diff1 = %lld, total_secs = %f", __FUNCTION__, work_utility, total_diff1, total_secs);
 
     root = api_add_elapsed(root, "Elapsed", &(total_secs), true);
 	
 #if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3) || defined(USE_BITMAIN_D1)
     root = api_add_string(root, "GHS 5s", displayed_hash_rate, false);
-	applog(LOG_ERR, "%s: GHS 5s = %s", __FUNCTION__, displayed_hash_rate);
+	//applog(LOG_ERR, "%s: GHS 5s = %s", __FUNCTION__, displayed_hash_rate);
 #else
     root = api_add_mhs(root, "GHS 5s", &(g_displayed_rolling), false);
 #endif
@@ -2871,7 +2871,7 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
 	
     root = api_add_time(root, "Last getwork", &last_getwork, false);
 
-
+	/*
 	applog(LOG_ERR, "%s: GHS av = %f", __FUNCTION__, ghs);
 	applog(LOG_ERR, "%s: Found Blocks = %d", __FUNCTION__, found_blocks);
 	applog(LOG_ERR, "%s: Getworks = %lld", __FUNCTION__, total_getworks);
@@ -2894,7 +2894,7 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
 	applog(LOG_ERR, "%s: Device Rejected% = %f", __FUNCTION__, rejp);
 	applog(LOG_ERR, "%s: Pool Rejected% = %f", __FUNCTION__, prejp);
 	applog(LOG_ERR, "%s: Pool Stale% = %f", __FUNCTION__, stalep);
-	
+	*/
     mutex_unlock(&hash_lock);
 
     root = print_data(io_data, root, isjson, false);

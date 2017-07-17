@@ -10,7 +10,7 @@
 /******************** about D1 miner *********************/
 
 // how many Hash board that the A8 control board will connect
-#define BITMAIN_MAX_CHAIN_NUM           3
+#define BITMAIN_MAX_CHAIN_NUM           4
 
 // about send mac address to minerlink
 #define AUTH_URL    					"auth.minerlink.com"
