@@ -2885,8 +2885,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
         {
             applog(LOG_NOTICE, "frequency = '%d'", dev.frequency);
             // timeout = 2^32 / (256 / AddrInterval) / Freq / core number
-            //dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.95 * 40;
-			dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.7 * 40;
+            dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.95 * 40;
             applog(LOG_NOTICE,"dev.timeout = %d us", dev.timeout);
         }
         else
@@ -3789,10 +3788,12 @@ void *bitmain_scanhash(void *arg)
 			}
 			else
 			{
-				applog(LOG_WARNING,"got a hw");
+				applog(LOG_WARNING,"got a hw from Chain%d Asic%d", chain_id, ((Swap32(nonce) & 0xFC000000) >> 26) / dev.addrInterval);
+				/*
 				ob_hex = bin2hex((uint8_t *)(endiandata), 80);
 				applog(LOG_WARNING, "workdata %s", ob_hex);
 				free(ob_hex);
+				*/
 
 				inc_hw_errors(thr);
 

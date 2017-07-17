@@ -2605,7 +2605,7 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
 {
     struct api_data *root = NULL;
     bool io_open = false;
-    char *status, *lp, buf[8] = {0};
+    char *status, *lp, buf[64] = {0};
     int i;
     int hour = 0;
     int minute = 0;
@@ -2659,7 +2659,7 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
         if(pool->last_share_time <= 0)
         {
             strcpy(lasttime, "0");
-        }
+		}
         else
         {
             timediff = time(NULL) - pool->last_share_time;
@@ -2689,8 +2689,10 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
         root = api_add_escape(root, "User", pool->rpc_user, false);
         //root = api_add_time(root, "Last Share Time", &(pool->last_share_time), false);
         root = api_add_string(root, "Last Share Time", lasttime, false);
+		
 		sprintf(pool->diff,("%8.4f"),pool->sdiff);
         root = api_add_string(root, "Diff", pool->diff, false);
+		
         root = api_add_int64(root, "Diff1 Shares", &(pool->diff1), false);
         //sprintf(buf,("%8.4f"),pool->diff1);
         //root = api_add_string(root, "Diff1 Shares", buf, false);
