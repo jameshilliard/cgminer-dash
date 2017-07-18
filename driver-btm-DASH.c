@@ -1512,6 +1512,7 @@ void check_whether_need_update_pic_program(void)
 {
 	unsigned char which_chain, pic_update_counter = 0;
 	bool need_update_pic = false;
+	int ret = 0;
 
 	applog(LOG_DEBUG,"%s", __FUNCTION__);
 
@@ -1528,10 +1529,10 @@ void check_whether_need_update_pic_program(void)
 				cgsleep_ms(100);
 				jump_from_loader_to_app_PIC16F1704_new();
 				cgsleep_ms(100);
-				get_PIC16F1704_software_version_new(&pic_version[which_chain]);
+				ret = get_PIC16F1704_software_version_new(&pic_version[which_chain]);
 	            pthread_mutex_unlock(&iic_mutex);
 
-				if(pic_version[which_chain] < PIC_VERSION)
+				if((pic_version[which_chain] < PIC_VERSION) && (ret == 1))
 				{
 					need_update_pic = true;
 				}
@@ -1850,7 +1851,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 		case GENERAL_I2C_COMMAND:
 			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
 			{
-				usleep(300*1000);
+				usleep(150*1000);
 
 				if(temp_counter != g_GENERAL_I2C_COMMAND_reg_value_num[which_chain])
 				{
@@ -1862,7 +1863,6 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
 					not_receive_reg_value_counter++;
 					//applog(LOG_DEBUG, "%s: not receive GENERAL_I2C_COMMAND register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
 				}
-				//usleep(500*1000);
 			}
 			break;
 
@@ -2074,7 +2074,7 @@ void open_core(void)
 				set_config(dev.dev_fd[which_chain], 1, 0, CORE_ENABLE, reg_value);
 				cgsleep_ms(50);
 				DASH_write(dev.dev_fd[which_chain], &null_work, WORK_INPUT_LENGTH_WITH_CRC);
-				cgsleep_ms(100);
+				cgsleep_ms(200);
 				//applog(LOG_DEBUG, "%s: chain%d core%d reg_value=0x%08x", __FUNCTION__, which_chain, which_core, reg_value);
 			}
         }
@@ -2439,7 +2439,8 @@ void tty_init(struct bitmain_DASH_info *info, int baud)
 
 			cgsleep_ms(50);
 			
-            ret = pthread_create(&info->uart_tx_t[which_chain], NULL, DASH_fill_work, (void *)info);            
+            ret = pthread_create(&info->uart_tx_t[which_chain], NULL, DASH_fill_work, (void *)info);    
+			cgsleep_ms(200);
             if(unlikely(ret != 0))
             {
                 applog(LOG_ERR,"create tx read thread for %s failed",dev_fname);
@@ -2849,12 +2850,12 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 
 	// set every chain's ASIC address
     software_set_address();
-	check_every_chain_asic_number(false);
+	//check_every_chain_asic_number(false);
 
 	// about temperature sensor
 	enable_read_temperature_from_asic(config_parameter.misc_control_reg_value);
 	select_core_to_check_temperature(DIODE_MUX_SEL_DEFAULT_VALUE, VDD_MUX_SEL_DEFAULT_VALUE);
-	check_sensor_ID();
+	//check_sensor_ID();
     calibration_sensor_offset();
 	set_temperature_offset_value();
 
@@ -2960,7 +2961,6 @@ void enable_read_temperature_from_asic(unsigned int misc_control_reg_value)
             }
         }
     }
-    cgsleep_ms(100);
 }
 
 
@@ -4675,9 +4675,11 @@ void *get_asic_response(void* arg)
 
 	while(1)
 	{
-		usleep(1*1000);
+		
 		for(i=0; i<5000000; i++)
 		{
+			usleep(1*1000);
+		
 			memset(receive_buf,0,sizeof(receive_buf));
 			len = DASH_read(fd, receive_buf, ASIC_RETURN_DATA_LENGTH*64);
 
