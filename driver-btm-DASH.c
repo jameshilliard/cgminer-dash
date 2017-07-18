@@ -679,7 +679,7 @@ int erase_PIC16F1704_flash_new(void)
 	}
 	else
 	{
-		applog(LOG_NOTICE,"%s ok\n\n", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1082,7 +1082,7 @@ int heart_beat_PIC16F1704_new(void)
 	}
 	else
 	{
-		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1128,6 +1128,8 @@ int get_PIC16F1704_software_version_new(unsigned char *version)
 	if((read_back_data[1] != READ_PIC_SOFTWARE_VERSION) || (read_back_data[0] != 5))
 	{
 		applog(LOG_ERR,"%s failed!", __FUNCTION__);
+		applog(LOG_ERR,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x", 
+		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
 		return 0;	// error
 	}
 	else
@@ -1409,10 +1411,10 @@ int PIC1704_update_pic_app_program_new(void)
 	{
 		memcpy(buf, program_data+i*16, 16);
 		/**/
-		applog(LOG_NOTICE,"send pic program time: %d\n",i);
+		applog(LOG_NOTICE,"send pic program time: %d",i);
 		for(j=0;j<16;j++)
 		{
-			applog(LOG_DEBUG,"buf[%d] = 0x%02x\n", j, *(buf+j));
+			applog(LOG_DEBUG,"buf[%d] = 0x%02x", j, *(buf+j));
 		}
 				
 		send_data_to_PIC16F1704_new(buf);
@@ -1516,62 +1518,53 @@ void check_whether_need_update_pic_program(void)
 
 	applog(LOG_NOTICE, "%s", __FUNCTION__);
 
-	while(pic_update_counter < 3)	// max update for 3 times
-	{
-		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-	    {
-	        if(dev.chain_exist[which_chain] == 1)
-	        {
-	            pthread_mutex_lock(&iic_mutex);
-	            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
-	                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-	            reset_PIC16F1704_pic_new();
-				cgsleep_ms(100);
-				jump_from_loader_to_app_PIC16F1704_new();
-				cgsleep_ms(100);
-				ret = get_PIC16F1704_software_version_new(&pic_version[which_chain]);
-	            pthread_mutex_unlock(&iic_mutex);
-
-				if((pic_version[which_chain] < PIC_VERSION) && (ret == 1))
-				{
-					need_update_pic = true;
-				}
-	        }
-	    }
-
-		if(need_update_pic)
-		{
-			need_update_pic = false;
-			pic_update_counter++;
+	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    {
+    	pic_update_counter = 0;
+		need_update_pic = false;
 		
-			for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-		    {
-		        if(dev.chain_exist[which_chain] == 1)
-		        {
-		            pthread_mutex_lock(&iic_mutex);
-		            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
-		                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-		            PIC1704_update_pic_app_program_new();
-					cgsleep_ms(100);
-					jump_from_loader_to_app_PIC16F1704_new();
-					cgsleep_ms(100);
-					get_PIC16F1704_software_version_new(&pic_version[which_chain]);
-		            pthread_mutex_unlock(&iic_mutex);
+        if(dev.chain_exist[which_chain] == 1)
+        {
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+            reset_PIC16F1704_pic_new();
+			cgsleep_ms(100);
+			jump_from_loader_to_app_PIC16F1704_new();
+			cgsleep_ms(100);
+			ret = get_PIC16F1704_software_version_new(&pic_version[which_chain]);
+            pthread_mutex_unlock(&iic_mutex);
 
-					if(pic_version[which_chain] < PIC_VERSION)
-					{
-						need_update_pic = true;
-					}
-		        }
-		    }
-		}
-		else
+			if((pic_version[which_chain] < PIC_VERSION) && (ret == 1))
+			//if(ret == 1)
+			{
+				need_update_pic = true;
+			}
+        }
+    
+		while(need_update_pic && (pic_update_counter < 3))
 		{
-			break;
-		}
-	}
+			need_update_pic = false;			
+		
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+            PIC1704_update_pic_app_program_new();
+			cgsleep_ms(100);
+			jump_from_loader_to_app_PIC16F1704_new();
+			cgsleep_ms(200);
+			ret = get_PIC16F1704_software_version_new(&pic_version[which_chain]);
+            pthread_mutex_unlock(&iic_mutex);
 
-	applog(LOG_NOTICE, "%s: pic update for %d times",__FUNCTION__, pic_update_counter);
+			pic_update_counter++;
+			applog(LOG_NOTICE, "%s: Chain%d pic update for %d times",__FUNCTION__, which_chain, pic_update_counter);
+
+			if((pic_version[which_chain] != PIC_VERSION) || (ret == 0))
+			{
+				need_update_pic = true;
+			}
+		}
+	}	
 }
 
 void check_every_chain_asic_number(bool whether_update_asic_num)
@@ -2992,7 +2985,7 @@ void calibration_sensor_offset(void)
 	unsigned int ret = 0;
 	bool not_read_out_temperature = false;
 
-	applog(LOG_NOTICE, "%s", __FUNCTION__);
+	//applog(LOG_NOTICE, "%s", __FUNCTION__);
 
 	for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
