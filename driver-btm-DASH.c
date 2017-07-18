@@ -90,7 +90,7 @@ struct dev_info dev_info[BITMAIN_MAX_CHAIN_NUM];
 
 bool update_asic_num = false;
 
-unsigned char gTempOffsetValue[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM] = {{0}};
+signed char gTempOffsetValue[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM] = {{0}};
 
 
 unsigned char g_CHIP_ADDR_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};					// record receive how many CHIP_ADDR register value each chain
@@ -394,7 +394,7 @@ void *pic_heart_beat_func_new(void * arg)
 {
 	int which_chain = 0;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 	
     while(1)
     {
@@ -421,7 +421,7 @@ int set_PIC16F1704_flash_pointer_new(unsigned char flash_addr_h, unsigned char f
 	unsigned short crc = 0;
 	unsigned char i,send_data[8] = {0};
 	
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	//applog(LOG_NOTICE, "%s", __FUNCTION__);
 	
 	crc = length + SET_PIC_FLASH_POINTER + flash_addr_h + flash_addr_l;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -456,7 +456,7 @@ int set_PIC16F1704_flash_pointer_new(unsigned char flash_addr_h, unsigned char f
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -468,7 +468,7 @@ int send_data_to_PIC16F1704_new(unsigned char *buf)
 	unsigned short crc = 0;
 	unsigned char i,send_data[22] = {0};
 	
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	//applog(LOG_NOTICE,"%s", __FUNCTION__);
 	
 	crc = length + SEND_DATA_TO_PIC;
 	for(i=0; i<16; i++)
@@ -509,7 +509,7 @@ int send_data_to_PIC16F1704_new(unsigned char *buf)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -521,7 +521,7 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	//applog(LOG_NOTICE,"%s", __FUNCTION__);
 	
 	crc = length + GET_PIC_FLASH_POINTER;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -549,7 +549,7 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
 	
 	if((read_back_data[1] != GET_PIC_FLASH_POINTER) || (read_back_data[0] != 6))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
 			read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
 		return 0;	// error
 	}
@@ -558,13 +558,13 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
 		crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3];
 		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[4]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[5]))
 		{
-			applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
+			applog(LOG_ERR,"%s failed!!! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
 			read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
 			return 0;	// error
 		}
 		*flash_addr_h = read_back_data[2];
 		*flash_addr_l = read_back_data[3];
-		applog(LOG_DEBUG,"%s ok! flash_addr_h = 0x%02x, flash_addr_l = 0x%02x\n\n", __FUNCTION__, *flash_addr_h, *flash_addr_l);
+		applog(LOG_NOTICE,"%s ok! flash_addr_h = 0x%02x, flash_addr_l = 0x%02x\n\n", __FUNCTION__, *flash_addr_h, *flash_addr_l);
 		return 1;	// ok
 	}
 }
@@ -575,7 +575,7 @@ int read_PIC16F1704_flash_data_new(unsigned char *buf)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	//applog(LOG_NOTICE,"%s", __FUNCTION__);
 	
 	crc = length + READ_DATA_FROM_PIC_FLASH;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -601,7 +601,7 @@ int read_PIC16F1704_flash_data_new(unsigned char *buf)
 	}
 	pthread_mutex_unlock(&i2c_mutex);
 
-	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
+	applog(LOG_NOTICE,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
 		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x, \
 		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x, \
 		read_back_data[12] = 0x%x, read_back_data[13] = 0x%x, read_back_data[14] = 0x%x, read_back_data[15] = 0x%x, \
@@ -632,7 +632,7 @@ int read_PIC16F1704_flash_data_new(unsigned char *buf)
 		{
 			*(buf + i) = read_back_data[2 + i];
 		}
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -644,7 +644,7 @@ int erase_PIC16F1704_flash_new(void)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	//applog(LOG_NOTICE,"%s", __FUNCTION__);
 	
 	crc = length + ERASE_PIC_FLASH;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -679,7 +679,7 @@ int erase_PIC16F1704_flash_new(void)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok\n\n", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok\n\n", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -691,7 +691,7 @@ int write_data_into_PIC16F1704_flash_new(void)
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	//applog(LOG_NOTICE,"%s", __FUNCTION__);
 	
 	crc = length + WRITE_DATA_INTO_FLASH;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
@@ -726,7 +726,7 @@ int write_data_into_PIC16F1704_flash_new(void)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok\n\n", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok\n\n", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -773,7 +773,7 @@ int jump_from_loader_to_app_PIC16F1704_new(void)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -820,7 +820,7 @@ int reset_PIC16F1704_pic_new(void)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -868,7 +868,7 @@ int set_PIC16F1704_voltage_new(unsigned char voltage)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok, voltage = 0x%02x", __FUNCTION__, voltage);
+		applog(LOG_NOTICE,"%s ok, voltage = 0x%02x", __FUNCTION__, voltage);
 		return 1;	// ok
 	}
 }
@@ -923,7 +923,7 @@ int write_hash_ID_PIC16F1704_new(unsigned char *buf)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -961,7 +961,7 @@ int read_hash_id_PIC16F1704_new(unsigned char *buf)
 	}
 	pthread_mutex_unlock(&i2c_mutex);
 
-	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x,\
+	applog(LOG_NOTICE,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x,\
 		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x,\
 		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x,\
 		read_back_data[12] = 0x%x, read_back_data[13] = 0x%x, read_back_data[14] = 0x%x, read_back_data[15] = 0x%x\n", __FUNCTION__,\
@@ -989,7 +989,7 @@ int read_hash_id_PIC16F1704_new(unsigned char *buf)
 		{
 			*(buf + i) = read_back_data[2 + i];
 		}
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1035,7 +1035,7 @@ int enable_PIC16F1704_dc_dc_new(unsigned char enable)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1076,13 +1076,13 @@ int heart_beat_PIC16F1704_new(void)
 	if((read_back_data[1] != SEND_HEART_BEAT) || (read_back_data[2] != 1))
 	{
 		applog(LOG_ERR,"%s failed!", __FUNCTION__);
-		applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n", 
+		applog(LOG_ERR,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n", 
 		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
 		return 0;	// error
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1139,7 +1139,7 @@ int get_PIC16F1704_software_version_new(unsigned char *version)
 			return 0;	// error
 		}
 		*version = read_back_data[2];
-		applog(LOG_DEBUG,"%s ok, version = 0x%02x", __FUNCTION__, *version);
+		applog(LOG_NOTICE,"%s ok, version = 0x%02x", __FUNCTION__, *version);
 		return 1;	// ok
 	}
 }
@@ -1177,7 +1177,7 @@ int get_PIC16F1704_voltage_new(unsigned char *voltage)
 	}
 	pthread_mutex_unlock(&i2c_mutex);
 	
-	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x\n", 
+	applog(LOG_NOTICE,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x\n", 
 		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
 
 	if((read_back_data[1] != GET_VOLTAGE) || (read_back_data[0] != 5))
@@ -1194,7 +1194,7 @@ int get_PIC16F1704_voltage_new(unsigned char *voltage)
 			return 0;	// error
 		}
 		*voltage = read_back_data[2];
-		applog(LOG_DEBUG,"%s ok, voltage = 0x%02x", __FUNCTION__, *voltage);
+		applog(LOG_NOTICE,"%s ok, voltage = 0x%02x", __FUNCTION__, *voltage);
 		return 1;	// ok
 	}
 }
@@ -1249,7 +1249,7 @@ int write_temperature_offset_PIC16F1704_new(unsigned char *buf)
 	}
 	else
 	{
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1288,7 +1288,7 @@ int read_temperature_offset_PIC16F1704_new(unsigned char *buf)
 	}
 	pthread_mutex_unlock(&i2c_mutex);
 
-	applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
+	applog(LOG_NOTICE,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
 		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x, \
 		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x\n", __FUNCTION__,\
 		read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5], \
@@ -1313,7 +1313,7 @@ int read_temperature_offset_PIC16F1704_new(unsigned char *buf)
 		{
 			*(buf + i) = read_back_data[2 + i];
 		}
-		applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
 		return 1;	// ok
 	}
 }
@@ -1327,13 +1327,13 @@ unsigned char erase_PIC16F1704_app_flash_new(void)
 	unsigned char end_addr_h = PIC_FLASH_POINTER_END_ADDRESS_H, end_addr_l = PIC_FLASH_POINTER_END_ADDRESS_L;
 	unsigned int pic_flash_length=0;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	//applog(LOG_NOTICE,"%s", __FUNCTION__);
 
 	set_PIC16F1704_flash_pointer_new(PIC_FLASH_POINTER_START_ADDRESS_H_NEW, PIC_FLASH_POINTER_START_ADDRESS_L_NEW);
 
 	pic_flash_length = (((unsigned int)end_addr_h << 8) + end_addr_l) - (((unsigned int)start_addr_h << 8) + start_addr_l) + 1;
 	erase_loop = pic_flash_length/PIC_FLASH_SECTOR_LENGTH;
-	applog(LOG_DEBUG,"%s: erase_loop = %d\n", __FUNCTION__, erase_loop);
+	applog(LOG_NOTICE,"%s: erase_loop = %d\n", __FUNCTION__, erase_loop);
 
 	for(i=0; i<erase_loop; i++)
 	{
@@ -1355,7 +1355,7 @@ int PIC1704_update_pic_app_program_new(void)
 	unsigned int pic_flash_length=0;
 	int ret=0;
 	
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	applog(LOG_NOTICE,"%s", __FUNCTION__);
 
 	// read upgrade file first, if it is wrong, don't erase pic, but just return;
 	pic_program_file = fopen(PIC16F1704_PROGRAM_NEW, "r");
@@ -1368,7 +1368,7 @@ int PIC1704_update_pic_app_program_new(void)
 	memset(program_data, 0x0, 5000);
 
 	pic_flash_length = (((unsigned int)end_addr_h << 8) + end_addr_l) - (((unsigned int)start_addr_h << 8) + start_addr_l) + 1;
-	applog(LOG_ERR,"%s: pic_flash_length = %d\n", __FUNCTION__, pic_flash_length);
+	applog(LOG_NOTICE,"%s: pic_flash_length = %d\n", __FUNCTION__, pic_flash_length);
 	
 	for(i=0; i<pic_flash_length; i++)
 	{
@@ -1409,7 +1409,7 @@ int PIC1704_update_pic_app_program_new(void)
 	{
 		memcpy(buf, program_data+i*16, 16);
 		/**/
-		applog(LOG_DEBUG,"send pic program time: %d\n",i);
+		applog(LOG_NOTICE,"send pic program time: %d\n",i);
 		for(j=0;j<16;j++)
 		{
 			applog(LOG_DEBUG,"buf[%d] = 0x%02x\n", j, *(buf+j));
@@ -1434,7 +1434,7 @@ void every_chain_reset_PIC16F1704_pic_new(void)
 {
 	unsigned char which_chain;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 	
 	for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -1456,7 +1456,7 @@ void every_chain_jump_from_loader_to_app_PIC16F1704_new(void)
 {
 	unsigned char which_chain;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 	
 	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -1478,7 +1478,7 @@ void every_chain_enable_PIC16F1704_dc_dc_new(unsigned char enable)
 {
 	unsigned char which_chain;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 	
 	for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -1501,7 +1501,7 @@ int send_heart_beat_to_every_chain(void)
 	pic_heart_beat = calloc(1,sizeof(struct thr_info));
     if(thr_info_create(pic_heart_beat, NULL, pic_heart_beat_func_new, pic_heart_beat))
     {
-        applog(LOG_DEBUG,"%s: create thread error for pic_heart_beat_func", __FUNCTION__);
+        applog(LOG_ERR, "%s: create thread error for pic_heart_beat_func", __FUNCTION__);
         return -3;
     }
     pthread_detach(pic_heart_beat->pth);
@@ -1514,7 +1514,7 @@ void check_whether_need_update_pic_program(void)
 	bool need_update_pic = false;
 	int ret = 0;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 
 	while(pic_update_counter < 3)	// max update for 3 times
 	{
@@ -1571,14 +1571,14 @@ void check_whether_need_update_pic_program(void)
 		}
 	}
 
-	applog(LOG_DEBUG, "%s: pic update for %d times",__FUNCTION__, pic_update_counter);
+	applog(LOG_NOTICE, "%s: pic update for %d times",__FUNCTION__, pic_update_counter);
 }
 
 void check_every_chain_asic_number(bool whether_update_asic_num)
 {
 	unsigned char which_chain;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 
     for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2002,7 +2002,7 @@ void set_frequency(unsigned int frequency)
     unsigned int freq_data = 0;
 
     get_plldata(frequency, &freq_data);
-    applog(LOG_DEBUG,"%s: frequency = %d", __FUNCTION__, frequency);
+    applog(LOG_NOTICE, "%s: frequency = %d", __FUNCTION__, frequency);
 
     for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2022,14 +2022,14 @@ void set_ticket_mask(unsigned int ticket_mask)
 {
 	unsigned char which_chain;
 
-	applog(LOG_DEBUG,"%s ticket_mask = 0x%08x",__FUNCTION__, ticket_mask);
+	applog(LOG_NOTICE, "%s ticket_mask = 0x%08x",__FUNCTION__, ticket_mask);
 
 	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         if(dev.chain_exist[which_chain] == 1)
         {
             set_config(dev.dev_fd[which_chain], 1, 0, TICK_MASK, ticket_mask);
-			usleep(5000);
+			cgsleep_ms(5);
 			//check_asic_reg(which_chain, 1, 0, TICK_MASK);
         }
     }
@@ -2055,7 +2055,7 @@ void open_core(void)
 	unsigned int which_chain = 0, which_core = 0;
 	struct work_dash null_work;	
 	
-	applog(LOG_WARNING, "%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 
 	memset(&null_work, 0, sizeof(struct work_dash));
 	null_work.type = WORK_INPUT_TYPE_WITHOUT_SNO;
@@ -2385,7 +2385,7 @@ void tty_init(struct bitmain_DASH_info *info, int baud)
     char dev_fname[PATH_MAX] = "";
     struct termios options;
 	
-    applog(LOG_NOTICE,"%s",__FUNCTION__);
+    applog(LOG_NOTICE, "%s",__FUNCTION__);
 	
     for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2583,7 +2583,7 @@ void check_chain(struct bitmain_DASH_info *info)
             info->chain_status[i] = 1;
             dev.chain_exist[i] = 1;
             dev.chain_num++;
-            applog(LOG_NOTICE," detected at %s  chain %d",dev_fname,i);
+            applog(LOG_NOTICE,"detected at %s  chain %d",dev_fname,i);
         }
         else
         {
@@ -2602,7 +2602,7 @@ static void reset_all_hash_board(void)
     char rstBuf[128] = "";
     unsigned char which_chain = 0;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 	
     for (which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
@@ -2618,7 +2618,7 @@ static void reset_all_hash_board(void)
         system(rstBuf);
     }
 
-	cgsleep_ms(500);
+	cgsleep_ms(200);
 }
 
 
@@ -2948,7 +2948,7 @@ void enable_read_temperature_from_asic(unsigned int misc_control_reg_value)
 	
 	reg_value = misc_control_reg_value | RFS | TFS(3);
 
-	applog(LOG_WARNING, "%s: reg_value = 0x%08x", __FUNCTION__, reg_value);
+	applog(LOG_NOTICE, "%s: reg_value = 0x%08x", __FUNCTION__, reg_value);
 	
 	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2969,7 +2969,7 @@ void select_core_to_check_temperature(unsigned char diode_mux_sel, unsigned char
 	unsigned int which_chain=0, which_sensor=0;
 	unsigned int regdata = ((diode_mux_sel & 0x0f) << 16) | (vdd_mux_sel & 0x1f);
 	
-	applog(LOG_WARNING, "%s: diode_mux_sel = %d, vdd_mux_sel = %d", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
+	applog(LOG_NOTICE, "%s: diode_mux_sel = %d, vdd_mux_sel = %d", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
 	
 	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2992,7 +2992,7 @@ void calibration_sensor_offset(void)
 	unsigned int ret = 0;
 	bool not_read_out_temperature = false;
 
-	applog(LOG_WARNING, "%s", __FUNCTION__);
+	applog(LOG_NOTICE, "%s", __FUNCTION__);
 
 	for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
@@ -3086,7 +3086,7 @@ void calibration_sensor_offset(void)
 				else
 				{
 					temp_offset_value = local_temp - remote_temp;
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d: local_temp = %d, remote_temp = %d, offset_value = %d", 
+					applog(LOG_NOTICE, "%s: Chain%d Sensor%d: local_temp = %d, remote_temp = %d, offset_value = %d", 
 						__FUNCTION__, which_chain, which_sensor, local_temp, remote_temp, temp_offset_value);
 				}
 
@@ -3248,13 +3248,13 @@ void set_temperature_offset_value(void)
 				else
 				{
 					offset = 0;
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out offset value. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
+					applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out offset value. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
 				}
 
 				// check whether the offset value really write into the temperature sensor
 				if(offset != gTempOffsetValue[which_chain][which_sensor])
 				{
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d temp offset value set error. It should be %02d, but read back is %02d\n", 
+					applog(LOG_ERR, "%s: Chain%d Sensor%d temp offset value set error. It should be %02d, but read back is %02d\n", 
 						__FUNCTION__, which_chain, which_sensor, gTempOffsetValue[which_chain][which_sensor], offset);
 				}
         	}
@@ -4315,7 +4315,7 @@ int creat_bitmain_scanreg_pthread(void)
 	scan_reg_id = calloc(1,sizeof(struct thr_info));
     if(thr_info_create(scan_reg_id, NULL, bitmain_scanreg, scan_reg_id))
     {
-        applog(LOG_DEBUG,"%s: create thread error for bitmain_scanreg", __FUNCTION__);
+        applog(LOG_ERR,"%s: create thread error for bitmain_scanreg", __FUNCTION__);
         return -4;
     }
     pthread_detach(scan_reg_id->pth);
