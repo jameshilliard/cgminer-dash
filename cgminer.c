@@ -450,7 +450,7 @@ struct timeval block_timeval;
 static char best_share[8] = "0";
 double current_diff = 0xFFFFFFFFFFFFFFFFULL;
 static char block_diff[8];
-double best_diff = 0;
+uint64_t best_diff = 0;
 
 struct block
 {

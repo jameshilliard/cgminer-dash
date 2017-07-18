@@ -1224,7 +1224,7 @@ extern int opt_log_interval;
 extern unsigned long long global_hashrate;
 extern char current_hash[68];
 extern double current_diff;
-extern double best_diff;
+extern uint64_t best_diff;
 extern struct timeval block_timeval;
 extern char *workpadding;
 
@@ -1317,7 +1317,7 @@ struct pool {
 
 	time_t last_share_time;
 	double last_share_diff;
-	double best_diff;
+	uint64_t best_diff;
 
 	struct cgminer_stats cgminer_stats;
 	struct cgminer_pool_stats cgminer_pool_stats;

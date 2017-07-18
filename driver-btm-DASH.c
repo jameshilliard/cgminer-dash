@@ -2055,7 +2055,7 @@ void open_core(void)
 	unsigned int which_chain = 0, which_core = 0;
 	struct work_dash null_work;	
 	
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+	applog(LOG_WARNING, "%s", __FUNCTION__);
 
 	memset(&null_work, 0, sizeof(struct work_dash));
 	null_work.type = WORK_INPUT_TYPE_WITHOUT_SNO;
@@ -2948,7 +2948,7 @@ void enable_read_temperature_from_asic(unsigned int misc_control_reg_value)
 	
 	reg_value = misc_control_reg_value | RFS | TFS(3);
 
-	applog(LOG_DEBUG, "%s: reg_value = 0x%08x", __FUNCTION__, reg_value);
+	applog(LOG_WARNING, "%s: reg_value = 0x%08x", __FUNCTION__, reg_value);
 	
 	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2969,7 +2969,7 @@ void select_core_to_check_temperature(unsigned char diode_mux_sel, unsigned char
 	unsigned int which_chain=0, which_sensor=0;
 	unsigned int regdata = ((diode_mux_sel & 0x0f) << 16) | (vdd_mux_sel & 0x1f);
 	
-	applog(LOG_DEBUG, "%s: diode_mux_sel = %d, vdd_mux_sel = %d", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
+	applog(LOG_WARNING, "%s: diode_mux_sel = %d, vdd_mux_sel = %d", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
 	
 	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2992,7 +2992,7 @@ void calibration_sensor_offset(void)
 	unsigned int ret = 0;
 	bool not_read_out_temperature = false;
 
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+	applog(LOG_WARNING, "%s", __FUNCTION__);
 
 	for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
@@ -3173,7 +3173,7 @@ void set_temperature_offset_value(void)
 	unsigned int reg_data = 0, ret = 0;
 	bool not_read_out_temperature = false;
 
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+	applog(LOG_WARNING, "%s", __FUNCTION__);
 
 	for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
@@ -4674,8 +4674,7 @@ void *get_asic_response(void* arg)
 	memset(find_header_data_buf, 0, sizeof(find_header_data_buf));
 
 	while(1)
-	{
-		
+	{		
 		for(i=0; i<5000000; i++)
 		{
 			usleep(1*1000);
