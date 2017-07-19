@@ -46,6 +46,7 @@
 #define PWM_PERIOD_NS                   100000
 #define MIN_FAN_NUM                     1
 #define MAX_FAN_SPEED                   4100
+#define FAN_SPEED_OK_PERCENT			(0.85)
 #define MIN_PWM_PERCENT                 0
 #define MAX_PWM_PERCENT                 100
 #define TEMP_INTERVAL                   2

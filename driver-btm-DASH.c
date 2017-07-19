@@ -2664,6 +2664,140 @@ void set_beep(bool flag)
 }
 
 
+static unsigned int getNum(const char* buffer)
+{
+    char* pos = strstr(buffer, ":");
+
+    while(*(++pos) == ' ');
+    char* startPos = pos;
+
+    while(*(++pos) != ' ');
+    *pos = '\0';
+
+    return (atoi(startPos));
+}
+
+
+void check_fan_speed(void)
+{
+
+    uint32_t fan0SpeedHist = 0;
+    uint32_t fan1SpeedHist = 0;
+    uint32_t fan0SpeedCur = 0;
+    uint32_t fan1SpeedCur = 0;
+    uint32_t fan0Speed = 0, fan0Speed_ok = 0;
+    uint32_t fan1Speed = 0, fan1Speed_ok = 0;
+    uint32_t fan0_exist = 0;
+    uint32_t fan1_exist = 0;
+	unsigned char ok_counter = 0;
+	char buffer[256] = "";
+    char* pos = NULL;
+    FILE* fanpfd = fopen(PROCFILENAME, "r");
+
+	if(fanpfd == NULL)
+	{
+		while(1)
+		{
+			applog(LOG_ERR, "open /proc/interrupt error");
+			sleep(3);
+		}
+	}
+
+	fseek(fanpfd, 0, SEEK_SET);
+
+	while(fgets(buffer, 256, fanpfd))
+	{
+        if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
+        {
+        	applog(LOG_DEBUG, "find fan1.");
+            fan0SpeedHist = fan0SpeedCur = getNum(buffer);
+        }
+		
+        if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
+        {
+        	applog(LOG_DEBUG, "find fan2.");
+            fan1SpeedHist = fan1SpeedCur = getNum(buffer);
+        }
+	}
+
+	cgsleep_ms(500);
+	    
+    while(1)
+    {
+		applog(LOG_DEBUG, "test_loop = %d", ok_counter);
+	
+    	fseek(fanpfd, 0, SEEK_SET);
+		
+		while(fgets(buffer, 256, fanpfd))
+		{
+	        if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
+	        {
+	        	applog(LOG_DEBUG, "find fan1");
+	            fan0SpeedCur = getNum(buffer);
+	            if (fan0SpeedHist > fan0SpeedCur)
+	            {
+	                fan0Speed = (0xffffffff - fan0SpeedHist + fan0SpeedCur);
+	            }
+	            else
+	            {
+	                fan0Speed = ( fan0SpeedCur - fan0SpeedHist );
+	            }
+	            fan0Speed = fan0Speed * 60 / 2 * 2;	// 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
+	            fan0SpeedHist = fan0SpeedCur;
+	            applog(LOG_DEBUG, "fan1Speed = %d", fan0Speed);
+				if( fan0Speed > MAX_FAN_SPEED * FAN_SPEED_OK_PERCENT)
+	            {
+	                fan0Speed_ok++;
+	            }
+	        }
+			
+	        if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
+	        {
+	        	applog(LOG_DEBUG, "find fan2");
+	            fan1SpeedCur = getNum(buffer);
+	            if (fan1SpeedHist > fan1SpeedCur)
+	            {
+	                fan1Speed = (0xffffffff - fan1SpeedHist + fan1SpeedCur);
+	            }
+	            else
+	            {
+	                fan1Speed = ( fan1SpeedCur - fan1SpeedHist );
+	            }
+	            fan1SpeedHist = fan1SpeedCur;
+	            fan1Speed = fan1Speed * 60 / 2 * 2;	// 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
+	            fan1SpeedHist = fan1SpeedCur;	            
+	            applog(LOG_DEBUG, "fan2Speed = %d", fan1Speed);
+	            if( fan1Speed > MAX_FAN_SPEED * FAN_SPEED_OK_PERCENT)
+	            {
+	                fan1Speed_ok++;
+	            }
+	        }
+		}
+
+		if((fan0Speed_ok >= 3) && (fan1Speed_ok >= 3))
+		{
+			applog(LOG_WARNING, "%s OK", __FUNCTION__);
+			return;
+		}
+		else
+		{
+			if(fan0Speed_ok < 3)
+			{
+				applog(LOG_ERR, "FAN1 too slow ...");	// FAN1 is fan0
+			}
+
+			if(fan1Speed_ok < 3)
+			{
+				applog(LOG_ERR, "FAN2 too slow ...");	// FAN2 is fan1
+			}
+		}
+
+		cgsleep_ms(500);
+    }
+}
+
+
+
 void set_PWM(unsigned char pwm_percent)
 {
     int temp_pwm_percent = 0;
@@ -2757,7 +2891,9 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
     sprintf(g_miner_version, "1.0.0.0");
 
 	// start fans
+	
     set_PWM(100);
+	check_fan_speed();
 
 	// check parameters
     if(config_parameter.token_type != INIT_CONFIG_TYPE)
@@ -2823,6 +2959,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 	
 	// check ASIC number for every chain    
 	check_every_chain_asic_number(true);
+	cgsleep_ms(300);
 	calculate_address_interval();
 	//cgsleep_ms(1000);
 	//update_asic_num = false;
@@ -3572,20 +3709,6 @@ void suffix_string_DASH(uint64_t val, char *buf, size_t bufsiz, int sigdigits,bo
             snprintf(buf, bufsiz, "%*.*f", sigdigits + 1, ndigits, dval);
 
     }
-}
-
-
-static unsigned int getNum(const char* buffer)
-{
-    char* pos = strstr(buffer, ":");
-
-    while(*(++pos) == ' ');
-    char* startPos = pos;
-
-    while(*(++pos) != ' ');
-    *pos = '\0';
-
-    return (atoi(startPos));
 }
 
 
@@ -4902,342 +5025,6 @@ void *get_asic_response(void* arg)
 				memset(find_header_data_buf, 0, sizeof(find_header_data_buf));
 				len = 0;
 			}
-
-#if 0
-			if(0)
-			{
-
-				if(( len > 0) && (error_counter < 3))
-				{
-					// step 1: store the received data throuth UART
-					//printf("receive_buf: len = %d, data_buf_w_p = %d\n", len, data_buf_w_p);
-					//printf("receive_buf: ");
-					for(j=0; j<len; j++)
-					{
-						data_buf[data_buf_w_p++] = receive_buf[j];	// store the received data into data_buf
-						//printf("0x%02x ", receive_buf[j]);
-					}
-					//printf("\n");
-					//printf("\ndata_buf_w_p = %d\n\n", data_buf_w_p);
-
-					// step 2: check how many data in data_buf
-					if(data_buf_w_p < ASIC_RETURN_DATA_LENGTH)
-					{
-						//printf("get_9_bytes_counter = %d\n", get_9_bytes_counter);
-						break;	// the data in data_buf is not enough, so break out the for loop and receive data again
-					}
-					else
-					{
-						get_9_bytes_counter = data_buf_w_p / ASIC_RETURN_DATA_LENGTH;	// caculate how many 9 bytes in data_buf
-						//printf("get_9_bytes_counter = %d\n", get_9_bytes_counter);
-					}
-
-					// step 3: check every 9 bytes
-					for(j=0; j<get_9_bytes_counter; j++)
-					{
-						memset(temp_buf, 0, sizeof(temp_buf));
-						//printf("every 9 bytes: ");
-						for(m=0; m<ASIC_RETURN_DATA_LENGTH; m++)
-						{
-							temp_buf[m] = find_header_data_buf[j*ASIC_RETURN_DATA_LENGTH + m];		// store 9 bytes data into temp_buf for check
-							//printf("0x%02x ", temp_buf[m]);
-						}
-						//printf("\n");
-
-						applog(LOG_DEBUG, "Chain [%d] Read Data", chainid);
-	                	applog(LOG_DEBUG,"get sth %02x%02x%02x%02x%02x%02x%02x%02x%02x",temp_buf[0],temp_buf[1],temp_buf[2],temp_buf[3],
-	                       temp_buf[4],temp_buf[5],temp_buf[6],temp_buf[7],temp_buf[8]);
-
-						if(is_nonce_or_reg_value(temp_buf[ASIC_RETURN_DATA_LENGTH -1]))	// get a nonce
-						{
-							if(gBegin_get_nonce)
-		                    {
-		                        pthread_mutex_lock(&nonce_mutex);
-								
-		                        memcpy(nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce, &temp_buf[2], 4);
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff           = temp_buf[6];
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc             = temp_buf[7] & 0x7f;
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5           = temp_buf[8] & 0x1f;
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid        = chainid;
-		                        applog(LOG_DEBUG,"get nonce %02x%02x%02x%02x wc %02x diff %02x crc5 %02x chainid %02x",nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce[0], \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce[1],nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce[2], \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce[3],nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff, \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5,    \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid);
-
-		                        if(nonce_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO)
-		                        {
-
-		                            nonce_fifo.p_wr++;
-		                        }
-		                        else
-		                        {
-		                            nonce_fifo.p_wr = 0;
-		                        }
-
-		                        if(nonce_fifo.nonce_num < MAX_NONCE_NUMBER_IN_FIFO)
-		                        {
-		                            nonce_fifo.nonce_num++;
-		                        }
-		                        else
-		                        {
-		                            nonce_fifo.nonce_num = MAX_NONCE_NUMBER_IN_FIFO;
-		                        }
-								
-								pthread_mutex_unlock(&nonce_mutex);
-								
-		                        applog(LOG_DEBUG,"get nonce num %d",nonce_fifo.nonce_num);
-		                    }
-						}
-						else	// get a register value
-						{
-							if(reg_fifo.reg_value_num >= MAX_NONCE_NUMBER_IN_FIFO || reg_fifo.p_wr >= MAX_NONCE_NUMBER_IN_FIFO)
-		                    {
-		                        applog(LOG_DEBUG, "Will Clean!");
-		                        clear_register_value_buf();
-		                        continue;
-		                    }
-		                    pthread_mutex_lock(&reg_mutex);
-
-		                    memcpy(reg_fifo.reg_buffer[reg_fifo.p_wr].reg_value, &temp_buf[2], 4);
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].chipaddr      = temp_buf[6];
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].regaddr       = temp_buf[7];
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].crc5          = temp_buf[8] & 0x1f;
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].chainid = chainid;
-
-		                    if(reg_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO )
-		                    {
-		                        applog(LOG_DEBUG,"%s: p_wr = %d reg_value_num = %d", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);
-		                        reg_fifo.p_wr++;
-		                    }
-		                    else
-		                    {
-		                        reg_fifo.p_wr = 0;
-		                    }
-
-		                    if(reg_fifo.reg_value_num < MAX_NONCE_NUMBER_IN_FIFO)
-		                    {
-		                        reg_fifo.reg_value_num++;
-		                    }
-		                    else
-		                    {
-		                        reg_fifo.reg_value_num = MAX_NONCE_NUMBER_IN_FIFO;
-		                    }
-							pthread_mutex_unlock(&reg_mutex);
-							
-		                    //applog(LOG_NOTICE,"%s: p_wr = %d reg_value_num = %d\n", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);	                    
-							}					
-					}
-
-					//printf("\ndata_buf_w_p = %d, data_buf_r_p = %d\n\n", data_buf_w_p, data_buf_r_p);
-
-					// step 4: reset variable value
-					remaining_len = data_buf_w_p - data_buf_r_p;
-					//printf("remaining data: remaining_len = %d : ", remaining_len);
-					for(m=0; m<remaining_len; m++)
-					{
-						data_buf[m] = data_buf[data_buf_r_p++];	// move the remaining data to the head of the data_buf
-						//printf("0x%02x ", data_buf[m]);
-					}				
-
-					data_buf_w_p = remaining_len;
-					data_buf_r_p = 0;
-					get_9_bytes_counter = 0;
-					break;
-				}
-			}
-			else	// find header
-			{
-
-				if(len > 0)
-				{
-					// step 1: store the received data throuth UART
-					//printf("receive_buf: len = %d, data_buf_w_p = %d\n", len, data_buf_w_p);
-					//printf("receive_buf: ");
-					for(j=0; j<len; j++)
-					{
-						data_buf[data_buf_w_p++] = receive_buf[j];	// store the received data into data_buf
-						//printf("0x%02x ", receive_buf[j]);
-						applog(LOG_DEBUG, "%s: 0x%02x",__FUNCTION__,receive_buf[j]);
-					}
-					//printf("\n");
-					//printf("\ndata_buf_w_p = %d\n\n", data_buf_w_p);
-
-					// step 2: check how many data in data_buf
-					if(data_buf_w_p < ASIC_RETURN_DATA_LENGTH)
-					{
-						//printf("get_9_bytes_counter = %d\n", get_9_bytes_counter);
-						break;	// the data in data_buf is not enough, so break out the for loop and receive data again
-					}
-					else
-					{
-						remaining_len = data_buf_w_p;
-					}
-
-					// setp 3: find the headers
-					data_buf_r_p = 0;
-					get_9_bytes_counter = 0;
-					while(remaining_len >= ASIC_RETURN_DATA_LENGTH)
-					{
-						// step 3.1: find header
-						while(1)
-						{
-							if((data_buf[data_buf_r_p] != OUTPUT_HEADER_1) || (data_buf[data_buf_r_p+1] != OUTPUT_HEADER_2))
-							{
-								data_buf_r_p++;		// don't find correct header, move to next bytes
-								remaining_len--;
-								if(remaining_len < ASIC_RETURN_DATA_LENGTH)
-								{
-									break;
-								}
-							}
-							else
-							{	
-								find_header = true;
-								break;				// find correct header
-							}
-						}
-
-						// step 3.2: check the next 9 bytes data format and copy data
-						if(find_header)
-						{
-							find_header = false;
-
-							for(i=1; i<ASIC_RETURN_DATA_LENGTH; i++)
-							{
-								if((data_buf[data_buf_r_p + i] == OUTPUT_HEADER_1) && (data_buf[data_buf_r_p + 1 + i] == OUTPUT_HEADER_2))
-								{
-									less_then_9_bytes = true;
-									break;
-								}
-							}
-
-							if(less_then_9_bytes)	// data is not enough 9 bytes
-							{
-								less_then_9_bytes = false;
-								data_buf_r_p += i;
-								remaining_len -= i;
-							}
-							else					// data is 9 bytes, copy it
-							{
-								for(i=0; i<ASIC_RETURN_DATA_LENGTH; i++)
-								{
-									find_header_data_buf[get_9_bytes_counter*ASIC_RETURN_DATA_LENGTH + i] = data_buf[data_buf_r_p + i];
-								}
-								get_9_bytes_counter++;
-								data_buf_r_p += ASIC_RETURN_DATA_LENGTH;
-								remaining_len -= ASIC_RETURN_DATA_LENGTH;
-							}
-						}
-					}
-					data_buf_w_p = remaining_len;
-					for(m=0; m<remaining_len; m++)
-					{
-						data_buf[m] = data_buf[data_buf_r_p++];	// move the remaining data to the head of the data_buf
-						//printf("0x%02x ", data_buf[m]);
-					}
-					data_buf_r_p = 0;
-
-					// step 4: check every 9 bytes
-					for(j=0; j<get_9_bytes_counter; j++)
-					{
-						memset(temp_buf, 0, sizeof(temp_buf));
-						//printf("every 9 bytes: ");
-						for(m=0; m<ASIC_RETURN_DATA_LENGTH; m++)
-						{
-							temp_buf[m] = find_header_data_buf[j*ASIC_RETURN_DATA_LENGTH + m];		// store 9 bytes data into temp_buf for check
-							//printf("0x%02x ", temp_buf[m]);
-						}
-						//printf("\n");
-
-						applog(LOG_DEBUG, "Chain [%d] Read Data", chainid);
-	                	applog(LOG_DEBUG,"get sth %02x%02x%02x%02x%02x%02x%02x%02x%02x",temp_buf[0],temp_buf[1],temp_buf[2],temp_buf[3],
-	                       temp_buf[4],temp_buf[5],temp_buf[6],temp_buf[7],temp_buf[8]);
-
-						if(is_nonce_or_reg_value(temp_buf[ASIC_RETURN_DATA_LENGTH -1]))	// get a nonce
-						{
-							if(gBegin_get_nonce)
-		                    {
-		                        pthread_mutex_lock(&nonce_mutex);
-								
-		                        memcpy((unsigned char *)(&nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce), &temp_buf[2], 4);	// we do not swap32 here, but swap it when we analyse nonce
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff           = temp_buf[6];
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc             = temp_buf[7] & 0x7f;
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5           = temp_buf[8] & 0x1f;
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid        = chainid;
-		                        applog(LOG_DEBUG,"get nonce 0x%08x%, wc 0x%02x, diff 0x%02x, crc5 0x%02x, chainid 0x%02x",nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce, \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc,  \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid);		                               
-
-		                        if(nonce_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO)
-		                        {
-
-		                            nonce_fifo.p_wr++;
-		                        }
-		                        else
-		                        {
-		                            nonce_fifo.p_wr = 0;
-		                        }
-
-		                        if(nonce_fifo.nonce_num < MAX_NONCE_NUMBER_IN_FIFO)
-		                        {
-		                            nonce_fifo.nonce_num++;
-		                        }
-		                        else
-		                        {
-		                            nonce_fifo.nonce_num = MAX_NONCE_NUMBER_IN_FIFO;
-		                        }
-								
-								pthread_mutex_unlock(&nonce_mutex);
-								
-		                        applog(LOG_DEBUG,"get nonce num %d",nonce_fifo.nonce_num);
-		                    }
-						}
-						else	// get a register value
-						{
-							if(reg_fifo.reg_value_num >= MAX_NONCE_NUMBER_IN_FIFO || reg_fifo.p_wr >= MAX_NONCE_NUMBER_IN_FIFO)
-		                    {
-		                        applog(LOG_DEBUG, "Will Clean!");
-		                        clear_register_value_buf();
-		                        continue;
-		                    }
-		                    pthread_mutex_lock(&reg_mutex);
-
-		                    memcpy((unsigned char *)(&reg_fifo.reg_buffer[reg_fifo.p_wr].reg_value), &temp_buf[2], 4);		// we do not swap32 here, but swap it when we analyse register value
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].chipaddr			= temp_buf[6];
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].regaddr			= temp_buf[7];
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].crc5				= temp_buf[8] & 0x1f;
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].chainid			= chainid;
-
-		                    if(reg_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO )
-		                    {
-		                        applog(LOG_DEBUG,"%s: p_wr = %d reg_value_num = %d", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);
-		                        reg_fifo.p_wr++;
-		                    }
-		                    else
-		                    {
-		                        reg_fifo.p_wr = 0;
-		                    }
-
-		                    if(reg_fifo.reg_value_num < MAX_NONCE_NUMBER_IN_FIFO)
-		                    {
-		                        reg_fifo.reg_value_num++;
-		                    }
-		                    else
-		                    {
-		                        reg_fifo.reg_value_num = MAX_NONCE_NUMBER_IN_FIFO;
-		                    }
-							pthread_mutex_unlock(&reg_mutex);
-							
-		                    //applog(LOG_NOTICE,"%s: p_wr = %d reg_value_num = %d\n", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);	                    
-						}					
-					}
-
-					get_9_bytes_counter = 0;
-				}
-			}
-#endif
-
 		}		
 	}
 }
