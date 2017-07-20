@@ -5207,8 +5207,8 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
         sprintf(temp2_name,"temp2_%d",i+1);
         root = api_add_int16(root, temp2_name, &(dev.chain_asic_temp[i][0][1]), copy_data);
     }
-	
-#ifdef D1
+
+	/*
     for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
     {
         char temp_name[12];
@@ -5223,7 +5223,7 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
         sprintf(temp2_name,"temp4_%d",i+1);
         root = api_add_int16(root, temp2_name, &(dev.chain_asic_temp[i][1][1]), copy_data);
     }
-#endif
+    */
 
     root = api_add_uint32(root, "temp_max", &(dev.temp_top1), copy_data);
 

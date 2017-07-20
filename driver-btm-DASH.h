@@ -102,7 +102,7 @@
 #define BITMAIN_REAL_TEMP_CHIP_NUM				D1_MINER_REAL_TEMP_CHIP_NUM		
 
 // about temperature sensor
-#define D1
+//#define D1
 #define TEMP_CHIP_0_LOCATION					4	// the 1st temperature sensor connect to the 4th ASIC(count from 0)
 #define TEMP_CHIP_1_LOCATION					0	// 0 means no temperature sensor
 #define TEMP_CHIP_2_LOCATION					0	// 0 means no temperature sensor
@@ -219,16 +219,6 @@
 #define WR_TEMP_OFFSET_VALUE						0x22
 #define RD_TEMP_OFFSET_VALUE						0x23
 
-
-//#define PIC_FLASH_POINTER_START_ADDRESS_H       0x03
-//#define PIC_FLASH_POINTER_START_ADDRESS_L       0x00
-//#define PIC_FREQ_START_ADDRESS_H                0x0f
-//#define PIC_FREQ_START_ADDRESS_L                0xA0
-//#define PIC_FLASH_POINTER_FREQ_START_ADDRESS_H  0x0F
-//#define PIC_FLASH_POINTER_FREQ_START_ADDRESS_L  0xA0
-//#define PIC_FLASH_POINTER_FREQ_END_ADDRESS_H    0x0f
-//#define PIC_FLASH_POINTER_FREQ_END_ADDRESS_L    0xDF
-//#define FREQ_MAGIC                              0x7D
 
 // data address in pic
 #define PIC_FLASH_POINTER_START_ADDRESS_H_NEW		0x06
