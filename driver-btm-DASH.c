@@ -995,7 +995,7 @@ int read_hash_id_PIC16F1704_new(unsigned char *buf)
 }
 
 
-int enable_PIC16F1704_dc_dc_new(unsigned char enable)
+int enable_PIC16F1704_dc_dc_new(void)
 {
 	unsigned char length = 0x05, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
 	unsigned short crc = 0;
@@ -1003,7 +1003,7 @@ int enable_PIC16F1704_dc_dc_new(unsigned char enable)
 	
 	//applog(LOG_DEBUG,"%s", __FUNCTION__);
 	
-	crc = length + ENABLE_VOLTAGE + enable;
+	crc = length + ENABLE_VOLTAGE + 1;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
 	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
 	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
@@ -1012,7 +1012,7 @@ int enable_PIC16F1704_dc_dc_new(unsigned char enable)
 	send_data[1] = PIC_COMMAND_2;
 	send_data[2] = length;
 	send_data[3] = ENABLE_VOLTAGE;
-	send_data[4] = enable;
+	send_data[4] = 1;
 	send_data[5] = crc_data[0];
 	send_data[6] = crc_data[1];
 
@@ -1039,6 +1039,53 @@ int enable_PIC16F1704_dc_dc_new(unsigned char enable)
 		return 1;	// ok
 	}
 }
+
+
+int disable_PIC16F1704_dc_dc_new(void)
+{
+	unsigned char length = 0x05, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+	unsigned short crc = 0;
+	unsigned char i,send_data[7] = {0};
+	
+	//applog(LOG_DEBUG,"%s", __FUNCTION__);
+	
+	crc = length + ENABLE_VOLTAGE + 0;
+	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+	send_data[0] = PIC_COMMAND_1;
+	send_data[1] = PIC_COMMAND_2;
+	send_data[2] = length;
+	send_data[3] = ENABLE_VOLTAGE;
+	send_data[4] = 0;
+	send_data[5] = crc_data[0];
+	send_data[6] = crc_data[1];
+
+	pthread_mutex_lock(&i2c_mutex);
+	for(i=0; i<7; i++)
+	{
+		write(dev.i2c_fd, send_data+i, 1);
+	}
+	usleep(100*1000);
+	for(i=0; i<2; i++)
+	{
+		read(dev.i2c_fd, read_back_data+i, 1);
+	}
+	pthread_mutex_unlock(&i2c_mutex);
+
+	if((read_back_data[0] != ENABLE_VOLTAGE) || (read_back_data[1] != 1))
+	{
+		applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		return 0;	// error
+	}
+	else
+	{
+		applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+		return 1;	// ok
+	}
+}
+
 
 
 int heart_beat_PIC16F1704_new(void)
@@ -1476,7 +1523,7 @@ void every_chain_jump_from_loader_to_app_PIC16F1704_new(void)
 }
 
 
-void every_chain_enable_PIC16F1704_dc_dc_new(unsigned char enable)
+void every_chain_enable_PIC16F1704_dc_dc_new(void)
 {
 	unsigned char which_chain;
 
@@ -1489,7 +1536,7 @@ void every_chain_enable_PIC16F1704_dc_dc_new(unsigned char enable)
             pthread_mutex_lock(&iic_mutex);
             if(unlikely(ioctl(dev.i2c_fd, I2C_SLAVE, i2c_slave_addr[which_chain] >> 1) < 0))
                 applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
-			enable_PIC16F1704_dc_dc_new(enable);
+			enable_PIC16F1704_dc_dc_new();
             pthread_mutex_unlock(&iic_mutex);
 			cgsleep_ms(100);
         }
@@ -1640,11 +1687,11 @@ void pic_test_new(void)
 	set_PIC16F1704_voltage_new(0x78);
 	get_PIC16F1704_voltage_new(&voltage);
 
-	enable_PIC16F1704_dc_dc_new(1);
+	enable_PIC16F1704_dc_dc_new();
 	
 
 	/**/
-	enable_PIC16F1704_dc_dc_new(1);
+	enable_PIC16F1704_dc_dc_new();
 
 	for(i=0; i<3; i++)
 	{
@@ -2586,6 +2633,17 @@ void check_chain(struct bitmain_DASH_info *info)
     }
 
     applog(LOG_NOTICE,"detect total chain num %d",info->chain_num);
+
+	if(info->chain_num == 0)
+	{
+		set_PWM(0);
+		
+		while(1)
+		{
+			applog(LOG_ERR,"No Hash Board\n");
+			sleep(3);
+		}
+	}
 	cgsleep_ms(10);
 }
 
@@ -2941,7 +2999,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 		return ret;
 	}    
 	
-	every_chain_enable_PIC16F1704_dc_dc_new(1);
+	every_chain_enable_PIC16F1704_dc_dc_new();
 #endif    
 	reset_all_hash_board();
 
@@ -4103,8 +4161,9 @@ void *check_miner_status(void *arg)
     copy_time(&tv_send_job,&tv_send);
     bool stop = false;
     unsigned int asic_num = 0, error_asic = 0, avg_num = 0;
-	unsigned int which_chain, which_asic;
+	unsigned int which_chain, which_asic, which_sensor;
 	unsigned int offset = 0;
+	char read_temp_result = 0, how_many_chains = 0;
 
 
     while(1)
@@ -4210,13 +4269,12 @@ void *check_miner_status(void *arg)
                         pthread_mutex_lock(&iic_mutex);
                         if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
                             applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
-                        applog(LOG_DEBUG, "Temp Err! Please Check Fan! Will Disable PIC!");
-                        //pic_dac_ctrl(0);
-						enable_PIC16F1704_dc_dc_new(0);
+                        applog(LOG_ERR, "Temp Err! Please Check Fan! Will Disable PIC!");
+						disable_PIC16F1704_dc_dc_new();
                         pthread_mutex_unlock(&iic_mutex);
                     }
                 }
-            }
+            }			
         }
         else
         {
@@ -4224,6 +4282,51 @@ void *check_miner_status(void *arg)
             if (!once_error)
                 status_error = false;
         }
+
+		read_temp_result = 0;
+		how_many_chains = 0;
+		for ( which_chain= 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+        {
+            if ( dev.chain_exist[which_chain] == 1 )
+            {
+            	how_many_chains++;
+            	for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+            	{
+                	read_temp_result += dev.whether_read_out_temp[which_chain][which_sensor];
+					if(dev.whether_read_out_temp[which_chain][which_sensor] == -1)
+					{
+						applog(LOG_WARNING, "%s: Don't read out temperature from Chain%d Sensor%d!", __FUNCTION__, which_chain, which_sensor);
+					}
+					dev.whether_read_out_temp[which_chain][which_sensor] = 0;
+            	}
+            }
+        }
+
+		if(read_temp_result == (0 - how_many_chains * BITMAIN_REAL_TEMP_CHIP_NUM))
+		{
+			status_error = false;
+            once_error = true;
+
+            for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+            {
+                if(dev.chain_exist[which_chain] == 1)
+                {
+                    pthread_mutex_lock(&iic_mutex);
+                    if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                        applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
+                    applog(LOG_ERR, "Can't read out temperature from all chains!! Will Disable PIC!");
+					disable_PIC16F1704_dc_dc_new();
+                    pthread_mutex_unlock(&iic_mutex);
+                }
+            }
+		}
+		else
+        {
+            stop = false;
+            if (!once_error)
+                status_error = false;
+        }
+		
         //if(stop_mining)
         //    status_error = true;
         set_led(stop);
@@ -4443,7 +4546,7 @@ void *read_temp_func()
 {
 	unsigned char which_chain, which_sensor, read_temperature_time;
 	signed char local_temp=0, remote_temp=0, temp_offset_value=0;
-	unsigned int ret = 0;
+	unsigned int ret = 0, i = 0, tmpTemp = 0;
 	bool not_read_out_temperature = false;
 
 	applog(LOG_DEBUG, "%s", __FUNCTION__);
@@ -4497,12 +4600,12 @@ void *read_temp_func()
 
 					if((ret & 0xc0000000) == 0)
 					{
-						remote_temp = (signed char)(ret & 0xff);
+						remote_temp = (signed char)(ret & 0xff);						
 						applog(LOG_DEBUG, "%s: Chain%d Sensor%d remote_temp is %d", __FUNCTION__, which_chain, which_sensor, remote_temp);
 					}
 					else
 					{
-						not_read_out_temperature = true;
+						not_read_out_temperature = true;						
 						applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
 					}
 
@@ -4529,11 +4632,13 @@ void *read_temp_func()
 					if((ret & 0xc0000000) == 0)
 					{
 						local_temp = (signed char)(ret & 0xff);
+						dev.whether_read_out_temp[which_chain][which_sensor] = 1;
 						applog(LOG_DEBUG, "%s: Chain%d Sensor%d local_temp is %d", __FUNCTION__, which_chain, which_sensor, local_temp);
 					}
 					else
 					{
 						not_read_out_temperature = true;
+						dev.whether_read_out_temp[which_chain][which_sensor] = -1;
 						applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
 					}
 
@@ -4544,96 +4649,24 @@ void *read_temp_func()
 	    }
 		
 		//pthread_mutex_unlock(&reg_read_mutex);
+
+		for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+        {
+            if ( dev.chain_exist[which_chain] == 1 )
+            {
+				for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+				{
+					if ( dev.chain_asic_temp[which_chain][which_sensor][0] > tmpTemp )
+					{
+						tmpTemp = dev.chain_asic_temp[which_chain][which_sensor][0];
+					}
+				}
+            }
+        }
+        dev.temp_top1 = tmpTemp;
 		
 		sleep(READ_TEMPERATURE_TIME_GAP);
 	}
-
-
-
-
-	
-#if 0
-	uint32_t which_chain, which_sensor, reg_data=0;
-	
-    while( 42 )
-    {        
-		// read local temp
-		reg_data = GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR | REGADDR(LOCAL_TEMP_VALUE) | DATA(0) & (~RW);
-		for (which_chain = 0 ; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
-        {
-        	if ( dev.chain_exist[which_chain] == 1 )
-        	{
-				for ( which_sensor = 0; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-			    {
-			        if ( GetResponseResult(which_sensor) == 0 )		// check whether GENERAL_I2C_COMMAND is busy
-			        {
-			        	// config GENERAL_I2C_COMMAND to read local temp
-	            		set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
-						cgsleep_ms(100);
-						// check the return GENERAL_I2C_COMMAND value
-						TempBuffer[which_chain][which_sensor].state = BUF_IDLE;
-						check_asic_reg(dev.dev_fd[which_chain], TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, 0);
-						if ( GetResponseResult(which_sensor) == 0 )		// get local temp
-						{
-							dev.chain_asic_temp[which_chain][which_sensor][0] = TempBuffer[which_chain][which_sensor].data;
-							if ( dev.chain_asic_temp[which_chain][which_sensor][0] > dev.temp_top1 )
-							{
-								dev.temp_top1 = dev.chain_asic_temp[which_chain][which_sensor][0];
-							}
-
-							applog(LOG_DEBUG, "%s: chain%d sensor% local temperature is %d\n",
-								__FUNCTION__, which_chain, which_sensor, dev.chain_asic_temp[which_chain][which_sensor][0]);
-						}
-						else
-						{
-							applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND is not ready", __FUNCTION__);
-						}
-		        	}
-					else
-					{
-						applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND is not ready", __FUNCTION__);
-					}
-				}
-			}
-		}
-
-		// read remote temp
-		reg_data = GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR | REGADDR(EXT_TEMP_VALUE_HIGH_BYTE) | DATA(0) & (~RW);
-		for (which_chain = 0 ; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
-        {
-        	if ( dev.chain_exist[which_chain] == 1 )
-        	{
-				for ( which_sensor = 0; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-			    {
-			        if ( GetResponseResult(which_sensor) == 0 )		// check whether GENERAL_I2C_COMMAND is busy
-			        {
-			        	// config GENERAL_I2C_COMMAND to read remote temp
-	            		set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
-						cgsleep_ms(100);
-						// check the return GENERAL_I2C_COMMAND value
-						TempBuffer[which_chain][which_sensor].state = BUF_IDLE;
-						check_asic_reg(dev.dev_fd[which_chain], TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, 0);
-						if ( GetResponseResult(which_sensor) == 0 )		// get remote temp
-						{
-							dev.chain_asic_temp[which_chain][which_sensor][1] = TempBuffer[which_chain][which_sensor].data;
-							applog(LOG_DEBUG, "%s: chain%d sensor% remote temperature is %d\n",
-								__FUNCTION__, which_chain, which_sensor, dev.chain_asic_temp[which_chain][which_sensor][1]);
-						}
-						else
-						{
-							applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND is not ready", __FUNCTION__);
-						}
-		        	}
-					else
-					{
-						applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND is not ready", __FUNCTION__);
-					}
-				}
-			}
-		}
-        sleep(10);
-    }
-#endif
 }
 
 
@@ -5160,11 +5193,6 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
 
     root = api_add_uint8(root, "temp_num", &(dev.chain_num), copy_data);
 
-	dev.chain_asic_temp[0][0][0] = 50;
-	dev.chain_asic_temp[0][0][1] = 70;
-	dev.chain_asic_temp[0][0][0] = 55;
-	dev.chain_asic_temp[0][0][1] = 75;
-	
     for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
     {
         char temp_name[12];

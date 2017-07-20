@@ -413,6 +413,7 @@ struct all_parameters
     uint32_t    chain_asic_exist[BITMAIN_MAX_CHAIN_NUM][8];
     uint32_t    chain_asic_status[BITMAIN_MAX_CHAIN_NUM][8];
     int16_t     chain_asic_temp[BITMAIN_MAX_CHAIN_NUM][8][4];
+	char		whether_read_out_temp[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM];	// -1: not read out; 1: read out. only local temp
     int8_t      chain_asic_iic[ASIC_NUM_EACH_CHAIN];
     uint32_t    chain_hw[BITMAIN_MAX_CHAIN_NUM];
     uint32_t    chain_asic_nonce[BITMAIN_MAX_CHAIN_NUM][ASIC_NUM_EACH_CHAIN];
