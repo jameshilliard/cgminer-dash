@@ -2803,7 +2803,7 @@ void check_fan_speed(void)
 	            fan0Speed = fan0Speed * 60 / 2 * 2;	// 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
 	            fan0SpeedHist = fan0SpeedCur;
 	            applog(LOG_DEBUG, "fan1Speed = %d", fan0Speed);
-				if( fan0Speed > MAX_FAN_SPEED * FAN_SPEED_OK_PERCENT)
+				if( fan0Speed > FAN1_MAX_SPEED * FAN_SPEED_OK_PERCENT)
 	            {
 	                fan0Speed_ok++;
 	            }
@@ -2825,7 +2825,7 @@ void check_fan_speed(void)
 	            fan1Speed = fan1Speed * 60 / 2 * 2;	// 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
 	            fan1SpeedHist = fan1SpeedCur;	            
 	            applog(LOG_DEBUG, "fan2Speed = %d", fan1Speed);
-	            if( fan1Speed > MAX_FAN_SPEED * FAN_SPEED_OK_PERCENT)
+	            if( fan1Speed > FAN2_MAX_SPEED * FAN_SPEED_OK_PERCENT)
 	            {
 	                fan1Speed_ok++;
 	            }
@@ -4078,9 +4078,9 @@ void *check_fan_thr(void *arg)
                 if ( fan0Speed )
                 {
                     fan0_exist = 1;
-                    if( fan0Speed > MAX_FAN_SPEED)
+                    if( fan0Speed > FAN1_MAX_SPEED)
                     {
-                        fan0Speed = MAX_FAN_SPEED;
+                        fan0Speed = FAN1_MAX_SPEED;
                     }
                 }
                 else
@@ -4111,9 +4111,9 @@ void *check_fan_thr(void *arg)
                 if ( fan1Speed )
                 {
                     fan1_exist = 1;
-                    if( fan1Speed > MAX_FAN_SPEED)
+                    if( fan1Speed > FAN2_MAX_SPEED)
                     {
-                        fan1Speed = MAX_FAN_SPEED;
+                        fan1Speed = FAN2_MAX_SPEED;
                     }
                 }
                 else
@@ -4659,6 +4659,10 @@ void *read_temp_func()
 					if ( dev.chain_asic_temp[which_chain][which_sensor][0] > tmpTemp )
 					{
 						tmpTemp = dev.chain_asic_temp[which_chain][which_sensor][0];
+						if(tmpTemp > MAX_TEMP)
+						{
+							applog(LOG_ERR,"%s: Chain%d sensor%d is %d `C", __FUNCTION__, which_chain, which_sensor, tmpTemp);
+						}
 					}
 				}
             }
