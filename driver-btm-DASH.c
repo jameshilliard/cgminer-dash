@@ -60,6 +60,7 @@ int const i2c_slave_addr[BITMAIN_MAX_CHAIN_NUM] = {0xa0,0xa2,0xa4,0xa6};
 pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;	// used when cpu operates i2c interface
 pthread_mutex_t iic_mutex = PTHREAD_MUTEX_INITIALIZER;	// used when cpu communicate with pic
 pthread_mutex_t reg_read_mutex = PTHREAD_MUTEX_INITIALIZER;		// used when read ASIC register periodic in pthread
+pthread_mutex_t read_temp_mutex = PTHREAD_MUTEX_INITIALIZER;		// used when read temperature
 
 unsigned int gChipOffset = 0;	// record register CHIP_OFFSET value
 unsigned int gCoreOffset = 0;	// record register CORE_OFFSET value
@@ -112,6 +113,8 @@ char displayed_rate[BITMAIN_MAX_CHAIN_NUM][16];
 
 unsigned char pic_version[BITMAIN_MAX_CHAIN_NUM] = {0};
 
+bool gLost_internet_10_min = false;		// lost internet for 10 minutes
+bool gGot_Temperature_value = false;	// wether read out new temperature value
 
 
 /****************** checked end ***************************/
@@ -2942,7 +2945,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
     int i = 0,check_asic_times = 0, ret = 0;
     bool check_asic_fail = false;
 
-	applog(LOG_ERR, "%s", __FUNCTION__);
+	applog(LOG_WARNING, "%s", __FUNCTION__);
 
     memcpy(&config_parameter, &config, sizeof(struct init_config));
 
@@ -3102,7 +3105,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 		return ret;
 	}    
 
-	ret = create_bitmain_check_miner_status_pthread();
+	ret = create_bitmain_check_miner_status_pthread(info);
 	if(ret == -5)
 	{
 		return ret;
@@ -3113,6 +3116,69 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 	{
 		return ret;
 	}
+
+	// init ASIC status which will be display on the web
+	init_asic_display_status();
+
+    start_send = true;
+
+    return 0;
+}
+
+
+int bitmain_DASH_reinit(struct bitmain_DASH_info *info)
+{
+    struct init_config config = info->DASH_config;    
+    struct init_config config_parameter;
+	uint16_t crc = 0;
+	unsigned char which_chain = 0;
+    int i = 0,check_asic_times = 0, ret = 0;
+    bool check_asic_fail = false;
+
+	applog(LOG_WARNING, "%s", __FUNCTION__);
+
+	// start fans	
+    set_PWM(100);
+	check_fan_speed();
+
+	// init the work queue which stores the latest work that sent to hash boards
+    for(i=0; i < BITMAIN_MAX_QUEUE_NUM; i++)
+    {
+        info->work_queue[i] = NULL;
+    }
+
+	every_chain_enable_PIC16F1704_dc_dc_new();
+	cgsleep_ms(100);
+
+	reset_all_hash_board();
+
+	clear_register_value_buf();
+
+    cgsleep_ms(100);
+
+	// set frequency
+    if(config_parameter.frequency_eft)
+    {
+        dev.frequency = config_parameter.frequency;
+        set_frequency(dev.frequency);
+        sprintf(dev.frequency_t,"%u",dev.frequency);
+    }
+
+	// set every chain's ASIC address
+    software_set_address();
+	//check_every_chain_asic_number(false);
+
+	// about temperature sensor
+	enable_read_temperature_from_asic(config_parameter.misc_control_reg_value);
+	select_core_to_check_temperature(DIODE_MUX_SEL_DEFAULT_VALUE, VDD_MUX_SEL_DEFAULT_VALUE);
+    calibration_sensor_offset();
+	set_temperature_offset_value();
+
+    //set baud
+    //set_misc_ctrl();		// dash use 115200 baud, so no need to set baud
+
+    //open core
+    open_core();
 
 	// init ASIC status which will be display on the web
 	init_asic_display_status();
@@ -4057,6 +4123,34 @@ void *check_fan_thr(void *arg)
     char* pos = NULL;
     FILE* fanpfd = fopen(PROCFILENAME, "r");
 
+	if(fanpfd == NULL)
+	{
+		while(1)
+		{
+			applog(LOG_ERR, "%s: open /proc/interrupt error", __FUNCTION__);
+			sleep(3);
+		}
+	}
+
+	fseek(fanpfd, 0, SEEK_SET);
+
+	while(fgets(buffer, 256, fanpfd))
+	{
+        if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
+        {
+        	applog(LOG_DEBUG, "find fan1.");
+            fan0SpeedHist = fan0SpeedCur = getNum(buffer);
+        }
+		
+        if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
+        {
+        	applog(LOG_DEBUG, "find fan2.");
+            fan1SpeedHist = fan1SpeedCur = getNum(buffer);
+        }
+	}
+
+	sleep(FANINT);
+
     while( 1 )
     {
         fseek(fanpfd, 0, SEEK_SET);
@@ -4151,7 +4245,7 @@ int create_bitmain_check_fan_pthread(void)
 
 void *check_miner_status(void *arg)
 {
-    //asic status,fan,led
+    struct bitmain_DASH_info *info = (struct bitmain_DASH_info*)arg;
     struct timeval tv_start = {0, 0}, diff = {0, 0}, tv_end,tv_send;
     double ghs = 0;
     int i = 0, j = 0;
@@ -4244,44 +4338,48 @@ void *check_miner_status(void *arg)
 
             ghs = total_mhashes_done / 1 / total_secs;
             if((ghs < (double)((dev.chain_num * ASIC_NUM_EACH_CHAIN * dev.frequency * dev.corenum * 0.95) / 40 * 0.8)) && (!status_error))
-                system("echo \"Rate too low, reboot!!\" >> /usr/bin/already_reboot");
+            {
+				system("echo \"Rate too low, reboot!!\" >> /usr/bin/already_reboot");
+				applog(LOG_ERR, "%s: Hash rate too low, please reboot the miner", __FUNCTION__);
+			}
+                
             copy_time(&tv_start, &tv_end);
         }
 
-        //check_fan();
-        set_PWM_according_to_temperature();
-        timersub(&tv_send, &tv_send_job, &diff);
-        if(diff.tv_sec > 120 || dev.temp_top1 > MAX_TEMP)
-            //|| dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150))
+
+		// check temperature
+		if(dev.temp_top1 > MAX_TEMP)            
         {
             stop = true;
-            if(dev.temp_top1 > MAX_TEMP)
-                //|| dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150))
-            {
-                // status_error = true;
-                status_error = false;
-                once_error = true;
 
-                for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+            status_error = false;
+            once_error = true;
+
+            for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+            {
+                if(dev.chain_exist[which_chain] == 1)
                 {
-                    if(dev.chain_exist[which_chain] == 1)
-                    {
-                        pthread_mutex_lock(&iic_mutex);
-                        if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
-                            applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
-                        applog(LOG_ERR, "Temp Err! Please Check Fan! Will Disable PIC!");
-						disable_PIC16F1704_dc_dc_new();
-                        pthread_mutex_unlock(&iic_mutex);
-                    }
+                    pthread_mutex_lock(&iic_mutex);
+                    if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                        applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
+                    applog(LOG_ERR, "Temperature is higher than 85'C!!! Disable PIC!");
+					disable_PIC16F1704_dc_dc_new();
+                    pthread_mutex_unlock(&iic_mutex);
                 }
-            }			
+            }		
         }
         else
         {
-            stop = false;
+            if(!stop)
+			{
+				stop = false;
+			}
             if (!once_error)
                 status_error = false;
         }
+
+		// check sensor
+		pthread_mutex_lock(&read_temp_mutex);
 
 		read_temp_result = 0;
 		how_many_chains = 0;
@@ -4304,6 +4402,8 @@ void *check_miner_status(void *arg)
 
 		if(read_temp_result == (0 - how_many_chains * BITMAIN_REAL_TEMP_CHIP_NUM))
 		{
+			stop = true;
+		
 			status_error = false;
             once_error = true;
 
@@ -4322,10 +4422,95 @@ void *check_miner_status(void *arg)
 		}
 		else
         {
+            if(!stop)
+			{
+				stop = false;
+			}
+            if (!once_error)
+                status_error = false;
+        }
+
+		pthread_mutex_unlock(&read_temp_mutex);
+
+		// set fan pwm
+		if(stop)
+		{
+			set_PWM(MAX_PWM_PERCENT);
+		}
+		else
+		{
+			set_PWM_according_to_temperature();
+		}
+
+		timersub(&tv_send, &tv_send_job, &diff);
+        if(diff.tv_sec > 120)
+        {
+            stop = true;
+          
+        }
+        else
+        {
             stop = false;
             if (!once_error)
                 status_error = false;
         }
+
+#if 0
+		// check internet connection
+		timersub(&tv_send, &tv_send_job, &diff);
+		if(diff.tv_sec > 600)
+		{
+			stop = true;
+			start_send = false;
+			gLost_internet_10_min = true;
+			applog(LOG_ERR, "%s: We have lost internet for %d seconds, so close PIC", __FUNCTION__, diff.tv_sec);
+
+			status_error = false;
+            once_error = true;
+
+            for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+            {
+                if(dev.chain_exist[which_chain] == 1)
+                {
+                    pthread_mutex_lock(&iic_mutex);
+                    if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                        applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
+                    applog(LOG_ERR, "Can't read out temperature from all chains!! Will Disable PIC!");
+					disable_PIC16F1704_dc_dc_new();
+                    pthread_mutex_unlock(&iic_mutex);
+                }
+            }			
+		}
+		else if(diff.tv_sec > 120)
+		{
+			stop = true;
+			start_send = false;
+			applog(LOG_ERR, "%s: We have lost internet for %d seconds, so don't send work to hashboard anymore", __FUNCTION__, diff.tv_sec);
+		}
+		else
+		{
+			if(gLost_internet_10_min)
+			{
+				gLost_internet_10_min = false;
+				
+				bitmain_DASH_reinit(info);				
+
+				if (!once_error)
+					status_error = false;
+			}
+			else
+			{
+				if(!stop)
+				{
+					stop = false;
+				}
+	            if (!once_error)
+	                status_error = false;
+			}
+		}
+#endif
+
+
 		
         //if(stop_mining)
         //    status_error = true;
@@ -4336,10 +4521,10 @@ void *check_miner_status(void *arg)
 }
 
 
-int create_bitmain_check_miner_status_pthread(void)
+int create_bitmain_check_miner_status_pthread(struct bitmain_DASH_info *info)
 {
 	check_miner_status_id = calloc(1,sizeof(struct thr_info));
-    if(thr_info_create(check_miner_status_id, NULL, check_miner_status, check_miner_status_id))
+    if(thr_info_create(check_miner_status_id, NULL, check_miner_status, info))
     {
         applog(LOG_DEBUG,"%s: create thread for check miner_status", __FUNCTION__);
         return -5;
@@ -4553,8 +4738,8 @@ void *read_temp_func()
 
 	while(1)
 	{
-		//pthread_mutex_lock(&reg_read_mutex);
-		
+		pthread_mutex_lock(&read_temp_mutex);
+	
 		for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
 	    {
 	        if ( dev.chain_exist[which_chain] == 1 )
@@ -4632,8 +4817,15 @@ void *read_temp_func()
 					if((ret & 0xc0000000) == 0)
 					{
 						local_temp = (signed char)(ret & 0xff);
-						dev.whether_read_out_temp[which_chain][which_sensor] = 1;
-						applog(LOG_DEBUG, "%s: Chain%d Sensor%d local_temp is %d", __FUNCTION__, which_chain, which_sensor, local_temp);
+						dev.whether_read_out_temp[which_chain][which_sensor] = 1;						
+						if(local_temp > MAX_TEMP)
+						{
+							applog(LOG_ERR, "%s: Chain%d Sensor%d local_temp is %d, and it's higher than 85'C", __FUNCTION__, which_chain, which_sensor, local_temp);
+						}
+						else
+						{
+							applog(LOG_DEBUG, "%s: Chain%d Sensor%d local_temp is %d", __FUNCTION__, which_chain, which_sensor, local_temp);
+						}
 					}
 					else
 					{
@@ -4647,8 +4839,8 @@ void *read_temp_func()
 	            }
 	        }
 	    }
-		
-		//pthread_mutex_unlock(&reg_read_mutex);
+
+		pthread_mutex_unlock(&read_temp_mutex);
 
 		for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
         {
