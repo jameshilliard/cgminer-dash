@@ -219,6 +219,8 @@
 #define GET_VOLTAGE									0x18
 #define WR_TEMP_OFFSET_VALUE						0x22
 #define RD_TEMP_OFFSET_VALUE						0x23
+#define SAVE_FREQ									0x24
+#define READ_OUT_FREQ								0x25
 
 
 // data address in pic
@@ -238,7 +240,7 @@
 #define PIC16F1704_PROGRAM_NEW						"/sbin/pic.txt"
 #define MAX_CHAR_NUM                        		1024
 
-#define PIC_VERSION									0x80
+#define PIC_VERSION									0x81
 
 /****************** about PIC16F1704 end ******************/
 
@@ -677,8 +679,7 @@ void set_temperature_offset_value(void);
 void suffix_string_DASH(uint64_t val, char *buf, size_t bufsiz, int sigdigits,bool display);
 void clear_register_value_buf(void);
 void check_sensor_ID(void);
-
-
+void set_PWM(unsigned char pwm_percent);
 
 
 #endif
