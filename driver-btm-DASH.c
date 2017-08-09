@@ -120,6 +120,7 @@ bool gMinerStatus_Low_Hashrate = false;         // hash rate is too low
 bool gMinerStatus_High_Temp = false;            // the temperature is higher than MAX_TEMP
 bool gMinerStatus_Not_read_all_sensor = false;  // do not read out all sensor's temperature
 bool gMinerStatus_Lost_connection_to_pool = false;  // can't receive job from pool
+bool gFan_Error = false;						// lost fan or fan speed to low
 unsigned char gMinerStatus_High_Temp_Counter = 0;           // the temperature is higher than MAX_TEMP counter
 
 /****************** checked end ***************************/
@@ -4309,6 +4310,7 @@ void *check_fan_thr(void *arg)
                 if ( fan0Speed )
                 {
                     fan0_exist = 1;
+					dev.fan_exist[0] = 1;
                     if( fan0Speed > FAN1_MAX_SPEED)
                     {
                         fan0Speed = FAN1_MAX_SPEED;
@@ -4317,6 +4319,7 @@ void *check_fan_thr(void *arg)
                 else
                 {
                     fan0_exist = 0;
+					dev.fan_exist[0] = 0;
                 }
                 dev.fan_speed_value[0] = fan0Speed;
                 fan0SpeedHist = fan0SpeedCur;
@@ -4342,6 +4345,7 @@ void *check_fan_thr(void *arg)
                 if ( fan1Speed )
                 {
                     fan1_exist = 1;
+					dev.fan_exist[1] = 1;
                     if( fan1Speed > FAN2_MAX_SPEED)
                     {
                         fan1Speed = FAN2_MAX_SPEED;
@@ -4350,6 +4354,7 @@ void *check_fan_thr(void *arg)
                 else
                 {
                     fan1_exist = 0;
+					dev.fan_exist[1] = 0;
                 }
 
                 dev.fan_speed_value[1] = fan1Speed;
@@ -4590,16 +4595,7 @@ void *check_miner_status(void *arg)
         }
 
 
-
-        // set fan pwm
-        if(stop)
-        {
-            set_PWM(MAX_PWM_PERCENT);
-        }
-        else
-        {
-            set_PWM_according_to_temperature();
-        }
+        
 
 
         // check internet connection
@@ -4622,15 +4618,37 @@ void *check_miner_status(void *arg)
                 status_error = false;
         }
 
-#if 0
-        // check internet connection
-        timersub(&tv_send, &tv_send_job, &diff);
-        if(diff.tv_sec > 600)
-        {
-            stop = true;
-            start_send = false;
-            gLost_internet_10_min = true;
-            applog(LOG_ERR, "%s: We have lost internet for %d seconds, so close PIC", __FUNCTION__, diff.tv_sec);
+		// check fan
+		if((dev.fan_num < MIN_FAN_NUM) ||
+			(dev.fan_speed_value[0] < (FAN1_MAX_SPEED * dev.fan_pwm / 150)) ||
+			(dev.fan_speed_value[1] < (FAN2_MAX_SPEED * dev.fan_pwm / 150)))
+		{
+			gFan_Error = true;
+
+			if(dev.fan_num < MIN_FAN_NUM)
+			{
+				applog(LOG_ERR,"%s: Lost fan! fan number is %d", __FUNCTION__, dev.fan_num);
+				if(!dev.fan_exist[0])
+				{
+					applog(LOG_ERR,"%s: Lost FAN1!", __FUNCTION__);
+				}
+				if(!dev.fan_exist[1])
+				{
+					applog(LOG_ERR,"%s: Lost FAN2!", __FUNCTION__);
+				}
+			}
+
+			if(dev.fan_speed_value[0] < (FAN1_MAX_SPEED * dev.fan_pwm / 150))
+			{
+				applog(LOG_ERR,"%s: FAN1 speed is too slow!", __FUNCTION__);
+			}
+
+			if(dev.fan_speed_value[1] < (FAN2_MAX_SPEED * dev.fan_pwm / 150))
+			{
+				applog(LOG_ERR,"%s: FAN2 speed is too slow!", __FUNCTION__);
+			}
+
+			stop = true;
 
             status_error = false;
             once_error = true;
@@ -4643,53 +4661,41 @@ void *check_miner_status(void *arg)
                     if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
                         applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
                     applog(LOG_ERR, "Can't read out temperature from all chains!! Will Disable PIC!");
+                    gMinerStatus_Not_read_all_sensor = true;
                     disable_PIC16F1704_dc_dc_new();
                     pthread_mutex_unlock(&iic_mutex);
                 }
             }
-        }
-        else if(diff.tv_sec > 120)
-        {
-            stop = true;
-            start_send = false;
-            applog(LOG_ERR, "%s: We have lost internet for %d seconds, so don't send work to hashboard anymore", __FUNCTION__, diff.tv_sec);
-        }
-        else
-        {
-            if(gLost_internet_10_min)
+		}
+		else
+		{
+			gFan_Error = false;
+            if(!stop)
             {
-                gLost_internet_10_min = false;
-
-                bitmain_DASH_reinit(info);
-
-                if (!once_error)
-                    status_error = false;
+                stop = false;
             }
-            else
-            {
-                if(!stop)
-                {
-                    stop = false;
-                }
-                if (!once_error)
-                    status_error = false;
-            }
-        }
-#endif
+            if (!once_error)
+                status_error = false;
+		}
 
         if(gMinerStatus_Low_Hashrate)
         {
-            applog(LOG_ERR,"%s: hash rate is too low, need reboot", __FUNCTION__);
+            applog(LOG_ERR,"%s: hash rate is too low, need reboot!!!", __FUNCTION__);
         }
 
         if(gMinerStatus_High_Temp)
         {
-            applog(LOG_ERR,"%s: the temperature is too high, close PIC and need reboot", __FUNCTION__);
+            applog(LOG_ERR,"%s: the temperature is too high, close PIC and need reboot!!!", __FUNCTION__);
         }
+
+		if(gFan_Error)
+		{
+			applog(LOG_ERR,"%s: Lost fan or fan speed too low, close PIC and need reboot!!!", __FUNCTION__);
+		}
 
         if(gMinerStatus_Not_read_all_sensor)
         {
-            applog(LOG_ERR,"%s: can't read all sensor's temperature, close PIC and need reboot", __FUNCTION__);
+            applog(LOG_ERR,"%s: can't read all sensor's temperature, close PIC and need reboot!!!", __FUNCTION__);
         }
 
         if(gMinerStatus_Lost_connection_to_pool)
@@ -4698,6 +4704,16 @@ void *check_miner_status(void *arg)
         }
 
         set_led(stop);
+
+		// set fan pwm
+        if(stop)
+        {
+            set_PWM(MAX_PWM_PERCENT);
+        }
+        else
+        {
+            set_PWM_according_to_temperature();
+        }
 
         cgsleep_ms(1000);
     }
