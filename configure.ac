@@ -661,6 +661,7 @@ AC_CONFIG_FILES([
 	compat/Makefile
 	ccan/Makefile
 	lib/Makefile
+	x11/Makefile
 	])
 AC_OUTPUT
 

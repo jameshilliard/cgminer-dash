@@ -412,7 +412,7 @@ pthread_mutex_t stats_lock;
 
 int hw_errors;
 int g_max_fan, g_max_temp;
-int64_t total_accepted, total_rejected, total_diff1;
+double total_accepted, total_rejected, total_diff1;
 int64_t total_getworks, total_stale, total_discarded;
 double total_diff_accepted, total_diff_rejected, total_diff_stale;
 static int staged_rollable;
@@ -480,7 +480,7 @@ static struct stratum_share *stratum_shares = NULL;
 
 char *opt_socks_proxy = NULL;
 int opt_suggest_diff;
-int opt_multi_version = 1;
+int opt_multi_version = 0;
 static const char def_conf[] = "cgminer.conf";
 static char *default_config;
 static bool config_loaded;
@@ -1516,7 +1516,7 @@ static struct opt_table opt_config_table[] =
     "Record work test data to file"),
 #endif
 
-#ifdef USE_BITMAIN_DASH
+#ifdef USE_BITMAIN_D1
     OPT_WITHOUT_ARG("--bitmain-fan-ctrl",
     opt_set_bool, &opt_bitmain_fan_ctrl,
     "Enable bitmain miner fan controlling"),
@@ -3487,9 +3487,14 @@ share_result(json_t *val, json_t *res, json_t *err, const struct work *work,
         cgpu->accepted++;
         total_accepted++;
         pool->accepted++;
-        cgpu->diff_accepted += work->work_difficulty;
-        total_diff_accepted += work->work_difficulty;
-        pool->diff_accepted += work->work_difficulty;
+        //cgpu->diff_accepted += work->work_difficulty;
+        //total_diff_accepted += work->work_difficulty;		
+        //pool->diff_accepted += work->work_difficulty;
+
+		cgpu->diff_accepted += pool->sdiff;
+		total_diff_accepted += pool->sdiff;
+		pool->diff_accepted += pool->sdiff;
+		
         mutex_unlock(&stats_lock);
 
         pool->seq_rejects = 0;
@@ -4958,11 +4963,11 @@ static bool stale_work(struct work *work, bool share)
     return false;
 }
 
-uint64_t share_diff(const struct work *work)
+double share_diff(const struct work *work)
 {
     bool new_best = false;
     double d64, s64;
-    uint64_t ret;
+    double ret;
 
     d64 = truediffone;
     if (opt_scrypt)
@@ -6716,9 +6721,13 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
         copy_time(&cgpu->last_message_tv, &total_tv_end);
         thr_mhs = (double)hashes_done / device_tdiff / 1000000;
 
+		//applog(LOG_DEBUG, "%s: hashes_done = %lld", __FUNCTION__, hashes_done);
+
         hashes_done /= 1000000;
-        applog(LOG_DEBUG, "[thread %d: %"PRIu64" hashes, %.1f mhash/sec]",
-               thr_id, hashes_done, thr_mhs);
+
+		//applog(LOG_DEBUG, "--- %s: hashes_done = %lld", __FUNCTION__, hashes_done);
+		
+        applog(LOG_DEBUG, "[thread %d: %"PRIu64" Mhashes, %.1f mhash/sec]", thr_id, hashes_done, thr_mhs);
 
         mutex_lock(&hash_lock);
         cgpu->total_mhashes += hashes_done;
@@ -6735,7 +6744,7 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
             get_statline(logline, sizeof(logline), cgpu);
             if (!curses_active)
             {
-                printf("%s          \r", logline);
+                printf("%s: logline: %s          \r", __FUNCTION__, logline);
                 fflush(stdout);
             }
             else
@@ -6839,7 +6848,7 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
     {
         if (!curses_active)
         {
-            printf("%s          \r", statusline);
+            printf("%s: statusline: %s          \r", __FUNCTION__, statusline);
             fflush(stdout);
         }
         else
@@ -7214,6 +7223,7 @@ static void *stratum_sthread(void *userdata)
     uint64_t last_nonce2 = 0;
     uint32_t last_nonce = 0;
     char threadname[16];
+	uint32_t i=0;
 
     pthread_detach(pthread_self());
 
@@ -7253,8 +7263,11 @@ static void *stratum_sthread(void *userdata)
 
 
         nonce = *((uint32_t *)(work->data + 76));
+		applog(LOG_DEBUG, "%s: nonce = 0x%08x", __FUNCTION__, nonce);
         nonce2_64 = (uint64_t *)nonce2;
         *nonce2_64 = htole64(work->nonce2);
+		applog(LOG_DEBUG, "%s: *nonce2_64 = 0x%x", __FUNCTION__, *nonce2_64);
+		
         /* Filter out duplicate shares */
         if (unlikely(nonce == last_nonce && *nonce2_64 == last_nonce2))
         {
@@ -7276,7 +7289,18 @@ static void *stratum_sthread(void *userdata)
         sshare = calloc(sizeof(struct stratum_share), 1);
         hash32 = (uint32_t *)work->hash;
         submitted = false;
-
+		/*
+		applog(LOG_DEBUG, "%s: *hash32 = 0x%x", __FUNCTION__, *hash32);
+		for (i=0; i < 20; i++)
+		{
+			applog(LOG_DEBUG,"%s: work->data[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->data) + i));
+		}
+		for (i=0; i < 8; i++)
+		{
+			applog(LOG_DEBUG,"%s: work->hash[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->hash) + i));
+		}
+		*/
+		
         sshare->sshare_time = time(NULL);
         /* This work item is freed in parse_stratum_response */
         sshare->work = work;
@@ -7933,6 +7957,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
     uint64_t nonce2le;
     int i;
 	char strInfo[1024];
+	char *p = NULL;
 
     cg_wlock(&pool->data_lock);
 
@@ -7940,7 +7965,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
      * from left to right and prevent overflow errors with small n2sizes */
     nonce2le = htole64(pool->nonce2);
     memcpy(pool->coinbase + pool->nonce2_offset, &nonce2le, pool->n2size);
-    work->nonce2 = pool->nonce2++;
+    work->nonce2 = pool->nonce2++;	
     work->nonce2_len = pool->n2size;
 
     /* Downgrade to a read lock to read off the pool variables */
@@ -7979,9 +8004,9 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
 
         header = bin2hex(work->data, 112);
         merkle_hash = bin2hex((const unsigned char *)merkle_root, 32);
-        applog(LOG_NOTICE, "Generated stratum merkle %s", merkle_hash);
-        applog(LOG_NOTICE, "Generated stratum header %s", header);
-        applog(LOG_NOTICE, "Work job_id %s nonce2 %"PRIu64" ntime %s", work->job_id,
+        applog(LOG_DEBUG, "Generated stratum merkle %s", merkle_hash);
+        applog(LOG_DEBUG, "Generated stratum header %s", header);
+        applog(LOG_DEBUG, "Work job_id %s nonce2 %"PRIu64" ntime %s", work->job_id,
                work->nonce2, work->ntime);
         free(header);
         free(merkle_hash);
@@ -7989,6 +8014,11 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
 
     // calc_midstate(work);     // DASH do not need it
     set_target(work->target, work->sdiff);
+	/*
+	applog(LOG_NOTICE, "work->sdiff = 0x%x", work->sdiff);
+	p = bin2hex((const unsigned char *)work->target, 32);
+	applog(LOG_NOTICE, "work->target %s", p);
+	*/
 
     local_work++;
     if((time(NULL) - local_work_lasttime) > 5)
@@ -8227,8 +8257,6 @@ struct work *get_work(struct thr_info *thr, const int thr_id)
 /* Submit a copy of the tested, statistic recorded work item asynchronously */
 static void submit_work_async(struct work *work)
 {
-
-
     uint32_t* tmp = (uint32_t*)(work->data + 76);
     if ( *tmp == 0 )
     {
@@ -8301,7 +8329,7 @@ static void submit_work_async(struct work *work)
 
 void inc_hw_errors(struct thr_info *thr)
 {
-    forcelog(LOG_INFO, "%s %d: invalid nonce - HW error", thr->cgpu->drv->name,
+    forcelog(LOG_INFO, "%s: %s%d: invalid nonce - HW error", __FUNCTION__, thr->cgpu->drv->name,
              thr->cgpu->device_id);
 
     mutex_lock(&stats_lock);
@@ -8314,7 +8342,7 @@ void inc_hw_errors(struct thr_info *thr)
 
 void inc_hw_errors_with_diff(struct thr_info *thr, int diff)
 {
-    applog(LOG_ERR, "%s%d: invalid nonce - HW error", thr->cgpu->drv->name,
+    applog(LOG_ERR, "%s: %s%d: invalid nonce - HW error", __FUNCTION__, thr->cgpu->drv->name,
            thr->cgpu->device_id);
 
     mutex_lock(&stats_lock);
@@ -8341,23 +8369,28 @@ static void rebuild_nonce(struct work *work, uint32_t nonce)
 
     uint32_t *work_nonce = (uint32_t *)(work->data + 64 + 12);
 
-
-
     *work_nonce = htole32(nonce);
     rebuild_hash(work);
-
-
 }
 
 /* For testing a nonce against diff 1 */
 bool test_nonce(struct work *work, uint32_t nonce)
 {
-
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
+	
     uint32_t *hash_32 = (uint32_t *)(work->hash + 28);
     uint32_t diff1targ;
 
+	applog(LOG_DEBUG, "%s: 1 *hash_32 = 0x%08x", __FUNCTION__, *hash_32);
+
     rebuild_nonce(work, nonce);
+
+	applog(LOG_DEBUG, "%s: 2 *hash_32 = 0x%08x", __FUNCTION__, *hash_32);
+
+	applog(LOG_DEBUG, "%s opt_scrypt = %d", __FUNCTION__, opt_scrypt);
+	
     diff1targ = opt_scrypt ? 0x0000ffffUL : 0;
+	applog(LOG_DEBUG, "%s: diff1targ = 0x%08x", __FUNCTION__, diff1targ);
 //    unsigned char* tmp = (unsigned char*)(work->data + 76);
 
     return (le32toh(*hash_32) <= diff1targ);
@@ -8375,7 +8408,7 @@ bool test_nonce_diff(struct work *work, uint32_t nonce, double diff)
     return (le64toh(*hash64) <= diff64);
 }
 
-static void update_work_stats(struct thr_info *thr, struct work *work)
+void update_work_stats(struct thr_info *thr, struct work *work)
 {
     double test_diff = current_diff;
 
@@ -8446,7 +8479,7 @@ static bool new_nonce(struct thr_info *thr, uint32_t nonce)
 
     if (unlikely(cgpu->last_nonce == nonce))
     {
-        applog(LOG_INFO, "%s %d duplicate share detected as HW error",
+        applog(LOG_ERR, "%s %d duplicate share detected as HW error",
                cgpu->drv->name, cgpu->device_id);
         return false;
     }
@@ -8458,6 +8491,15 @@ static bool new_nonce(struct thr_info *thr, uint32_t nonce)
  * nonce submitted by this device. */
 bool submit_nonce(struct thr_info *thr, struct work *work, uint32_t nonce)
 {
+	bool ret = false;
+
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
+
+	ret = new_nonce(thr, nonce);
+	applog(LOG_DEBUG, "%s ret1 = %d", __FUNCTION__, ret);
+
+	ret = test_nonce(work, nonce);
+	applog(LOG_DEBUG, "%s ret2 = %d", __FUNCTION__, ret);
 
     if (new_nonce(thr, nonce) && test_nonce(work, nonce))
         submit_tested_work(thr, work);
@@ -8475,8 +8517,12 @@ bool submit_nonce(struct thr_info *thr, struct work *work, uint32_t nonce)
 
 bool submit_nonce_1(struct thr_info *thr, struct work *work, uint32_t nonce, int * nofull)
 {
+	bool ret = false;
+	
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
 
     if(nofull) *nofull = 0;
+
     if (test_nonce(work, nonce))
     {
         // unsigned char* tmp = (unsigned char*)(work->data + 76);
@@ -8501,10 +8547,12 @@ bool submit_nonce_1(struct thr_info *thr, struct work *work, uint32_t nonce, int
 
 void submit_nonce_2(struct work *work)
 {
+	applog(LOG_DEBUG, "%s", __FUNCTION__);
 
     struct work *work_out;
     work_out = copy_work(work);
     submit_work_async(work_out);
+	applog(LOG_DEBUG, "%s end", __FUNCTION__);
 }
 
 bool submit_nonce_direct(struct thr_info *thr, struct work *work, uint32_t nonce)
@@ -9113,6 +9161,8 @@ void hash_driver_work(struct thr_info *mythr)
 
 
         hashes_done += hashes;
+		//if(hashes_done != 0)
+		//	applog(LOG_DEBUG, "%s: hashes_done = %lld", __FUNCTION__, hashes_done);
 
         cgtime(&tv_end);
         timersub(&tv_end, &tv_start, &diff);
@@ -9120,6 +9170,7 @@ void hash_driver_work(struct thr_info *mythr)
         if ((hashes_done && (diff.tv_sec > 0 || diff.tv_usec > 200000)) ||
             diff.tv_sec >= opt_log_interval)
         {
+        	//applog(LOG_DEBUG, "--- %s: hashes_done = %lld", __FUNCTION__, hashes_done);
             hashmeter(thr_id, hashes_done);
             hashes_done = 0;
             copy_time(&tv_start, &tv_end);
@@ -9940,6 +9991,16 @@ static void clean_up(bool restarting)
 
     curl_global_cleanup();
 }
+
+int BinToHexStr(char *pStr, unsigned char *data, int len)
+{
+	int i;
+	int sigLen=0;
+	for(i=0;i<len;i++)
+		sigLen+=sprintf(pStr+sigLen,"%02X",data[i]);
+	return sigLen;
+}
+
 
 /* Should all else fail and we're unable to clean up threads due to locking
  * issues etc, just silently exit. */

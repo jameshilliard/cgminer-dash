@@ -1,6 +1,8 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
+X11_CPPFLAGS = -I x11
+
 JANSSON_CPPFLAGS= -I$(top_builddir)/compat/jansson-2.6/src -I$(top_srcdir)/compat/jansson-2.6/src
 
 if WANT_USBUTILS
@@ -16,7 +18,7 @@ EXTRA_DIST	= example.conf linux-usb-cgminer \
 		  bitforce-firmware-flash.c hexdump.c ASIC-README \
 		  01-cgminer.rules
 
-SUBDIRS		= lib compat ccan
+SUBDIRS		= lib compat ccan x11
 
 cgminer_CPPFLAGS = $(PTHREAD_FLAGS) -fno-strict-aliasing $(JANSSON_CPPFLAGS) $(USBUTILS_CPPFLAGS)
 
@@ -26,7 +28,7 @@ cgminer_LDFLAGS	= $(PTHREAD_FLAGS)
 cgminer_LDADD	= $(DLOPEN_FLAGS) @LIBCURL_LIBS@ @JANSSON_LIBS@ @PTHREAD_LIBS@ \
 		  @NCURSES_LIBS@ @PDCURSES_LIBS@ @WS2_LIBS@ \
 		  @LIBUSB_LIBS@ @MM_LIBS@ @RT_LIBS@ \
-		  @MATH_LIBS@ lib/libgnu.a ccan/libccan.a
+		  @MATH_LIBS@ lib/libgnu.a ccan/libccan.a x11/libx11.a
 
 cgminer_CPPFLAGS += -I$(top_builddir)/lib -I$(top_srcdir)/lib
 
@@ -164,6 +166,7 @@ endif
 
 if HAS_BITMAIN_D1
 cgminer_SOURCES += driver-btm-DASH.c driver-btm-DASH.h 
+cgminer_CPPFLAGS += $(X11_CPPFLAGS)
 endif
 
 if HAS_MODMINER

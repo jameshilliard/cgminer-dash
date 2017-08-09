@@ -26,6 +26,9 @@
 #include "util.h"
 #include "klist.h"
 
+#include "logging.h"
+
+
 #if defined(USE_BFLSC) || defined(USE_AVALON) || defined(USE_AVALON2) || defined(USE_AVALON4) || \
   defined(USE_HASHFAST) || defined(USE_BITFURY) || defined(USE_BLOCKERUPTER) || defined(USE_KLONDIKE) || \
     defined(USE_KNC) || defined(USE_BAB) || defined(USE_DRILLBIT) || \
@@ -2602,7 +2605,7 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
 {
     struct api_data *root = NULL;
     bool io_open = false;
-    char *status, *lp;
+    char *status, *lp, buf[64] = {0};
     int i;
     int hour = 0;
     int minute = 0;
@@ -2686,8 +2689,13 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
         root = api_add_escape(root, "User", pool->rpc_user, false);
         //root = api_add_time(root, "Last Share Time", &(pool->last_share_time), false);
         root = api_add_string(root, "Last Share Time", lasttime, false);
+
+        sprintf(pool->diff,("%8.4f"),pool->sdiff);
         root = api_add_string(root, "Diff", pool->diff, false);
+
         root = api_add_int64(root, "Diff1 Shares", &(pool->diff1), false);
+        //sprintf(buf,("%8.4f"),pool->diff1);
+        //root = api_add_string(root, "Diff1 Shares", buf, false);
         if (pool->rpc_proxy)
         {
             root = api_add_const(root, "Proxy Type", proxytype(pool->rpc_proxytype), false);
@@ -2709,7 +2717,10 @@ static void poolstatus(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __m
         else
             root = api_add_const(root, "Stratum URL", BLANK, false);
         root = api_add_bool(root, "Has GBT", &(pool->has_gbt), false);
-        root = api_add_uint64(root, "Best Share", &(pool->best_diff), true);
+
+        sprintf(buf,("%8.4f"),pool->best_diff);
+        root = api_add_string(root, "Best Share", buf, false);
+        //root = api_add_uint64(root, "Best Share", &(pool->best_diff), true);
         double rejp = (pool->diff_accepted + pool->diff_rejected + pool->diff_stale) ?
                       (double)(pool->diff_rejected) / (double)(pool->diff_accepted + pool->diff_rejected + pool->diff_stale) : 0;
         root = api_add_percent(root, "Pool Rejected%", &rejp, false);
@@ -2780,37 +2791,45 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     struct api_data *root = NULL;
     bool io_open;
     double utility, ghs, work_utility;
+    unsigned char buf[8]= {0};
 
     message(io_data, MSG_SUMM, 0, NULL, isjson);
     io_open = io_add(io_data, isjson ? COMSTR JSON_SUMMARY : _SUMMARY COMSTR);
 
     // stop hashmeter() changing some while copying
     mutex_lock(&hash_lock);
-#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3)
+
+#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3) || defined(USE_BITMAIN_D1)
     total_diff1 = total_diff_accepted + total_diff_rejected + total_diff_stale;
 #endif
 
     utility = total_accepted / ( total_secs ? total_secs : 1 ) * 60;
-
-#if defined USE_BITMAIN_L3
+    
+#if defined USE_BITMAIN_L3 || defined(USE_BITMAIN_D1)
     ghs = total_mhashes_done / 1 / total_secs;
 #else
     ghs = total_mhashes_done / 1000 / total_secs;
 #endif
 
     work_utility = total_diff1 / ( total_secs ? total_secs : 1 ) * 60;
-
+ 
     root = api_add_elapsed(root, "Elapsed", &(total_secs), true);
-#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3)
+
+#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3) || defined(USE_BITMAIN_D1)
     root = api_add_string(root, "GHS 5s", displayed_hash_rate, false);
 #else
     root = api_add_mhs(root, "GHS 5s", &(g_displayed_rolling), false);
 #endif
+
     root = api_add_mhs(root, "GHS av", &(ghs), false);
     root = api_add_uint(root, "Found Blocks", &(found_blocks), true);
     root = api_add_int64(root, "Getworks", &(total_getworks), true);
-    root = api_add_int64(root, "Accepted", &(total_accepted), true);
-    root = api_add_int64(root, "Rejected", &(total_rejected), true);
+
+    sprintf(buf, ("%8.4f"), total_accepted);
+    root = api_add_string(root, "Accepted", buf, false);
+    
+    sprintf(buf,("%8.4f"),total_rejected);
+    root = api_add_string(root, "Rejected", buf, false);
     root = api_add_int(root, "Hardware Errors", &(hw_errors), true);
     root = api_add_utility(root, "Utility", &(utility), false);
     root = api_add_int64(root, "Discarded", &(total_discarded), true);
@@ -2825,18 +2844,24 @@ static void summary(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     root = api_add_diff(root, "Difficulty Rejected", &(total_diff_rejected), true);
     root = api_add_diff(root, "Difficulty Stale", &(total_diff_stale), true);
     root = api_add_uint64(root, "Best Share", &(best_diff), true);
+    //root = api_add_diff(root, "Best Share", &(best_diff), true);
+
     double hwp = (hw_errors + total_diff1) ?
                  (double)(hw_errors) / (double)(hw_errors + total_diff1) : 0;
     root = api_add_percent(root, "Device Hardware%", &hwp, false);
+
     double rejp = total_diff1 ?
                   (double)(total_diff_rejected) / (double)(total_diff1) : 0;
     root = api_add_percent(root, "Device Rejected%", &rejp, false);
+
     double prejp = (total_diff_accepted + total_diff_rejected + total_diff_stale) ?
                    (double)(total_diff_rejected) / (double)(total_diff_accepted + total_diff_rejected + total_diff_stale) : 0;
     root = api_add_percent(root, "Pool Rejected%", &prejp, false);
+
     double stalep = (total_diff_accepted + total_diff_rejected + total_diff_stale) ?
                     (double)(total_diff_stale) / (double)(total_diff_accepted + total_diff_rejected + total_diff_stale) : 0;
     root = api_add_percent(root, "Pool Stale%", &stalep, false);
+
     root = api_add_time(root, "Last getwork", &last_getwork, false);
 
     mutex_unlock(&hash_lock);
@@ -3452,37 +3477,25 @@ static int itemstats(struct io_data *io_data, int i, char *id, struct cgminer_st
     root = api_add_timeval(root, "Wait", &(stats->getwork_wait), false);
     root = api_add_timeval(root, "Max", &(stats->getwork_wait_max), false);
     root = api_add_timeval(root, "Min", &(stats->getwork_wait_min), false);
-#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3)
+
+#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3) || defined(USE_BITMAIN_D1)
+    total_diff1 = total_diff_accepted + total_diff_rejected + total_diff_stale;
+#endif
+    
+#if defined USE_BITMAIN_L3 || defined(USE_BITMAIN_D1)
+    ghs = total_mhashes_done / 1 / total_secs;
+#else
+    ghs = total_mhashes_done / 1000 / total_secs;
+#endif
+
+#if defined(USE_BITMAIN_C5) || defined(USE_BITMAIN_L3) || defined(USE_BITMAIN_D1)
     root = api_add_string(root, "GHS 5s", displayed_hash_rate, false);
 #else
     root = api_add_mhs(root, "GHS 5s", &(g_displayed_rolling), false);
 #endif
+
     root = api_add_mhs(root, "GHS av", &(ghs), false);
 
-    /*
-    if (pool_stats) {
-        root = api_add_uint32(root, "Pool Calls", &(pool_stats->getwork_calls), false);
-        root = api_add_uint32(root, "Pool Attempts", &(pool_stats->getwork_attempts), false);
-        root = api_add_timeval(root, "Pool Wait", &(pool_stats->getwork_wait), false);
-        root = api_add_timeval(root, "Pool Max", &(pool_stats->getwork_wait_max), false);
-        root = api_add_timeval(root, "Pool Min", &(pool_stats->getwork_wait_min), false);
-        root = api_add_double(root, "Pool Av", &(pool_stats->getwork_wait_rolling), false);
-        root = api_add_bool(root, "Work Had Roll Time", &(pool_stats->hadrolltime), false);
-        root = api_add_bool(root, "Work Can Roll", &(pool_stats->canroll), false);
-        root = api_add_bool(root, "Work Had Expire", &(pool_stats->hadexpire), false);
-        root = api_add_uint32(root, "Work Roll Time", &(pool_stats->rolltime), false);
-        root = api_add_diff(root, "Work Diff", &(pool_stats->last_diff), false);
-        root = api_add_diff(root, "Min Diff", &(pool_stats->min_diff), false);
-        root = api_add_diff(root, "Max Diff", &(pool_stats->max_diff), false);
-        root = api_add_uint32(root, "Min Diff Count", &(pool_stats->min_diff_count), false);
-        root = api_add_uint32(root, "Max Diff Count", &(pool_stats->max_diff_count), false);
-        root = api_add_uint64(root, "Times Sent", &(pool_stats->times_sent), false);
-        root = api_add_uint64(root, "Bytes Sent", &(pool_stats->bytes_sent), false);
-        root = api_add_uint64(root, "Times Recv", &(pool_stats->times_received), false);
-        root = api_add_uint64(root, "Bytes Recv", &(pool_stats->bytes_received), false);
-        root = api_add_uint64(root, "Net Bytes Sent", &(pool_stats->net_bytes_sent), false);
-        root = api_add_uint64(root, "Net Bytes Recv", &(pool_stats->net_bytes_received), false);
-    }*/
 
     if (extra)
         root = api_add_extra(root, extra);
@@ -3504,46 +3517,6 @@ static int itemstats(struct io_data *io_data, int i, char *id, struct cgminer_st
             strcpy(details, "0");
 
         root = api_add_string(root, "USB Pipe", details, true);
-
-        /*
-        snprintf(details, sizeof(details),
-             "r%"PRIu64" %.6f w%"PRIu64" %.6f",
-             cgpu->usbinfo.read_delay_count,
-             cgpu->usbinfo.total_read_delay,
-             cgpu->usbinfo.write_delay_count,
-             cgpu->usbinfo.total_write_delay);
-
-        root = api_add_string(root, "USB Delay", details, true);
-
-        if (cgpu->usbinfo.usb_tmo[0].count == 0 &&
-            cgpu->usbinfo.usb_tmo[1].count == 0 &&
-            cgpu->usbinfo.usb_tmo[2].count == 0) {
-                snprintf(details, sizeof(details),
-                     "%"PRIu64" 0", cgpu->usbinfo.tmo_count);
-        } else {
-            snprintf(details, sizeof(details),
-                 "%"PRIu64" %d=%d/%d/%d/%"PRIu64"/%"PRIu64
-                 " %d=%d/%d/%d/%"PRIu64"/%"PRIu64
-                 " %d=%d/%d/%d/%"PRIu64"/%"PRIu64" ",
-                 cgpu->usbinfo.tmo_count,
-                 USB_TMO_0, cgpu->usbinfo.usb_tmo[0].count,
-                 cgpu->usbinfo.usb_tmo[0].min_tmo,
-                 cgpu->usbinfo.usb_tmo[0].max_tmo,
-                 cgpu->usbinfo.usb_tmo[0].total_over,
-                 cgpu->usbinfo.usb_tmo[0].total_tmo,
-                 USB_TMO_1, cgpu->usbinfo.usb_tmo[1].count,
-                 cgpu->usbinfo.usb_tmo[1].min_tmo,
-                 cgpu->usbinfo.usb_tmo[1].max_tmo,
-                 cgpu->usbinfo.usb_tmo[1].total_over,
-                 cgpu->usbinfo.usb_tmo[1].total_tmo,
-                 USB_TMO_2, cgpu->usbinfo.usb_tmo[2].count,
-                 cgpu->usbinfo.usb_tmo[2].min_tmo,
-                 cgpu->usbinfo.usb_tmo[2].max_tmo,
-                 cgpu->usbinfo.usb_tmo[2].total_over,
-                 cgpu->usbinfo.usb_tmo[2].total_tmo);
-        }
-
-        root = api_add_string(root, "USB tmo", details, true);*/
 #endif
     }
 
@@ -4306,6 +4279,7 @@ static void lcddata(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     struct pool *pool = NULL;
     char *rpc_url = "none", *rpc_user = "";
     int i;
+    unsigned char buf[8]= {0};
 
     message(io_data, MSG_LCD, 0, NULL, isjson);
     io_open = io_add(io_data, isjson ? COMSTR JSON_LCD : _LCD COMSTR);
@@ -4360,7 +4334,11 @@ static void lcddata(struct io_data *io_data, __maybe_unused SOCKETTYPE c, __mayb
     root = api_add_temp(root, "Temperature", &temp, false);
     root = api_add_diff(root, "Last Share Difficulty", &last_share_diff, false);
     root = api_add_time(root, "Last Share Time", &last_share_time, false);
-    root = api_add_uint64(root, "Best Share", &best_diff, true);
+
+    sprintf(buf,("%8.4f"),best_diff);
+    root = api_add_string(root, "Best Share", buf, false);
+    //root = api_add_uint64(root, "Best Share", &best_diff, true);
+
     root = api_add_time(root, "Last Valid Work", &last_device_valid_work, false);
     root = api_add_uint(root, "Found Blocks", &found_blocks, true);
     root = api_add_escape(root, "Current Pool", rpc_url, true);

@@ -48,27 +48,28 @@
 
 /****************** checked ***************************/
 
-int const plug[BITMAIN_MAX_CHAIN_NUM] = {51,48,47};
-int const tty[BITMAIN_MAX_CHAIN_NUM] = {1,2,4};
+int const plug[BITMAIN_MAX_CHAIN_NUM] = {51,48,47,44};
+int const tty[BITMAIN_MAX_CHAIN_NUM] = {1,2,4,5};
 int const beep = 20;
 int const red_led = 45;
 int const green_led = 23;
 int const fan_speed[BITMAIN_MAX_FAN_NUM] = {112,110};
-int const i2c_slave_addr[BITMAIN_MAX_CHAIN_NUM] = {0xa0,0xa2,0xa4};
+int const i2c_slave_addr[BITMAIN_MAX_CHAIN_NUM] = {0xa0,0xa2,0xa4,0xa6};
 
 
-pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;	// used when cpu operates i2c interface
-pthread_mutex_t iic_mutex = PTHREAD_MUTEX_INITIALIZER;	// used when cpu communicate with pic
-pthread_mutex_t reg_read_mutex = PTHREAD_MUTEX_INITIALIZER;		// used when read ASIC register periodic in pthread
+pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;  // used when cpu operates i2c interface
+pthread_mutex_t iic_mutex = PTHREAD_MUTEX_INITIALIZER;  // used when cpu communicate with pic
+pthread_mutex_t reg_read_mutex = PTHREAD_MUTEX_INITIALIZER;     // used when read ASIC register periodic in pthread
+pthread_mutex_t read_temp_mutex = PTHREAD_MUTEX_INITIALIZER;        // used when read temperature
 
-unsigned int gChipOffset = 0;	// record register CHIP_OFFSET value
-unsigned int gCoreOffset = 0;	// record register CORE_OFFSET value
+unsigned int gChipOffset = 0;   // record register CHIP_OFFSET value
+unsigned int gCoreOffset = 0;   // record register CORE_OFFSET value
 
-unsigned char TempChipAddr[BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM] = {0, 0, 0};	// record temperature sensor address
+unsigned char TempChipAddr[BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM] = {0, 0, 0};  // record temperature sensor address
 
 
-int opt_bitmain_fan_pwm = 30;		// if not control fan speed according to temperature, use this parameter to control fan speed
-bool opt_bitmain_fan_ctrl = false;	// false: control fan speed according to temperature; true: use opt_bitmain_fan_pwm to control fan speed
+int opt_bitmain_fan_pwm = 30;       // if not control fan speed according to temperature, use this parameter to control fan speed
+bool opt_bitmain_fan_ctrl = false;  // false: control fan speed according to temperature; true: use opt_bitmain_fan_pwm to control fan speed
 int opt_bitmain_DASH_freq = 100;
 int opt_bitmain_DASH_voltage = 176;
 int8_t opt_bitmain_DASH_core_temp = 2;
@@ -90,28 +91,36 @@ struct dev_info dev_info[BITMAIN_MAX_CHAIN_NUM];
 
 bool update_asic_num = false;
 
-unsigned char gTempOffsetValue[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM] = {{0}};
+signed char gTempOffsetValue[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM] = {{0}};
 
 
-unsigned char g_CHIP_ADDR_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};					// record receive how many CHIP_ADDR register value each chain
-unsigned int g_CHIP_ADDR_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};				// record receive CHIP_ADDR register value each chain
+unsigned char g_CHIP_ADDR_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};                   // record receive how many CHIP_ADDR register value each chain
+unsigned int g_CHIP_ADDR_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};             // record receive CHIP_ADDR register value each chain
 
-unsigned char g_GENERAL_I2C_COMMAND_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};		// record receive how many GENERAL_I2C_COMMAND register value each chain
-unsigned int g_GENERAL_I2C_COMMAND_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};	// record receive GENERAL_I2C_COMMAND register value each chain
+unsigned char g_GENERAL_I2C_COMMAND_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};     // record receive how many GENERAL_I2C_COMMAND register value each chain
+unsigned int g_GENERAL_I2C_COMMAND_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};   // record receive GENERAL_I2C_COMMAND register value each chain
 
-unsigned char g_HASH_RATE_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};					// record receive how many HASH_RATE register value each chain
-unsigned int g_HASH_RATE_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};				// record receive HASH_RATE register value each chain
-unsigned int g_HASH_RATE_reg_value_from_which_asic[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};	// record receive HASH_RATE register value from which asic
+unsigned char g_HASH_RATE_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};                   // record receive how many HASH_RATE register value each chain
+unsigned int g_HASH_RATE_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};             // record receive HASH_RATE register value each chain
+unsigned int g_HASH_RATE_reg_value_from_which_asic[BITMAIN_MAX_CHAIN_NUM][128] = {{0}}; // record receive HASH_RATE register value from which asic
 
-unsigned char g_CHIP_STATUS_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};				// record receive how many CHIP_STATUS register value each chain
-unsigned int g_CHIP_STATUS_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};			// record receive CHIP_STATUS register value each chain
+unsigned char g_CHIP_STATUS_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};             // record receive how many CHIP_STATUS register value each chain
+unsigned int g_CHIP_STATUS_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};           // record receive CHIP_STATUS register value each chain
 
 uint64_t rate[BITMAIN_MAX_CHAIN_NUM] = {0};
-unsigned char rate_error[BITMAIN_MAX_CHAIN_NUM] = {0};	// record not receive all ASIC's HASH_RATE register value time
+unsigned char rate_error[BITMAIN_MAX_CHAIN_NUM] = {0};  // record not receive all ASIC's HASH_RATE register value time
 char displayed_rate[BITMAIN_MAX_CHAIN_NUM][16];
 
+unsigned char pic_version[BITMAIN_MAX_CHAIN_NUM] = {0};
 
+bool gLost_internet_10_min = false;     // lost internet for 10 minutes
+bool gGot_Temperature_value = false;    // wether read out new temperature value
 
+bool gMinerStatus_Low_Hashrate = false;         // hash rate is too low
+bool gMinerStatus_High_Temp = false;            // the temperature is higher than MAX_TEMP
+bool gMinerStatus_Not_read_all_sensor = false;  // do not read out all sensor's temperature
+bool gMinerStatus_Lost_connection_to_pool = false;  // can't receive job from pool
+unsigned char gMinerStatus_High_Temp_Counter = 0;           // the temperature is higher than MAX_TEMP counter
 
 /****************** checked end ***************************/
 
@@ -127,13 +136,13 @@ struct thr_info *read_nonce_reg_id;                 // thread id for read nonce 
 uint64_t h = 0;
 
 unsigned char hash_board_id[BITMAIN_MAX_CHAIN_NUM][12];
-unsigned char voltage[BITMAIN_MAX_CHAIN_NUM] = {0,0,0};
+unsigned char voltage[BITMAIN_MAX_CHAIN_NUM] = {0,0,0,0};
 
 
 
 
-//bool need_recheck[BITMAIN_MAX_CHAIN_NUM] = {false, false, false, false};
-bool need_recheck[BITMAIN_MAX_CHAIN_NUM] = {false, false, false};
+bool need_recheck[BITMAIN_MAX_CHAIN_NUM] = {false, false, false, false};
+
 
 
 
@@ -153,16 +162,14 @@ bool status_error = false;
 bool check_rate = false;
 bool gBegin_get_nonce = false;
 bool send_heart = true;
-//bool new_block[BITMAIN_MAX_CHAIN_NUM] = {false, false, false, false};
-bool new_block[BITMAIN_MAX_CHAIN_NUM] = {false, false, false};
-
+bool new_block[BITMAIN_MAX_CHAIN_NUM] = {false, false, false, false};
 
 
 uint64_t hashboard_average_hash_rate[BITMAIN_MAX_CHAIN_NUM] = {0};
 uint64_t hashboard_real_time_hash_rate[BITMAIN_MAX_CHAIN_NUM] = {0};
 
 
-unsigned char pic_version[BITMAIN_MAX_CHAIN_NUM] = {0};
+
 
 
 
@@ -175,8 +182,7 @@ struct reg_buf reg_fifo;
 
 struct timeval tv_send_job = {0, 0};
 
-//static int g_gpio_data[BITMAIN_MAX_CHAIN_NUM] = {5, 4, 27, 22};
-static int g_gpio_data[BITMAIN_MAX_CHAIN_NUM] = {5, 4, 27};	// this is reset pin
+static int g_gpio_data[BITMAIN_MAX_CHAIN_NUM] = {5, 4, 27, 22}; // this is reset pins
 
 
 
@@ -185,51 +191,57 @@ static int g_gpio_data[BITMAIN_MAX_CHAIN_NUM] = {5, 4, 27};	// this is reset pin
 
 static void hexdump(const uint8_t *p, unsigned int len)
 {
-	unsigned int i, addr;
-	unsigned int wordlen = sizeof(unsigned int);
-	unsigned char v, line[BYTES_PER_LINE * 5];
+    unsigned int i, addr;
+    unsigned int wordlen = sizeof(unsigned int);
+    unsigned char v, line[BYTES_PER_LINE * 5];
 
-	for (addr = 0; addr < len; addr += BYTES_PER_LINE) {
-		/* clear line */
-		for (i = 0; i < sizeof(line); i++) {
-			if (i == wordlen * 2 + 52 ||
-			    i == wordlen * 2 + 69) {
-			    	line[i] = '|';
-				continue;
-			}
+    for (addr = 0; addr < len; addr += BYTES_PER_LINE)
+    {
+        /* clear line */
+        for (i = 0; i < sizeof(line); i++)
+        {
+            if (i == wordlen * 2 + 52 ||
+                i == wordlen * 2 + 69)
+            {
+                line[i] = '|';
+                continue;
+            }
 
-			if (i == wordlen * 2 + 70) {
-				line[i] = '\0';
-				continue;
-			}
+            if (i == wordlen * 2 + 70)
+            {
+                line[i] = '\0';
+                continue;
+            }
 
-			line[i] = ' ';
-		}
+            line[i] = ' ';
+        }
 
-		/* print address */
-		for (i = 0; i < wordlen * 2; i++) {
-			v = addr >> ((wordlen * 2 - i - 1) * 4);
-			line[i] = nibble[v & 0xf];
-		}
+        /* print address */
+        for (i = 0; i < wordlen * 2; i++)
+        {
+            v = addr >> ((wordlen * 2 - i - 1) * 4);
+            line[i] = nibble[v & 0xf];
+        }
 
-		/* dump content */
-		for (i = 0; i < BYTES_PER_LINE; i++) {
-			int pos = (wordlen * 2) + 3 + (i / 8);
+        /* dump content */
+        for (i = 0; i < BYTES_PER_LINE; i++)
+        {
+            int pos = (wordlen * 2) + 3 + (i / 8);
 
-			if (addr + i >= len)
-				break;
+            if (addr + i >= len)
+                break;
 
-			v = p[addr + i];
-			line[pos + (i * 3) + 0] = nibble[v >> 4];
-			line[pos + (i * 3) + 1] = nibble[v & 0xf];
+            v = p[addr + i];
+            line[pos + (i * 3) + 0] = nibble[v >> 4];
+            line[pos + (i * 3) + 1] = nibble[v & 0xf];
 
-			/* character printable? */
-			line[(wordlen * 2) + 53 + i] =
-				(v >= ' ' && v <= '~') ? v : '.';
-		}
+            /* character printable? */
+            line[(wordlen * 2) + 53 + i] =
+                (v >= ' ' && v <= '~') ? v : '.';
+        }
 
-		hex_print(line);
-	}
+        hex_print(line);
+    }
 }
 
 
@@ -370,32 +382,34 @@ uint16_t crc_itu_t(uint16_t crc, const uint8_t *buffer, int len)
 /*
 unsigned char use_new_or_old_PIC16F1704_api(void)
 {
-	unsigned char version = 0;
+    unsigned char version = 0;
 
-	pic_reset();
-	pic_jump_from_loader_to_app();
-	pic_read_pic_software_version(&version);
-	pic_reset();
+    pic_reset();
+    pic_jump_from_loader_to_app();
+    pic_read_pic_software_version(&version);
+    pic_reset();
 
-	printf("\n--- %s: version = 0x%02x\n", __FUNCTION__, version);
+    printf("\n--- %s: version = 0x%02x\n", __FUNCTION__, version);
 
-	if(version < 0x80)
-	{		
-		printf("\n--- %s: use old PIC16F1704 api\n", __FUNCTION__);
-		return 0;
-	}
-	else
-	{
-		printf("\n--- %s: use new PIC16F1704 api\n", __FUNCTION__);
-		return 1;
-	}
+    if(version < 0x80)
+    {
+        printf("\n--- %s: use old PIC16F1704 api\n", __FUNCTION__);
+        return 0;
+    }
+    else
+    {
+        printf("\n--- %s: use new PIC16F1704 api\n", __FUNCTION__);
+        return 1;
+    }
 }
 */
 
 void *pic_heart_beat_func_new(void * arg)
 {
-	int which_chain = 0;
-	
+    int which_chain = 0;
+
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
+
     while(1)
     {
         for(which_chain=0; which_chain<BITMAIN_MAX_CHAIN_NUM; which_chain++)
@@ -417,13 +431,1230 @@ void *pic_heart_beat_func_new(void * arg)
 
 int set_PIC16F1704_flash_pointer_new(unsigned char flash_addr_h, unsigned char flash_addr_l)
 {
+    unsigned char length = 0x06, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[8] = {0};
+
+    //applog(LOG_NOTICE, "%s", __FUNCTION__);
+
+    crc = length + SET_PIC_FLASH_POINTER + flash_addr_h + flash_addr_l;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = SET_PIC_FLASH_POINTER;
+    send_data[4] = flash_addr_h;
+    send_data[5] = flash_addr_l;
+    send_data[6] = crc_data[0];
+    send_data[7] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<8; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    if((read_back_data[0] != SET_PIC_FLASH_POINTER) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int send_data_to_PIC16F1704_new(unsigned char *buf)
+{
+    unsigned char length = 0x14, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[22] = {0};
+
+    //applog(LOG_NOTICE,"%s", __FUNCTION__);
+
+    crc = length + SEND_DATA_TO_PIC;
+    for(i=0; i<16; i++)
+    {
+        crc += *(buf + i);
+    }
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = SEND_DATA_TO_PIC;
+    for(i=0; i<16; i++)
+    {
+        send_data[i+4]= *(buf + i);
+    }
+    send_data[20] = crc_data[0];
+    send_data[21] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<22; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    if((read_back_data[0] != SEND_DATA_TO_PIC) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char *flash_addr_l)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[6] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_NOTICE,"%s", __FUNCTION__);
+
+    crc = length + GET_PIC_FLASH_POINTER;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = GET_PIC_FLASH_POINTER;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<6; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    if((read_back_data[1] != GET_PIC_FLASH_POINTER) || (read_back_data[0] != 6))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
+               read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
+        return 0;   // error
+    }
+    else
+    {
+        crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3];
+        if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[4]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[5]))
+        {
+            applog(LOG_ERR,"%s failed!!! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
+                   read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
+            return 0;   // error
+        }
+        *flash_addr_h = read_back_data[2];
+        *flash_addr_l = read_back_data[3];
+        applog(LOG_NOTICE,"%s ok! flash_addr_h = 0x%02x, flash_addr_l = 0x%02x\n\n", __FUNCTION__, *flash_addr_h, *flash_addr_l);
+        return 1;   // ok
+    }
+}
+
+int read_PIC16F1704_flash_data_new(unsigned char *buf)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[20] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_NOTICE,"%s", __FUNCTION__);
+
+    crc = length + READ_DATA_FROM_PIC_FLASH;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = READ_DATA_FROM_PIC_FLASH;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(300*1000);
+    for(i=0; i<20; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    applog(LOG_NOTICE,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
+		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x, \
+		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x, \
+		read_back_data[12] = 0x%x, read_back_data[13] = 0x%x, read_back_data[14] = 0x%x, read_back_data[15] = 0x%x, \
+		read_back_data[16] = 0x%x, read_back_data[17] = 0x%x, read_back_data[18] = 0x%x, read_back_data[19] = 0x%x\n", __FUNCTION__,\
+           read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5], \
+           read_back_data[6], read_back_data[7], read_back_data[8], read_back_data[9], read_back_data[10], read_back_data[11], \
+           read_back_data[12], read_back_data[13], read_back_data[14], read_back_data[15], read_back_data[16], read_back_data[17], \
+           read_back_data[18], read_back_data[19]);
+    usleep(100*1000);
+
+    if((read_back_data[1] != READ_DATA_FROM_PIC_FLASH) || (read_back_data[0] != 20))
+    {
+        applog(LOG_ERR,"%s failed!\n\n", __FUNCTION__);
+        return 0;   // error
+    }
+    else
+    {
+        crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3] + read_back_data[4] + read_back_data[5] +
+              read_back_data[6] + read_back_data[7] + read_back_data[8] + read_back_data[9] + read_back_data[10] + read_back_data[11] +
+              read_back_data[12] + read_back_data[13] + read_back_data[14] + read_back_data[15] + read_back_data[16] + read_back_data[17];
+
+        if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[18]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[19]))
+        {
+            applog(LOG_ERR,"%s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
+            return 0;   // error
+        }
+        for(i=0; i<16; i++)
+        {
+            *(buf + i) = read_back_data[2 + i];
+        }
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int erase_PIC16F1704_flash_new(void)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_NOTICE,"%s", __FUNCTION__);
+
+    crc = length + ERASE_PIC_FLASH;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = ERASE_PIC_FLASH;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    usleep(200*1000);
+
+    if((read_back_data[0] != ERASE_PIC_FLASH) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int write_data_into_PIC16F1704_flash_new(void)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_NOTICE,"%s", __FUNCTION__);
+
+    crc = length + WRITE_DATA_INTO_FLASH;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = WRITE_DATA_INTO_FLASH;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(200*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    usleep(200*1000);
+
+    if((read_back_data[0] != WRITE_DATA_INTO_FLASH) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok\n\n", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int jump_from_loader_to_app_PIC16F1704_new(void)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + JUMP_FROM_LOADER_TO_APP;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = JUMP_FROM_LOADER_TO_APP;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    usleep(300*1000);
+
+    if((read_back_data[0] != JUMP_FROM_LOADER_TO_APP) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int reset_PIC16F1704_pic_new(void)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + RESET_PIC;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = RESET_PIC;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    usleep(1*1000*1000);
+
+    if((read_back_data[0] != RESET_PIC) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int set_PIC16F1704_voltage_new(unsigned char voltage)
+{
+    unsigned char length = 0x05, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[7] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + SET_VOLTAGE + voltage;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = SET_VOLTAGE;
+    send_data[4] = voltage;
+    send_data[5] = crc_data[0];
+    send_data[6] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<7; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(200*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    usleep(200*1000);
+
+    if((read_back_data[0] != SET_VOLTAGE) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok, voltage = 0x%02x", __FUNCTION__, voltage);
+        return 1;   // ok
+    }
+}
+
+
+int write_hash_ID_PIC16F1704_new(unsigned char *buf)
+{
+    unsigned char length = 0x10, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[18] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + SET_HASH_BOARD_ID;
+    for(i=0; i<12; i++)
+    {
+        crc += *(buf + i);
+    }
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = SET_HASH_BOARD_ID;
+    for(i=0; i<12; i++)
+    {
+        send_data[i+4]= *(buf + i);
+    }
+    send_data[16] = crc_data[0];
+    send_data[17] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<18; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(200*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    usleep(200*1000);
+
+    if((read_back_data[0] != SET_HASH_BOARD_ID) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int read_hash_id_PIC16F1704_new(unsigned char *buf)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[16] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + READ_HASH_BOARD_ID;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = READ_HASH_BOARD_ID;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(200*1000);
+    for(i=0; i<16; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    applog(LOG_NOTICE,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x,\
+		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x,\
+		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x,\
+		read_back_data[12] = 0x%x, read_back_data[13] = 0x%x, read_back_data[14] = 0x%x, read_back_data[15] = 0x%x\n", __FUNCTION__,\
+           read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5],\
+           read_back_data[6], read_back_data[7], read_back_data[8], read_back_data[9], read_back_data[10], read_back_data[11],\
+           read_back_data[12], read_back_data[13], read_back_data[14], read_back_data[15]);
+
+    if((read_back_data[1] != READ_HASH_BOARD_ID) || (read_back_data[0] != 16))
+    {
+        applog(LOG_ERR,"%s failed!\n\n", __FUNCTION__);
+        return 0;   // error
+    }
+    else
+    {
+        crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3] + read_back_data[4] + read_back_data[5] +
+              read_back_data[6] + read_back_data[7] + read_back_data[8] + read_back_data[9] + read_back_data[10] + read_back_data[11] +
+              read_back_data[12] + read_back_data[13];
+
+        if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[14]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[15]))
+        {
+            applog(LOG_ERR,"%s failed! crc = 0x%04x", __FUNCTION__, crc);
+            return 0;   // error
+        }
+        for(i=0; i<12; i++)
+        {
+            *(buf + i) = read_back_data[2 + i];
+        }
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int enable_PIC16F1704_dc_dc_new(void)
+{
+    unsigned char length = 0x05, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[7] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + ENABLE_VOLTAGE + 1;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = ENABLE_VOLTAGE;
+    send_data[4] = 1;
+    send_data[5] = crc_data[0];
+    send_data[6] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<7; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    if((read_back_data[0] != ENABLE_VOLTAGE) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int disable_PIC16F1704_dc_dc_new(void)
+{
+    unsigned char length = 0x05, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[7] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + ENABLE_VOLTAGE + 0;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = ENABLE_VOLTAGE;
+    send_data[4] = 0;
+    send_data[5] = crc_data[0];
+    send_data[6] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<7; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    if((read_back_data[0] != ENABLE_VOLTAGE) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+
+int heart_beat_PIC16F1704_new(void)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[6] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + SEND_HEART_BEAT;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = SEND_HEART_BEAT;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(100*1000);
+    for(i=0; i<6; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    if((read_back_data[1] != SEND_HEART_BEAT) || (read_back_data[2] != 1))
+    {
+        applog(LOG_ERR,"%s failed!", __FUNCTION__);
+        applog(LOG_ERR,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n",
+               __FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_DEBUG,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int get_PIC16F1704_software_version_new(unsigned char *version)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[5] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + READ_PIC_SOFTWARE_VERSION;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = READ_PIC_SOFTWARE_VERSION;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(400*1000);
+    for(i=0; i<5; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    //usleep(200*1000);
+
+    applog(LOG_DEBUG,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x",
+           __FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
+
+    if((read_back_data[1] != READ_PIC_SOFTWARE_VERSION) || (read_back_data[0] != 5))
+    {
+        applog(LOG_ERR,"%s failed!", __FUNCTION__);
+        applog(LOG_ERR,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x",
+               __FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
+        return 0;   // error
+    }
+    else
+    {
+        crc = read_back_data[0] + read_back_data[1] + read_back_data[2];
+        if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[3]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[4]))
+        {
+            applog(LOG_ERR,"%s failed! crc = 0x%04x", __FUNCTION__, crc);
+            return 0;   // error
+        }
+        *version = read_back_data[2];
+        applog(LOG_NOTICE,"%s ok, version = 0x%02x", __FUNCTION__, *version);
+        return 1;   // ok
+    }
+}
+
+
+int get_PIC16F1704_voltage_new(unsigned char *voltage)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[5] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[6] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + GET_VOLTAGE;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = GET_VOLTAGE;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(200*1000);
+    for(i=0; i<5; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    applog(LOG_NOTICE,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x\n",
+           __FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
+
+    if((read_back_data[1] != GET_VOLTAGE) || (read_back_data[0] != 5))
+    {
+        applog(LOG_ERR,"%s failed!", __FUNCTION__);
+        return 0;   // error
+    }
+    else
+    {
+        crc = read_back_data[0] + read_back_data[1] + read_back_data[2];
+        if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[3]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[4]))
+        {
+            applog(LOG_ERR,"%s failed! crc = 0x%04x", __FUNCTION__, crc);
+            return 0;   // error
+        }
+        *voltage = read_back_data[2];
+        applog(LOG_NOTICE,"%s ok, voltage = 0x%02x", __FUNCTION__, *voltage);
+        return 1;   // ok
+    }
+}
+
+
+int write_temperature_offset_PIC16F1704_new(unsigned char *buf)
+{
+    unsigned char length = 0x0c, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i,send_data[14] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + WR_TEMP_OFFSET_VALUE;
+    for(i=0; i<8; i++)
+    {
+        crc += *(buf + i);
+    }
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = WR_TEMP_OFFSET_VALUE;
+    for(i=0; i<8; i++)
+    {
+        send_data[i+4]= *(buf + i);
+    }
+    send_data[12] = crc_data[0];
+    send_data[13] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<14; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(200*1000);
+    for(i=0; i<2; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    usleep(200*1000);
+
+    if((read_back_data[0] != WR_TEMP_OFFSET_VALUE) || (read_back_data[1] != 1))
+    {
+        applog(LOG_ERR,"%s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x", __FUNCTION__, read_back_data[0], read_back_data[1]);
+        return 0;   // error
+    }
+    else
+    {
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+int read_temperature_offset_PIC16F1704_new(unsigned char *buf)
+{
+    unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[0x0c] = {0xff};
+    unsigned short crc = 0;
+    unsigned char i = 0;
+    unsigned char send_data[6] = {0};
+
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
+
+    crc = length + RD_TEMP_OFFSET_VALUE;
+    crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
+    crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
+    //printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+
+    send_data[0] = PIC_COMMAND_1;
+    send_data[1] = PIC_COMMAND_2;
+    send_data[2] = length;
+    send_data[3] = RD_TEMP_OFFSET_VALUE;
+    send_data[4] = crc_data[0];
+    send_data[5] = crc_data[1];
+
+    pthread_mutex_lock(&i2c_mutex);
+    for(i=0; i<6; i++)
+    {
+        write(dev.i2c_fd, send_data+i, 1);
+    }
+    usleep(200*1000);
+    for(i=0; i<12; i++)
+    {
+        read(dev.i2c_fd, read_back_data+i, 1);
+    }
+    pthread_mutex_unlock(&i2c_mutex);
+
+    applog(LOG_NOTICE,"%s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
+		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x, \
+		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x\n", __FUNCTION__,\
+           read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5], \
+           read_back_data[6], read_back_data[7], read_back_data[8], read_back_data[9], read_back_data[10], read_back_data[11]);
+
+    if((read_back_data[1] != RD_TEMP_OFFSET_VALUE) || (read_back_data[0] != 0x0c))
+    {
+        applog(LOG_ERR,"%s failed!", __FUNCTION__);
+        return 0;   // error
+    }
+    else
+    {
+        crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3] + read_back_data[4] + read_back_data[5] +
+              read_back_data[6] + read_back_data[7] + read_back_data[8] + read_back_data[9];
+
+        if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[10]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[11]))
+        {
+            applog(LOG_ERR,"%s failed! crc = 0x%04x", __FUNCTION__, crc);
+            return 0;   // error
+        }
+        for(i=0; i<8; i++)
+        {
+            *(buf + i) = read_back_data[2 + i];
+        }
+        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        return 1;   // ok
+    }
+}
+
+
+unsigned char erase_PIC16F1704_app_flash_new(void)
+{
+    unsigned char ret=0xff;
+    unsigned int i=0, erase_loop = 0;
+    unsigned char start_addr_h = PIC_FLASH_POINTER_START_ADDRESS_H_NEW, start_addr_l = PIC_FLASH_POINTER_START_ADDRESS_L_NEW;
+    unsigned char end_addr_h = PIC_FLASH_POINTER_END_ADDRESS_H, end_addr_l = PIC_FLASH_POINTER_END_ADDRESS_L;
+    unsigned int pic_flash_length=0;
+
+    //applog(LOG_NOTICE,"%s", __FUNCTION__);
+
+    set_PIC16F1704_flash_pointer_new(PIC_FLASH_POINTER_START_ADDRESS_H_NEW, PIC_FLASH_POINTER_START_ADDRESS_L_NEW);
+
+    pic_flash_length = (((unsigned int)end_addr_h << 8) + end_addr_l) - (((unsigned int)start_addr_h << 8) + start_addr_l) + 1;
+    erase_loop = pic_flash_length/PIC_FLASH_SECTOR_LENGTH;
+    applog(LOG_NOTICE,"%s: erase_loop = %d\n", __FUNCTION__, erase_loop);
+
+    for(i=0; i<erase_loop; i++)
+    {
+        erase_PIC16F1704_flash_new();
+    }
+}
+
+
+int PIC1704_update_pic_app_program_new(void)
+{
+    unsigned char program_data[5000] = {0};
+    FILE * pic_program_file;
+    unsigned int filesize = 0,i=0,j;
+    unsigned char data_read[5]= {0,0,0,0,'\0'}, buf[16]= {0};
+    unsigned int data_int = 0;
+    struct stat statbuff;
+    unsigned char start_addr_h = PIC_FLASH_POINTER_START_ADDRESS_H_NEW, start_addr_l = PIC_FLASH_POINTER_START_ADDRESS_L_NEW;
+    unsigned char end_addr_h = PIC_FLASH_POINTER_END_ADDRESS_H, end_addr_l = PIC_FLASH_POINTER_END_ADDRESS_L;
+    unsigned int pic_flash_length=0;
+    int ret=0;
+
+    applog(LOG_NOTICE,"%s", __FUNCTION__);
+
+    // read upgrade file first, if it is wrong, don't erase pic, but just return;
+    pic_program_file = fopen(PIC16F1704_PROGRAM_NEW, "r");
+    if(!pic_program_file)
+    {
+        applog(LOG_ERR,"%s: open pic16f1704_app_new.txt failed\n", __FUNCTION__);
+        return;
+    }
+    fseek(pic_program_file,0,SEEK_SET);
+    memset(program_data, 0x0, 5000);
+
+    pic_flash_length = (((unsigned int)end_addr_h << 8) + end_addr_l) - (((unsigned int)start_addr_h << 8) + start_addr_l) + 1;
+    applog(LOG_NOTICE,"%s: pic_flash_length = %d\n", __FUNCTION__, pic_flash_length);
+
+    for(i=0; i<pic_flash_length; i++)
+    {
+        fgets(data_read, MAX_CHAR_NUM - 1 , pic_program_file);
+        //printf("data_read[0]=%c, data_read[1]=%c, data_read[2]=%c, data_read[3]=%c\n", data_read[0], data_read[1], data_read[2], data_read[3]);
+        data_int = strtoul(data_read, NULL, 16);
+        //printf("data_int = 0x%04x\n", data_int);
+        program_data[2*i + 0] = (unsigned char)((data_int >> 8) & 0x000000ff);
+        program_data[2*i + 1] = (unsigned char)(data_int & 0x000000ff);
+        //printf("program_data[%d]=0x%02x, program_data[%d]=0x%02x\n\n", 2*i + 0, program_data[2*i + 0], 2*i + 1, program_data[2*i + 1]);
+    }
+
+    fclose(pic_program_file);
+
+    // after read upgrade file correct, erase pic
+    ret = reset_PIC16F1704_pic_new();
+    if(ret == 0)
+    {
+        applog(LOG_ERR,"%s: reset pic error!\n\n", __FUNCTION__);
+        return 0;
+    }
+
+    ret = erase_PIC16F1704_app_flash_new();
+    if(ret == 0)
+    {
+        applog(LOG_ERR,"%s: erase flash error!\n\n", __FUNCTION__);
+        return 0;
+    }
+
+    ret = set_PIC16F1704_flash_pointer_new(PIC_FLASH_POINTER_START_ADDRESS_H_NEW, PIC_FLASH_POINTER_START_ADDRESS_L_NEW);
+    if(ret == 0)
+    {
+        applog(LOG_ERR,"%s: set flash pointer error!\n\n", __FUNCTION__);
+        return 0;
+    }
+
+    for(i=0; i<pic_flash_length/PIC_FLASH_SECTOR_LENGTH*4; i++)
+    {
+        memcpy(buf, program_data+i*16, 16);
+        /**/
+        applog(LOG_NOTICE,"send pic program time: %d",i);
+        for(j=0; j<16; j++)
+        {
+            applog(LOG_DEBUG,"buf[%d] = 0x%02x", j, *(buf+j));
+        }
+
+        send_data_to_PIC16F1704_new(buf);
+        write_data_into_PIC16F1704_flash_new();
+    }
+
+    ret = reset_PIC16F1704_pic_new();
+    if(ret == 0)
+    {
+        applog(LOG_ERR,"%s: reset pic error!\n\n", __FUNCTION__);
+        return 0;
+    }
+
+    return 1;
+}
+
+
+void every_chain_reset_PIC16F1704_pic_new(void)
+{
+    unsigned char which_chain;
+
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
+
+    for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    {
+        if(dev.chain_exist[which_chain] == 1)
+        {
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+            reset_PIC16F1704_pic_new();
+            pthread_mutex_unlock(&iic_mutex);
+            cgsleep_ms(100);
+        }
+    }
+    cgsleep_ms(500);
+}
+
+
+void every_chain_jump_from_loader_to_app_PIC16F1704_new(void)
+{
+    unsigned char which_chain;
+
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
+
+    for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    {
+        if(dev.chain_exist[which_chain] == 1)
+        {
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+            jump_from_loader_to_app_PIC16F1704_new();
+            pthread_mutex_unlock(&iic_mutex);
+        }
+        cgsleep_ms(100);
+    }
+    cgsleep_ms(500);
+}
+
+
+void every_chain_enable_PIC16F1704_dc_dc_new(void)
+{
+    unsigned char which_chain;
+
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
+
+    for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    {
+        if(dev.chain_exist[which_chain] == 1)
+        {
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd, I2C_SLAVE, i2c_slave_addr[which_chain] >> 1) < 0))
+                applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
+            enable_PIC16F1704_dc_dc_new();
+            pthread_mutex_unlock(&iic_mutex);
+            cgsleep_ms(100);
+        }
+    }
+    cgsleep_ms(500);
+}
+
+
+int send_heart_beat_to_every_chain(void)
+{
+    pic_heart_beat = calloc(1,sizeof(struct thr_info));
+    if(thr_info_create(pic_heart_beat, NULL, pic_heart_beat_func_new, pic_heart_beat))
+    {
+        applog(LOG_ERR, "%s: create thread error for pic_heart_beat_func", __FUNCTION__);
+        return -3;
+    }
+    pthread_detach(pic_heart_beat->pth);
+}
+
+
+void check_whether_need_update_pic_program(void)
+{
+    unsigned char which_chain, pic_update_counter = 0;
+    bool need_update_pic = false;
+    int ret = 0;
+
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
+
+    for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    {
+        pic_update_counter = 0;
+        need_update_pic = false;
+
+        if(dev.chain_exist[which_chain] == 1)
+        {
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+            reset_PIC16F1704_pic_new();
+            cgsleep_ms(100);
+            jump_from_loader_to_app_PIC16F1704_new();
+            cgsleep_ms(100);
+            ret = get_PIC16F1704_software_version_new(&pic_version[which_chain]);
+            pthread_mutex_unlock(&iic_mutex);
+
+            if((pic_version[which_chain] < PIC_VERSION) && (ret == 1))
+                //if(ret == 1)
+            {
+                need_update_pic = true;
+            }
+        }
+
+        while(need_update_pic && (pic_update_counter < 3))
+        {
+            need_update_pic = false;
+
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+            PIC1704_update_pic_app_program_new();
+            cgsleep_ms(100);
+            jump_from_loader_to_app_PIC16F1704_new();
+            cgsleep_ms(200);
+            ret = get_PIC16F1704_software_version_new(&pic_version[which_chain]);
+            pthread_mutex_unlock(&iic_mutex);
+
+            pic_update_counter++;
+            applog(LOG_NOTICE, "%s: Chain%d pic update for %d times",__FUNCTION__, which_chain, pic_update_counter);
+
+            if((pic_version[which_chain] != PIC_VERSION) || (ret == 0))
+            {
+                need_update_pic = true;
+            }
+        }
+    }
+}
+
+void check_every_chain_asic_number(bool whether_update_asic_num)
+{
+    unsigned char which_chain;
+
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
+
+    for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    {
+        if(dev.chain_exist[which_chain])
+        {
+            update_asic_num = whether_update_asic_num;
+            check_asic_reg(which_chain, 1, 0, CHIP_ADDR);
+        }
+        cgsleep_ms(100);
+    }
+}
+
+
+int save_freq_PIC16F1704_new(unsigned short freq)
+{
 	unsigned char length = 0x06, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
 	unsigned short crc = 0;
 	unsigned char i,send_data[8] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_DEBUG, "\n--- %s\n", __FUNCTION__);
 	
-	crc = length + SET_PIC_FLASH_POINTER + flash_addr_h + flash_addr_l;
+	crc = length + SAVE_FREQ + ((freq >> 8) & 0xff) + (freq & 0xff);
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
 	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
 	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
@@ -431,9 +1662,9 @@ int set_PIC16F1704_flash_pointer_new(unsigned char flash_addr_h, unsigned char f
 	send_data[0] = PIC_COMMAND_1;
 	send_data[1] = PIC_COMMAND_2;
 	send_data[2] = length;
-	send_data[3] = SET_PIC_FLASH_POINTER;
-	send_data[4] = flash_addr_h;
-	send_data[5] = flash_addr_l;
+	send_data[3] = SAVE_FREQ;
+	send_data[4] = (freq >> 8) & 0xff;
+	send_data[5] = freq & 0xff;
 	send_data[6] = crc_data[0];
 	send_data[7] = crc_data[1];
 	
@@ -442,88 +1673,36 @@ int set_PIC16F1704_flash_pointer_new(unsigned char flash_addr_h, unsigned char f
 	{
 		write(dev.i2c_fd, send_data+i, 1);
 	}
-	usleep(100*1000);
+	usleep(300*1000);
 	for(i=0; i<2; i++)
 	{
 		read(dev.i2c_fd, read_back_data+i, 1);
 	}
 	pthread_mutex_unlock(&i2c_mutex);
+
+	usleep(200*1000);
 	
-	if((read_back_data[0] != SET_PIC_FLASH_POINTER) || (read_back_data[1] != 1))
+	if((read_back_data[0] != SAVE_FREQ) || (read_back_data[1] != 1))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
+		applog(LOG_ERR, "\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
 		return 0;	// error
 	}
 	else
 	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
+		applog(LOG_DEBUG, "\n--- %s ok\n\n", __FUNCTION__);
 		return 1;	// ok
 	}
 }
 
-
-int send_data_to_PIC16F1704_new(unsigned char *buf)
-{
-	unsigned char length = 0x14, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[22] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + SEND_DATA_TO_PIC;
-	for(i=0; i<16; i++)
-	{
-		crc += *(buf + i);
-	}
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = SEND_DATA_TO_PIC;
-	for(i=0; i<16; i++)
-	{
-		send_data[i+4]= *(buf + i);
-	}
-	send_data[20] = crc_data[0];
-	send_data[21] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<22; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(100*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-	
-	if((read_back_data[0] != SEND_DATA_TO_PIC) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char *flash_addr_l)
+int get_PIC16F1704_freq_new(unsigned short *freq)
 {
 	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[6] = {0xff};
 	unsigned short crc = 0;
 	unsigned char i,send_data[6] = {0};
 	
-	//printf("\n--- %s\n", __FUNCTION__);
+	//applog(LOG_NOTICE, "\n--- %s\n", __FUNCTION__);
 	
-	crc = length + GET_PIC_FLASH_POINTER;
+	crc = length + READ_OUT_FREQ;
 	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
 	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
 	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
@@ -531,7 +1710,7 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
 	send_data[0] = PIC_COMMAND_1;
 	send_data[1] = PIC_COMMAND_2;
 	send_data[2] = length;
-	send_data[3] = GET_PIC_FLASH_POINTER;
+	send_data[3] = READ_OUT_FREQ;
 	send_data[4] = crc_data[0];
 	send_data[5] = crc_data[1];
 	
@@ -540,17 +1719,21 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
 	{
 		write(dev.i2c_fd, send_data+i, 1);
 	}
-	usleep(100*1000);
+	usleep(300*1000);
 	for(i=0; i<6; i++)
 	{
 		read(dev.i2c_fd, read_back_data+i, 1);
 	}
 	pthread_mutex_unlock(&i2c_mutex);
+
+	usleep(200*1000);
 	
-	if((read_back_data[1] != GET_PIC_FLASH_POINTER) || (read_back_data[0] != 6))
+	applog(LOG_DEBUG, "--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n", 
+		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
+
+	if((read_back_data[1] != READ_OUT_FREQ) || (read_back_data[0] != 6))
 	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
-			read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
+		applog(LOG_ERR, "\n--- %s failed!\n\n", __FUNCTION__);
 		return 0;	// error
 	}
 	else
@@ -558,1111 +1741,148 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
 		crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3];
 		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[4]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[5]))
 		{
-			printf("\n--- %s failed! read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n\n", __FUNCTION__,
-			read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
+			applog(LOG_ERR, "\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
 			return 0;	// error
 		}
-		*flash_addr_h = read_back_data[2];
-		*flash_addr_l = read_back_data[3];
-		printf("\n--- %s ok! flash_addr_h = 0x%02x, flash_addr_l = 0x%02x\n\n", __FUNCTION__, *flash_addr_h, *flash_addr_l);
+		*freq = (read_back_data[2] << 8) | read_back_data[3];
+		applog(LOG_DEBUG, "\n--- %s ok, freq = %d\n\n", __FUNCTION__, *freq);
 		return 1;	// ok
 	}
+
 }
 
-int read_PIC16F1704_flash_data_new(unsigned char *buf)
+void every_chain_save_freq_PIC16F1704_new(unsigned short freq)
 {
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[20] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + READ_DATA_FROM_PIC_FLASH;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
+    unsigned char which_chain;
 
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = READ_DATA_FROM_PIC_FLASH;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(300*1000);
-	for(i=0; i<20; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
-		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x, \
-		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x, \
-		read_back_data[12] = 0x%x, read_back_data[13] = 0x%x, read_back_data[14] = 0x%x, read_back_data[15] = 0x%x, \
-		read_back_data[16] = 0x%x, read_back_data[17] = 0x%x, read_back_data[18] = 0x%x, read_back_data[19] = 0x%x\n", __FUNCTION__,\
-		read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5], \
-		read_back_data[6], read_back_data[7], read_back_data[8], read_back_data[9], read_back_data[10], read_back_data[11], \
-		read_back_data[12], read_back_data[13], read_back_data[14], read_back_data[15], read_back_data[16], read_back_data[17], \
-		read_back_data[18], read_back_data[19]);
-	usleep(100*1000);
-	
-	if((read_back_data[1] != READ_DATA_FROM_PIC_FLASH) || (read_back_data[0] != 20))
-	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
-		return 0;	// error
-	}
-	else
-	{
-		crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3] + read_back_data[4] + read_back_data[5] + 
-				read_back_data[6] + read_back_data[7] + read_back_data[8] + read_back_data[9] + read_back_data[10] + read_back_data[11] + 
-				read_back_data[12] + read_back_data[13] + read_back_data[14] + read_back_data[15] + read_back_data[16] + read_back_data[17]; 
-
-		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[18]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[19]))
-		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
-			return 0;	// error
-		}
-		for(i=0; i<16; i++)
-		{
-			*(buf + i) = read_back_data[2 + i];
-		}
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int erase_PIC16F1704_flash_new(void)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + ERASE_PIC_FLASH;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = ERASE_PIC_FLASH;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(100*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	usleep(200*1000);
-	
-	if((read_back_data[0] != ERASE_PIC_FLASH) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int write_data_into_PIC16F1704_flash_new(void)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + WRITE_DATA_INTO_FLASH;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = WRITE_DATA_INTO_FLASH;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(200*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-	
-	usleep(200*1000);
-	
-	if((read_back_data[0] != WRITE_DATA_INTO_FLASH) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int jump_from_loader_to_app_PIC16F1704_new(void)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + JUMP_FROM_LOADER_TO_APP;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = JUMP_FROM_LOADER_TO_APP;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(100*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	usleep(300*1000);
-	
-	if((read_back_data[0] != JUMP_FROM_LOADER_TO_APP) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int reset_PIC16F1704_pic_new(void)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + RESET_PIC;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = RESET_PIC;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(100*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-	
-	usleep(1*1000*1000);
-	
-	if((read_back_data[0] != RESET_PIC) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int set_PIC16F1704_voltage_new(unsigned char voltage)
-{
-	unsigned char length = 0x05, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[7] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + SET_VOLTAGE + voltage;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = SET_VOLTAGE;
-	send_data[4] = voltage;
-	send_data[5] = crc_data[0];
-	send_data[6] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<7; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(200*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	usleep(200*1000);
-	
-	if((read_back_data[0] != SET_VOLTAGE) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok, voltage = 0x%02x\n\n", __FUNCTION__, voltage);
-		return 1;	// ok
-	}
-}
-
-
-int write_hash_ID_PIC16F1704_new(unsigned char *buf)
-{
-	unsigned char length = 0x10, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[18] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + SET_HASH_BOARD_ID;
-	for(i=0; i<12; i++)
-	{
-		crc += *(buf + i);
-	}
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = SET_HASH_BOARD_ID;
-	for(i=0; i<12; i++)
-	{
-		send_data[i+4]= *(buf + i);
-	}
-	send_data[16] = crc_data[0];
-	send_data[17] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<18; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(200*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	usleep(200*1000);
-	
-	if((read_back_data[0] != SET_HASH_BOARD_ID) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int read_hash_id_PIC16F1704_new(unsigned char *buf)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[16] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + READ_HASH_BOARD_ID;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = READ_HASH_BOARD_ID;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(200*1000);
-	for(i=0; i<16; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x,\
-		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x,\
-		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x,\
-		read_back_data[12] = 0x%x, read_back_data[13] = 0x%x, read_back_data[14] = 0x%x, read_back_data[15] = 0x%x\n", __FUNCTION__,\
-		read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5],\
-		read_back_data[6], read_back_data[7], read_back_data[8], read_back_data[9], read_back_data[10], read_back_data[11],\
-		read_back_data[12], read_back_data[13], read_back_data[14], read_back_data[15]);
-
-	if((read_back_data[1] != READ_HASH_BOARD_ID) || (read_back_data[0] != 16))
-	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
-		return 0;	// error
-	}
-	else
-	{
-		crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3] + read_back_data[4] + read_back_data[5] + 
-				read_back_data[6] + read_back_data[7] + read_back_data[8] + read_back_data[9] + read_back_data[10] + read_back_data[11] + 
-				read_back_data[12] + read_back_data[13]; 
-
-		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[14]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[15]))
-		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
-			return 0;	// error
-		}
-		for(i=0; i<12; i++)
-		{
-			*(buf + i) = read_back_data[2 + i];
-		}
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int enable_PIC16F1704_dc_dc_new(unsigned char enable)
-{
-	unsigned char length = 0x05, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[7] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-
-	crc = length + ENABLE_VOLTAGE + enable;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = ENABLE_VOLTAGE;
-	send_data[4] = enable;
-	send_data[5] = crc_data[0];
-	send_data[6] = crc_data[1];
-
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<7; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(100*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	if((read_back_data[0] != ENABLE_VOLTAGE) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int heart_beat_PIC16F1704_new(void)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[6] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + SEND_HEART_BEAT;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = SEND_HEART_BEAT;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(100*1000);
-	for(i=0; i<6; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-	
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x, read_back_data[5] = 0x%x\n", 
-		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5]);
-	
-	if((read_back_data[1] != SEND_HEART_BEAT) || (read_back_data[2] != 1))
-	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int get_PIC16F1704_software_version_new(unsigned char *version)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[5] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + READ_PIC_SOFTWARE_VERSION;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = READ_PIC_SOFTWARE_VERSION;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(200*1000);
-	for(i=0; i<5; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	usleep(200*1000);
-	
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x\n", 
-		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
-
-	if((read_back_data[1] != READ_PIC_SOFTWARE_VERSION) || (read_back_data[0] != 5))
-	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
-		return 0;	// error
-	}
-	else
-	{
-		crc = read_back_data[0] + read_back_data[1] + read_back_data[2];
-		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[3]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[4]))
-		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
-			return 0;	// error
-		}
-		*version = read_back_data[2];
-		printf("\n--- %s ok, version = 0x%02x\n\n", __FUNCTION__, *version);
-		return 1;	// ok
-	}
-}
-
-
-int get_PIC16F1704_voltage_new(unsigned char *voltage)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[5] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + GET_VOLTAGE;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = GET_VOLTAGE;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(200*1000);
-	for(i=0; i<5; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-	
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, read_back_data[4] = 0x%x\n", 
-		__FUNCTION__, read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4]);
-
-	if((read_back_data[1] != GET_VOLTAGE) || (read_back_data[0] != 5))
-	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
-		return 0;	// error
-	}
-	else
-	{
-		crc = read_back_data[0] + read_back_data[1] + read_back_data[2];
-		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[3]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[4]))
-		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
-			return 0;	// error
-		}
-		*voltage = read_back_data[2];
-		printf("\n--- %s ok, voltage = 0x%02x\n\n", __FUNCTION__, *voltage);
-		return 1;	// ok
-	}
-}
-
-
-int write_temperature_offset_PIC16F1704_new(unsigned char *buf)
-{
-	unsigned char length = 0x0c, crc_data[2] = {0xff}, read_back_data[2] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i,send_data[14] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + WR_TEMP_OFFSET_VALUE;
-	for(i=0; i<8; i++)
-	{
-		crc += *(buf + i);
-	}
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = WR_TEMP_OFFSET_VALUE;
-	for(i=0; i<8; i++)
-	{
-		send_data[i+4]= *(buf + i);
-	}
-	send_data[12] = crc_data[0];
-	send_data[13] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<14; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(200*1000);
-	for(i=0; i<2; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	usleep(200*1000);
-	
-	if((read_back_data[0] != WR_TEMP_OFFSET_VALUE) || (read_back_data[1] != 1))
-	{
-		printf("\n--- %s failed! read_back_data[0] = 0x%02x, read_back_data[1] = 0x%02x\n\n", __FUNCTION__, read_back_data[0], read_back_data[1]);
-		return 0;	// error
-	}
-	else
-	{
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-int read_temperature_offset_PIC16F1704_new(unsigned char *buf)
-{
-	unsigned char length = 0x04, crc_data[2] = {0xff}, read_back_data[0x0c] = {0xff};
-	unsigned short crc = 0;
-	unsigned char i = 0;
-	unsigned char send_data[6] = {0};
-	
-	//printf("\n--- %s\n", __FUNCTION__);
-	
-	crc = length + RD_TEMP_OFFSET_VALUE;
-	crc_data[0] = (unsigned char)((crc >> 8) & 0x00ff);
-	crc_data[1] = (unsigned char)((crc >> 0) & 0x00ff);
-	//printf("--- %s: crc_data[0] = 0x%x, crc_data[1] = 0x%x\n", __FUNCTION__, crc_data[0], crc_data[1]);
-
-	send_data[0] = PIC_COMMAND_1;
-	send_data[1] = PIC_COMMAND_2;
-	send_data[2] = length;
-	send_data[3] = RD_TEMP_OFFSET_VALUE;
-	send_data[4] = crc_data[0];
-	send_data[5] = crc_data[1];
-	
-	pthread_mutex_lock(&i2c_mutex);
-	for(i=0; i<6; i++)
-	{
-		write(dev.i2c_fd, send_data+i, 1);
-	}
-	usleep(200*1000);
-	for(i=0; i<12; i++)
-	{
-		read(dev.i2c_fd, read_back_data+i, 1);
-	}
-	pthread_mutex_unlock(&i2c_mutex);
-
-	printf("--- %s: read_back_data[0] = 0x%x, read_back_data[1] = 0x%x, read_back_data[2] = 0x%x, read_back_data[3] = 0x%x, \
-		read_back_data[4] = 0x%x, read_back_data[5] = 0x%x, read_back_data[6] = 0x%x, read_back_data[7] = 0x%x, \
-		read_back_data[8] = 0x%x, read_back_data[9] = 0x%x, read_back_data[10] = 0x%x, read_back_data[11] = 0x%x\n", __FUNCTION__,\
-		read_back_data[0], read_back_data[1], read_back_data[2], read_back_data[3], read_back_data[4], read_back_data[5], \
-		read_back_data[6], read_back_data[7], read_back_data[8], read_back_data[9], read_back_data[10], read_back_data[11]);
-
-	if((read_back_data[1] != RD_TEMP_OFFSET_VALUE) || (read_back_data[0] != 0x0c))
-	{
-		printf("\n--- %s failed!\n\n", __FUNCTION__);
-		return 0;	// error
-	}
-	else
-	{
-		crc = read_back_data[0] + read_back_data[1] + read_back_data[2] + read_back_data[3] + read_back_data[4] + read_back_data[5] + 
-				read_back_data[6] + read_back_data[7] + read_back_data[8] + read_back_data[9]; 
-
-		if(((unsigned char)((crc >> 8) & 0x00ff) != read_back_data[10]) || ((unsigned char)((crc >> 0) & 0x00ff) != read_back_data[11]))
-		{
-			printf("\n--- %s failed! crc = 0x%04x\n\n", __FUNCTION__, crc);
-			return 0;	// error
-		}
-		for(i=0; i<8; i++)
-		{
-			*(buf + i) = read_back_data[2 + i];
-		}
-		printf("\n--- %s ok\n\n", __FUNCTION__);
-		return 1;	// ok
-	}
-}
-
-
-unsigned char erase_PIC16F1704_app_flash_new(void)
-{
-	unsigned char ret=0xff;
-	unsigned int i=0, erase_loop = 0;
-	unsigned char start_addr_h = PIC_FLASH_POINTER_START_ADDRESS_H_NEW, start_addr_l = PIC_FLASH_POINTER_START_ADDRESS_L_NEW;
-	unsigned char end_addr_h = PIC_FLASH_POINTER_END_ADDRESS_H, end_addr_l = PIC_FLASH_POINTER_END_ADDRESS_L;
-	unsigned int pic_flash_length=0;
-
-	set_PIC16F1704_flash_pointer_new(PIC_FLASH_POINTER_START_ADDRESS_H_NEW, PIC_FLASH_POINTER_START_ADDRESS_L_NEW);
-
-	pic_flash_length = (((unsigned int)end_addr_h << 8) + end_addr_l) - (((unsigned int)start_addr_h << 8) + start_addr_l) + 1;
-	erase_loop = pic_flash_length/PIC_FLASH_SECTOR_LENGTH;
-	printf("%s: erase_loop = %d\n", __FUNCTION__, erase_loop);
-
-	for(i=0; i<erase_loop; i++)
-	{
-		erase_PIC16F1704_flash_new();
-	}
-}
-
-
-int PIC1704_update_pic_app_program_new(void)
-{
-	unsigned char program_data[5000] = {0};
-	FILE * pic_program_file;
-	unsigned int filesize = 0,i=0,j;
-	unsigned char data_read[5]={0,0,0,0,'\0'}, buf[16]={0};
-	unsigned int data_int = 0;
-	struct stat statbuff; 	
-	unsigned char start_addr_h = PIC_FLASH_POINTER_START_ADDRESS_H_NEW, start_addr_l = PIC_FLASH_POINTER_START_ADDRESS_L_NEW;
-	unsigned char end_addr_h = PIC_FLASH_POINTER_END_ADDRESS_H, end_addr_l = PIC_FLASH_POINTER_END_ADDRESS_L;
-	unsigned int pic_flash_length=0;
-	int ret=0;
-	
-	printf("\n--- update pic program\n");
-
-	// read upgrade file first, if it is wrong, don't erase pic, but just return;
-	pic_program_file = fopen(PIC16F1704_PROGRAM_NEW, "r");
-	if(!pic_program_file)
-	{
-		printf("\n%s: open pic16f1704_app_new.txt failed\n", __FUNCTION__);
-		return;
-	}
-	fseek(pic_program_file,0,SEEK_SET);
-	memset(program_data, 0x0, 5000);
-
-	pic_flash_length = (((unsigned int)end_addr_h << 8) + end_addr_l) - (((unsigned int)start_addr_h << 8) + start_addr_l) + 1;
-	printf("pic_flash_length = %d\n", pic_flash_length);
-	
-	for(i=0; i<pic_flash_length; i++)
-	{
-		fgets(data_read, MAX_CHAR_NUM - 1 , pic_program_file);
-		//printf("data_read[0]=%c, data_read[1]=%c, data_read[2]=%c, data_read[3]=%c\n", data_read[0], data_read[1], data_read[2], data_read[3]);
-		data_int = strtoul(data_read, NULL, 16);
-		//printf("data_int = 0x%04x\n", data_int);
-		program_data[2*i + 0] = (unsigned char)((data_int >> 8) & 0x000000ff);
-		program_data[2*i + 1] = (unsigned char)(data_int & 0x000000ff);
-		//printf("program_data[%d]=0x%02x, program_data[%d]=0x%02x\n\n", 2*i + 0, program_data[2*i + 0], 2*i + 1, program_data[2*i + 1]);
-	}
-
-	fclose(pic_program_file);
-
-	// after read upgrade file correct, erase pic
-	ret = reset_PIC16F1704_pic_new();
-	if(ret == 0)
-	{
-		printf("!!! %s: reset pic error!\n\n", __FUNCTION__);
-		return 0;
-	}
-	
-	ret = erase_PIC16F1704_app_flash_new();
-	if(ret == 0)
-	{
-		printf("!!! %s: erase flash error!\n\n", __FUNCTION__);
-		return 0;
-	}
-
-	ret = set_PIC16F1704_flash_pointer_new(PIC_FLASH_POINTER_START_ADDRESS_H_NEW, PIC_FLASH_POINTER_START_ADDRESS_L_NEW);
-	if(ret == 0)
-	{
-		printf("!!! %s: set flash pointer error!\n\n", __FUNCTION__);
-		return 0;
-	}
-
-	for(i=0; i<pic_flash_length/PIC_FLASH_SECTOR_LENGTH*4; i++)
-	{
-		memcpy(buf, program_data+i*16, 16);
-		/**/
-		printf("send pic program time: %d\n",i);
-		for(j=0;j<16;j++)
-		{
-			printf("buf[%d] = 0x%02x\n", j, *(buf+j));
-		}
-		printf("\n");
-		
-		send_data_to_PIC16F1704_new(buf);
-		write_data_into_PIC16F1704_flash_new();
-	}
-
-	ret = reset_PIC16F1704_pic_new();
-	if(ret == 0)
-	{
-		printf("!!! %s: reset pic error!\n\n", __FUNCTION__);
-		return 0;
-	}
-
-	return 1;
-}
-
-
-void every_chain_reset_PIC16F1704_pic_new(void)
-{
-	unsigned char which_chain;
-	
-	for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-    {
-        if(dev.chain_exist[which_chain] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
-                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-            reset_PIC16F1704_pic_new();
-            pthread_mutex_unlock(&iic_mutex);
-			cgsleep_ms(100);
-        }
-    }
-	cgsleep_ms(500);
-}
-
-
-void every_chain_jump_from_loader_to_app_PIC16F1704_new(void)
-{
-	unsigned char which_chain;
-	
-	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-    {
-        if(dev.chain_exist[which_chain] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
-                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-            jump_from_loader_to_app_PIC16F1704_new();
-            pthread_mutex_unlock(&iic_mutex);
-        }
-		cgsleep_ms(100);
-    }
-	cgsleep_ms(500);
-}
-
-
-void every_chain_enable_PIC16F1704_dc_dc_new(unsigned char enable)
-{
-	unsigned char which_chain;
-	
-	for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-    {
-        if(dev.chain_exist[which_chain] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd, I2C_SLAVE, i2c_slave_addr[which_chain] >> 1) < 0))
-                applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
-			enable_PIC16F1704_dc_dc_new(enable);
-            pthread_mutex_unlock(&iic_mutex);
-			cgsleep_ms(100);
-        }
-    }
-	cgsleep_ms(500);
-}
-
-
-int send_heart_beat_to_every_chain(void)
-{
-	pic_heart_beat = calloc(1,sizeof(struct thr_info));
-    if(thr_info_create(pic_heart_beat, NULL, pic_heart_beat_func_new, pic_heart_beat))
-    {
-        applog(LOG_DEBUG,"%s: create thread error for pic_heart_beat_func", __FUNCTION__);
-        return -3;
-    }
-    pthread_detach(pic_heart_beat->pth);
-}
-
-
-void every_chain_update_pic_program()
-{
-	unsigned char i = 0;
-	bool version_error = false;
-	
-	for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
-    {
-        if(dev.chain_exist[i] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[i] >> 1 ) < 0))
-                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-            //pic_read_pic_software_version(&pic_version[i]);
-            get_PIC16F1704_software_version_new(&pic_version[i]);
-            applog(LOG_NOTICE, "Chain %d PIC Version 0x%x", i, pic_version[i]);
-            if(pic_version[i] != 0x3)
-            {
-                //update_pic_program();
-                PIC1704_update_pic_app_program_new();
-                version_error = true;
-            }
-            pthread_mutex_unlock(&iic_mutex);
-        }
-    }
-
-    cgsleep_ms(1000);
-
-    for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
-    {
-        if(dev.chain_exist[i] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[i] >> 1 ) < 0))
-                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-            //reset_iic_pic();
-            reset_PIC16F1704_pic_new();
-            pthread_mutex_unlock(&iic_mutex);
-        }
-    }
-
-    cgsleep_ms(1000);
-
-    for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
-    {
-        if(dev.chain_exist[i] == 1)
-        {
-            pthread_mutex_lock(&iic_mutex);
-            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[i] >> 1 ) < 0))
-                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
-            //jump_to_app_from_loader();
-            jump_from_loader_to_app_PIC16F1704_new();
-            pthread_mutex_unlock(&iic_mutex);
-        }
-    }
-
-    cgsleep_ms(1000);
-
-    if(version_error)
-    {
-        cgsleep_ms(200);
-        version_error = false;
-        //goto update;
-    }
-}
-
-
-void check_every_chain_asic_number(bool whether_update_asic_num)
-{
-	unsigned char which_chain;
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
 
     for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
-        if(dev.chain_exist[which_chain])
+        if(dev.chain_exist[which_chain] == 1)
         {
-        	update_asic_num = whether_update_asic_num;
-            check_asic_reg(which_chain, 1, 0, CHIP_ADDR);			
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+            save_freq_PIC16F1704_new(freq);
+            pthread_mutex_unlock(&iic_mutex);
         }
         cgsleep_ms(100);
     }
+    cgsleep_ms(500);
 }
+
+void every_chain_get_PIC16F1704_freq_new(unsigned short *freq)
+{
+    unsigned char which_chain;
+	unsigned short freq_read_back[BITMAIN_MAX_CHAIN_NUM] = {0}, min_freq = 650;
+
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
+
+    for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    {
+        if(dev.chain_exist[which_chain] == 1)
+        {
+            pthread_mutex_lock(&iic_mutex);
+            if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                applog(LOG_ERR, "ioctl error @ line %d",__LINE__);
+            get_PIC16F1704_freq_new(&freq_read_back[which_chain]);
+			if(freq_read_back[which_chain] < min_freq)
+			{
+				min_freq = freq_read_back[which_chain];
+			}
+            pthread_mutex_unlock(&iic_mutex);
+        }
+        cgsleep_ms(100);
+    }
+
+	*freq = min_freq;
+	
+    cgsleep_ms(500);
+}
+
+
 
 void pic_test_new(void)
 {
-	unsigned char ret = 0,i;
-	unsigned char version = 0, flash_addr_h = 0, flash_addr_l = 0, voltage = 0;
-	unsigned char buf_send[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-	unsigned char buf_receive[16] = {0};
-	unsigned char hash_id_send[12] = {10,11,12,13,14,15,16,17,18,19,20,21};
-	unsigned char hash_id_receive[12] = {0};
-	unsigned char temp_offset_send[8] = {20,21,22,23,24,25,26,27};
-	unsigned char temp_offset_receive[8] = {0};
+    unsigned char ret = 0,i;
+    unsigned char version = 0, flash_addr_h = 0, flash_addr_l = 0, voltage = 0;
+    unsigned char buf_send[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+    unsigned char buf_receive[16] = {0};
+    unsigned char hash_id_send[12] = {10,11,12,13,14,15,16,17,18,19,20,21};
+    unsigned char hash_id_receive[12] = {0};
+    unsigned char temp_offset_send[8] = {20,21,22,23,24,25,26,27};
+    unsigned char temp_offset_receive[8] = {0};
 
-	//ret = use_new_or_old_PIC16F1704_api();
+    //ret = use_new_or_old_PIC16F1704_api();
 
-	reset_PIC16F1704_pic_new();
+    reset_PIC16F1704_pic_new();
 
-	/*
-	set_PIC16F1704_flash_pointer_new(0x03, 0x00);
-	read_PIC16F1704_flash_pointer_new(&flash_addr_h, &flash_addr_l);
+    /*
+    set_PIC16F1704_flash_pointer_new(0x03, 0x00);
+    read_PIC16F1704_flash_pointer_new(&flash_addr_h, &flash_addr_l);
 
-	set_PIC16F1704_flash_pointer_new(0x07, 0x00);
-	read_PIC16F1704_flash_pointer_new(&flash_addr_h, &flash_addr_l);
-	*/
+    set_PIC16F1704_flash_pointer_new(0x07, 0x00);
+    read_PIC16F1704_flash_pointer_new(&flash_addr_h, &flash_addr_l);
+    */
 
-	/*
-	set_PIC16F1704_flash_pointer_new(0x0f, 0x80);
-	erase_PIC16F1704_flash_new();
-	set_PIC16F1704_flash_pointer_new(0x0f, 0x80);
-	send_data_to_PIC16F1704_new(buf_send);
-	write_data_into_PIC16F1704_flash_new();
-	set_PIC16F1704_flash_pointer_new(0x0f, 0x80);
-	read_PIC16F1704_flash_data_new(buf_receive);
-	for(i=0;i<16;i++)
-	{
-		printf("buf_receive[%02d] = %d\n", i, buf_receive[i]);
-	}
-	*/
+    /*
+    set_PIC16F1704_flash_pointer_new(0x0f, 0x80);
+    erase_PIC16F1704_flash_new();
+    set_PIC16F1704_flash_pointer_new(0x0f, 0x80);
+    send_data_to_PIC16F1704_new(buf_send);
+    write_data_into_PIC16F1704_flash_new();
+    set_PIC16F1704_flash_pointer_new(0x0f, 0x80);
+    read_PIC16F1704_flash_data_new(buf_receive);
+    for(i=0;i<16;i++)
+    {
+        printf("buf_receive[%02d] = %d\n", i, buf_receive[i]);
+    }
+    */
 
-	ret = PIC1704_update_pic_app_program_new();
-
-	
-	/**/
-	jump_from_loader_to_app_PIC16F1704_new();
+    ret = PIC1704_update_pic_app_program_new();
 
 
-	/**/
-	get_PIC16F1704_software_version_new(&version);
+    /**/
+    jump_from_loader_to_app_PIC16F1704_new();
 
-	write_hash_ID_PIC16F1704_new(hash_id_send);
-	read_hash_id_PIC16F1704_new(hash_id_receive);
 
-	write_temperature_offset_PIC16F1704_new(temp_offset_send);
-	read_temperature_offset_PIC16F1704_new(temp_offset_receive);	
-	
-	set_PIC16F1704_voltage_new(0x78);
-	get_PIC16F1704_voltage_new(&voltage);
+    /**/
+    get_PIC16F1704_software_version_new(&version);
 
-	enable_PIC16F1704_dc_dc_new(1);
-	
+    write_hash_ID_PIC16F1704_new(hash_id_send);
+    read_hash_id_PIC16F1704_new(hash_id_receive);
 
-	/**/
-	enable_PIC16F1704_dc_dc_new(1);
+    write_temperature_offset_PIC16F1704_new(temp_offset_send);
+    read_temperature_offset_PIC16F1704_new(temp_offset_receive);
 
-	for(i=0; i<3; i++)
-	{
-		heart_beat_PIC16F1704_new();
-		usleep(2*1000*1000);
-	}
+    set_PIC16F1704_voltage_new(0x78);
+    get_PIC16F1704_voltage_new(&voltage);
 
-	for(i=0; i<35; i++)
-	{
-		printf("i = %d\n", i);
-		usleep(2*1000*1000);
-	}
-	
-	for(i=0; i<3; i++)
-	{
-		heart_beat_PIC16F1704_new();
-		usleep(2*1000*1000);
-	}
-	
+    enable_PIC16F1704_dc_dc_new();
+
+
+    /**/
+    enable_PIC16F1704_dc_dc_new();
+
+    for(i=0; i<3; i++)
+    {
+        heart_beat_PIC16F1704_new();
+        usleep(2*1000*1000);
+    }
+
+    for(i=0; i<35; i++)
+    {
+        printf("i = %d\n", i);
+        usleep(2*1000*1000);
+    }
+
+    for(i=0; i<3; i++)
+    {
+        heart_beat_PIC16F1704_new();
+        usleep(2*1000*1000);
+    }
+
 }
 
 
@@ -1676,33 +1896,33 @@ void pic_test_new(void)
 
 void get_status(unsigned int fd, unsigned char mode, unsigned char chip_addr, unsigned char reg_addr)
 {
-	unsigned char buf[CMD_LENTH] = {0,0,0,0,0};
-	
-	if(mode)
-	{
-		buf[0] = CMD_TYPE | CMD_ALL | SET_CONFIG;
-	}
-	else
-	{
-		buf[0] = CMD_TYPE | SET_CONFIG;
-	}
-	
-	buf[1] = CMD_LENTH;
-	
-	if(mode)
-	{
-		buf[2] = 0;
-	}
-	else
-	{
-		buf[2] = chip_addr;
-	}
-	
-	buf[3] = reg_addr;
-	buf[4] = CRC5(buf, 8*(CMD_LENTH - 1));
+    unsigned char buf[CMD_LENTH] = {0,0,0,0,0};
 
-	applog(LOG_DEBUG, "get status reg %02x : %02x%02x%02x%02x%02x%02x%02x%02x%02x" ,reg_addr, buf[0], buf[1], buf[2], buf[3], buf[4]);
-	
+    if(mode)
+    {
+        buf[0] = CMD_TYPE | CMD_ALL | GET_STATUS;
+    }
+    else
+    {
+        buf[0] = CMD_TYPE | GET_STATUS;
+    }
+
+    buf[1] = CMD_LENTH;
+
+    if(mode)
+    {
+        buf[2] = 0;
+    }
+    else
+    {
+        buf[2] = chip_addr;
+    }
+
+    buf[3] = reg_addr;
+    buf[4] = CRC5(buf, 8*(CMD_LENTH - 1));
+
+    //applog(LOG_DEBUG, "%s: reg_addr: 0x%02x : 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x" ,__FUNCTION__, reg_addr, buf[0], buf[1], buf[2], buf[3], buf[4]);
+
     DASH_write(fd, buf, CMD_LENTH);
 }
 
@@ -1710,250 +1930,235 @@ void get_status(unsigned int fd, unsigned char mode, unsigned char chip_addr, un
 void set_config(unsigned int fd, unsigned char mode, unsigned char asic_addr, unsigned char reg_addr, unsigned int reg_data)
 {
     unsigned char buf[CONFIG_LENTH] = {0,0,0,0,0,0,0,0,0};
-	
-	if(mode)
-	{
-		buf[0] = CMD_TYPE | CMD_ALL | SET_CONFIG;
-	}
-	else
-	{
-		buf[0] = CMD_TYPE | SET_CONFIG;
-	}
-	
-	buf[1] = CONFIG_LENTH;
-	
-	if(mode)
-	{
-		buf[2] = 0;
-	}
-	else
-	{
-		buf[2] = asic_addr;
-	}
-	
-	buf[3] = reg_addr;
-	buf[4] = (unsigned char)((reg_data >> 24) & 0xff);
-	buf[5] = (unsigned char)((reg_data >> 16) & 0xff);
-	buf[6] = (unsigned char)((reg_data >> 8) & 0xff);
-	buf[7] = (unsigned char)((reg_data >> 0) & 0xff);
-	buf[8] = CRC5(buf, 8*(CONFIG_LENTH - 1));
 
-    applog(LOG_DEBUG, "Set config reg %02x : %02x%02x%02x%02x%02x%02x%02x%02x%02x" ,reg_addr,buf[0], buf[1], buf[2],
+    if(mode)
+    {
+        buf[0] = CMD_TYPE | CMD_ALL | SET_CONFIG;
+    }
+    else
+    {
+        buf[0] = CMD_TYPE | SET_CONFIG;
+    }
+
+    buf[1] = CONFIG_LENTH;
+
+    if(mode)
+    {
+        buf[2] = 0;
+    }
+    else
+    {
+        buf[2] = asic_addr;
+    }
+
+    buf[3] = reg_addr;
+    buf[4] = (unsigned char)((reg_data >> 24) & 0xff);
+    buf[5] = (unsigned char)((reg_data >> 16) & 0xff);
+    buf[6] = (unsigned char)((reg_data >> 8) & 0xff);
+    buf[7] = (unsigned char)((reg_data >> 0) & 0xff);
+    buf[8] = CRC5(buf, 8*(CONFIG_LENTH - 1));
+
+    /*
+    applog(LOG_DEBUG, "%s: reg_addr: 0x%02x : 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x" ,__FUNCTION__, reg_addr,buf[0], buf[1], buf[2],
            buf[3],buf[4], buf[5], buf[6], buf[7],buf[8]);
-	
+    */
+
     DASH_write(fd, buf, CONFIG_LENTH);
 }
 
 
 void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char chip_addr, unsigned char reg_addr)
 {
-	unsigned char not_receive_reg_value_counter=0;
-	unsigned char i=0, j=0;
-	unsigned int temp_counter = 0, last_temp_counter = 0;
+    unsigned char not_receive_reg_value_counter=0;
+    unsigned char i=0, j=0;
+    unsigned int temp_counter = 0, last_temp_counter = 0;
 
-	
-	switch(reg_addr)
-	{
-		case CHIP_ADDR:
-			g_CHIP_ADDR_reg_value_num[which_chain] = 0;
 
-			for(i=0; i<128; i++)
-			{
-				g_CHIP_ADDR_reg_value[which_chain][i] = 0;
-			}
-			break;
+    switch(reg_addr)
+    {
+        case CHIP_ADDR:
+            if(update_asic_num)
+            {
+                g_CHIP_ADDR_reg_value_num[which_chain] = 0;
 
-		case GENERAL_I2C_COMMAND:
-			g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] = 0;
+                for(i=0; i<128; i++)
+                {
+                    g_CHIP_ADDR_reg_value[which_chain][i] = 0;
+                }
+            }
+            break;
 
-			for(i=0; i<128; i++)
-			{
-				g_GENERAL_I2C_COMMAND_reg_value[which_chain][i] = 0xc0000000;
-			}
-			break;
+        case GENERAL_I2C_COMMAND:
+            g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] = 0;
 
-		case HASH_RATE:
-			g_HASH_RATE_reg_value_num[which_chain] = 0;
+            for(i=0; i<128; i++)
+            {
+                g_GENERAL_I2C_COMMAND_reg_value[which_chain][i] = 0xc0000000;
+            }
+            break;
 
-			for(i=0; i<128; i++)
-			{
-				g_HASH_RATE_reg_value[which_chain][i] = 0;
-				g_HASH_RATE_reg_value_from_which_asic[which_chain][i] = 0;
-			}
-			break;
+        case HASH_RATE:
+            g_HASH_RATE_reg_value_num[which_chain] = 0;
 
-		case CHIP_STATUS:
-			g_CHIP_STATUS_reg_value_num[which_chain] = 0;
+            for(i=0; i<128; i++)
+            {
+                g_HASH_RATE_reg_value[which_chain][i] = 0;
+                g_HASH_RATE_reg_value_from_which_asic[which_chain][i] = 0;
+            }
+            break;
 
-			for(i=0; i<128; i++)
-			{
-				g_CHIP_STATUS_reg_value[which_chain][i] = 0;				
-			}
-			break;
+        case CHIP_STATUS:
+            g_CHIP_STATUS_reg_value_num[which_chain] = 0;
 
-		default:
-			applog(LOG_DEBUG, "!!! %s: the input register is not correct, please check it. the input register is 0x%02x\n", reg_addr);
-			break;
-	}
-	
-	
-	get_status(dev.dev_fd[which_chain], mode, chip_addr, reg_addr);
-	
+            for(i=0; i<128; i++)
+            {
+                g_CHIP_STATUS_reg_value[which_chain][i] = 0;
+            }
+            break;
 
-	switch(reg_addr)
-	{
-		case CHIP_ADDR:
-			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
-			{
-				usleep(100*1000);
+        case TICK_MASK:
+            break;
 
-				if(temp_counter != g_CHIP_ADDR_reg_value_num[which_chain])
-				{
-					not_receive_reg_value_counter = 0;
-					temp_counter = g_CHIP_ADDR_reg_value_num[which_chain];
-				}
-				else
-				{
-					not_receive_reg_value_counter++;
-					applog(LOG_DEBUG, "--- %s: not receive CHIP_ADDR register value for %d time\n", __FUNCTION__, not_receive_reg_value_counter);
-				}
-			}
+        default:
+            applog(LOG_DEBUG, "!!! %s: the input register is not correct, please check it. the input register is 0x%02x", reg_addr);
+            break;
+    }
 
-			applog(LOG_DEBUG, "--- %s: Chain%d has %d ASICs\n", __FUNCTION__, which_chain, g_CHIP_ADDR_reg_value_num[which_chain]);
-			
-			if(update_asic_num)
-			{
-				update_asic_num = false;
-				dev.chain_asic_num[which_chain] = g_CHIP_ADDR_reg_value_num[which_chain];
-				if(dev.chain_asic_num[which_chain] > dev.max_asic_num_in_one_chain)
+
+    get_status(dev.dev_fd[which_chain], mode, chip_addr, reg_addr);
+
+
+    switch(reg_addr)
+    {
+        case CHIP_ADDR:
+            while(not_receive_reg_value_counter < 3)    //if there is no register value for 3 times, we can think all asic return their register value
+            {
+                usleep(300*1000);
+
+                if(temp_counter != g_CHIP_ADDR_reg_value_num[which_chain])
+                {
+                    not_receive_reg_value_counter = 0;
+                    temp_counter = g_CHIP_ADDR_reg_value_num[which_chain];
+                }
+                else
+                {
+                    not_receive_reg_value_counter++;
+                    applog(LOG_DEBUG, "%s: not receive CHIP_ADDR register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
+                }
+            }
+
+            applog(LOG_WARNING, "%s: Chain%d has %d ASICs", __FUNCTION__, which_chain, g_CHIP_ADDR_reg_value_num[which_chain]);
+
+            if(update_asic_num)
+            {
+                update_asic_num = false;
+                dev.chain_asic_num[which_chain] = g_CHIP_ADDR_reg_value_num[which_chain];
+                if(dev.chain_asic_num[which_chain] > dev.max_asic_num_in_one_chain)
                 {
                     dev.max_asic_num_in_one_chain = dev.chain_asic_num[which_chain];
                 }
-			}
-			break;
+            }
+            break;
 
-		case GENERAL_I2C_COMMAND:
-			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
-			{
-				usleep(100*1000);
+        case GENERAL_I2C_COMMAND:
+            while(not_receive_reg_value_counter < 3)    //if there is no register value for 3 times, we can think all asic return their register value
+            {
+                usleep(150*1000);
 
-				if(temp_counter != g_GENERAL_I2C_COMMAND_reg_value_num[which_chain])
-				{
-					not_receive_reg_value_counter = 0;
-					temp_counter = g_GENERAL_I2C_COMMAND_reg_value_num[which_chain];
-				}
-				else
-				{
-					not_receive_reg_value_counter++;
-					applog(LOG_DEBUG, "--- %s: not receive GENERAL_I2C_COMMAND register value for %d time\n", __FUNCTION__, not_receive_reg_value_counter);
-				}
-			}
-			break;
+                if(temp_counter != g_GENERAL_I2C_COMMAND_reg_value_num[which_chain])
+                {
+                    not_receive_reg_value_counter = 0;
+                    temp_counter = g_GENERAL_I2C_COMMAND_reg_value_num[which_chain];
+                }
+                else
+                {
+                    not_receive_reg_value_counter++;
+                    //applog(LOG_DEBUG, "%s: not receive GENERAL_I2C_COMMAND register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
+                }
+            }
+            break;
 
-		case HASH_RATE:
-			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
-			{
-				usleep(100*1000);
+        case HASH_RATE:
+            while(not_receive_reg_value_counter < 3)    //if there is no register value for 3 times, we can think all asic return their register value
+            {
+                usleep(300*1000);
 
-				if(temp_counter != g_HASH_RATE_reg_value_num[which_chain])
-				{
-					not_receive_reg_value_counter = 0;
-					temp_counter = g_HASH_RATE_reg_value_num[which_chain];
-				}
-				else
-				{
-					not_receive_reg_value_counter++;
-					applog(LOG_DEBUG, "--- %s: not receive HASH_RATE register value for %d time\n", __FUNCTION__, not_receive_reg_value_counter);
-				}
-			}
-			break;
+                if(temp_counter != g_HASH_RATE_reg_value_num[which_chain])
+                {
+                    not_receive_reg_value_counter = 0;
+                    temp_counter = g_HASH_RATE_reg_value_num[which_chain];
+                }
+                else
+                {
+                    not_receive_reg_value_counter++;
+                    //applog(LOG_DEBUG, "%s: not receive HASH_RATE register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
+                }
+            }
+            break;
 
-		case CHIP_STATUS:
-			while(not_receive_reg_value_counter < 3)	//if there is no register value for 3 times, we can think all asic return their register value
-			{
-				usleep(100*1000);
+        case CHIP_STATUS:
+            while(not_receive_reg_value_counter < 3)    //if there is no register value for 3 times, we can think all asic return their register value
+            {
+                usleep(300*1000);
 
-				if(temp_counter != g_CHIP_STATUS_reg_value_num[which_chain])
-				{
-					not_receive_reg_value_counter = 0;
-					temp_counter = g_CHIP_STATUS_reg_value_num[which_chain];
-				}
-				else
-				{
-					not_receive_reg_value_counter++;
-					applog(LOG_DEBUG, "--- %s: not receive CHIP_STATUS register value for %d time\n", __FUNCTION__, not_receive_reg_value_counter);
-				}
-			}
-			break;
+                if(temp_counter != g_CHIP_STATUS_reg_value_num[which_chain])
+                {
+                    not_receive_reg_value_counter = 0;
+                    temp_counter = g_CHIP_STATUS_reg_value_num[which_chain];
+                }
+                else
+                {
+                    not_receive_reg_value_counter++;
+                    //applog(LOG_DEBUG, "%s: not receive CHIP_STATUS register value for %d time", __FUNCTION__, not_receive_reg_value_counter);
+                }
+            }
+            break;
 
+        case TICK_MASK:
+            break;
 
-		default:
-			applog(LOG_DEBUG, "!!! %s: the input register is not correct, please check it. the input register is 0x%02x\n", reg_addr);
-			break;
-	}
+        default:
+            applog(LOG_ERR, "!!! %s: the input register is not correct, please check it. the input register is 0x%02x\n", reg_addr);
+            break;
+    }
 }
 
 
 void chain_inactive(int const which_chain)
 {
-	unsigned char cmd_buf[5] = {0};
+    unsigned char cmd_buf[5] = {0};
     int fd = dev.dev_fd[which_chain];
-    
+
     cmd_buf[0] = CMD_TYPE | CMD_ALL | CHAIN_INACTIVE;
     cmd_buf[1] = CMD_LENTH;
-	cmd_buf[2] = 0;
-	cmd_buf[3] = 0;
+    cmd_buf[2] = 0;
+    cmd_buf[3] = 0;
     cmd_buf[4] = CRC5(cmd_buf, 8*(CMD_LENTH - 1) );
-	
+
     DASH_write(fd, cmd_buf, CMD_LENTH);
 }
 
 
 inline void set_address(int const which_chain, unsigned char chip_addr)
 {
-	unsigned char cmd_buf[5] = {0};
+    unsigned char cmd_buf[5] = {0};
     int fd = dev.dev_fd[which_chain];
 
     cmd_buf[0] = CMD_TYPE | SET_ADDR;
     cmd_buf[1] = CMD_LENTH;
     cmd_buf[2] = chip_addr;
-	cmd_buf[3] = 0;
+    cmd_buf[3] = 0;
     cmd_buf[4] = CRC5(cmd_buf, 8*(CMD_LENTH - 1) );
-	
+
     DASH_write(fd, cmd_buf, CMD_LENTH);
 }
 
 
 void software_set_address()
 {
-    int temp_asic_number = 0;
     unsigned int which_chain, which_asic, which_sensor;
 
-	// according to the max asic number of all the hash boards to calculate address interval
-    temp_asic_number = dev.max_asic_num_in_one_chain;
-    if(temp_asic_number <= 0)
-    {
-        dev.addrInterval = 7;
-		applog(LOG_ERR, "temp_asic_number = %d, set addrInterval = '%d'", temp_asic_number, dev.addrInterval);
-        return;
-    }
-
-    dev.addrInterval = 0x100 / temp_asic_number;
-    applog(LOG_NOTICE, "addrInterval = '%d'", dev.addrInterval);
-
-
-	// according to the address interval, calculate out the temperature sensor's address
-	TempChipAddr[0] = TEMP_CHIP_0_LOCATION * dev.addrInterval;
-	TempChipAddr[1] = TEMP_CHIP_1_LOCATION * dev.addrInterval;
-	TempChipAddr[2] = TEMP_CHIP_2_LOCATION * dev.addrInterval;
-
-	// according to the address interval, calculate out the chip/core offset
-	gChipOffset = (0x01 << 1) * ((0x01 << 31) / temp_asic_number / dev.addrInterval);	// 2^32 / temp_asic_number / dev.addrInterval
-	gCoreOffset = gChipOffset / BM1760_CORE_NUM;
-	applog(LOG_NOTICE,"%s: chain %d CHIP_OFFSET = 0x%08x, CORE_OFFSET = 0x%08x", __FUNCTION__, which_chain, gChipOffset, gCoreOffset);
-	
-
-	// set ASIC's address, and CHIP_OFFSET / CORE_OFFSET register
+    // set ASIC's address, and CHIP_OFFSET / CORE_OFFSET register
     for(which_chain=0; which_chain<BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         applog(LOG_NOTICE,"%s: chain %d has %d ASIC, and addrInterval is %d", __FUNCTION__, which_chain, dev.chain_asic_num[which_chain], dev.addrInterval);
@@ -1961,22 +2166,22 @@ void software_set_address()
         {
             chain_inactive(which_chain);
             cgsleep_ms(30);
-			
-            applog(LOG_NOTICE, "Now Set [%d] Chain Address", which_chain);			
-            for(which_asic = 0; which_asic < temp_asic_number; which_asic++)
+
+            applog(LOG_NOTICE, "Now Set [%d] Chain Address", which_chain);
+            for(which_asic = 0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
             {
                 set_address(which_chain, which_asic * dev.addrInterval);
                 cgsleep_ms(10);
             }
 
-			set_config(dev.dev_fd[which_chain], 1, 0, CHIP_OFFSET, gChipOffset);
-			cgsleep_ms(10);
-			set_config(dev.dev_fd[which_chain], 1, 0, CORE_OFFSET, gCoreOffset);
-			cgsleep_ms(10);
-        }		
+            set_config(dev.dev_fd[which_chain], 1, 0, CHIP_OFFSET, gChipOffset);
+            cgsleep_ms(10);
+            set_config(dev.dev_fd[which_chain], 1, 0, CORE_OFFSET, gCoreOffset);
+            cgsleep_ms(10);
+        }
     }
 
-	cgsleep_ms(10);
+    cgsleep_ms(10);
 }
 
 static void get_plldata(unsigned int freq, unsigned int *vil_data)
@@ -1997,8 +2202,8 @@ static void get_plldata(unsigned int freq, unsigned int *vil_data)
     }
 
     sprintf(vildivider, "%04x", freq_pll_map[i].vilpll);
-	*vil_data = freq_pll_map[i].vilpll;
-	
+    *vil_data = freq_pll_map[i].vilpll;
+
     applog(LOG_DEBUG, "%s: vil_data = 0x%08x", __FUNCTION__, *vil_data);
 }
 
@@ -2009,7 +2214,7 @@ void set_frequency(unsigned int frequency)
     unsigned int freq_data = 0;
 
     get_plldata(frequency, &freq_data);
-    applog(LOG_DEBUG,"%s: frequency = %d", __FUNCTION__, frequency);
+    applog(LOG_NOTICE, "%s: frequency = %d", __FUNCTION__, frequency);
 
     for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
@@ -2021,22 +2226,23 @@ void set_frequency(unsigned int frequency)
         }
     }
 
-	cgsleep_ms(10);
+    cgsleep_ms(10);
 }
 
 
 void set_ticket_mask(unsigned int ticket_mask)
 {
-	unsigned char which_chain;
+    unsigned char which_chain;
 
-	applog(LOG_DEBUG,"%s ticket_mask= 0x%08x",__FUNCTION__, ticket_mask);
+    applog(LOG_NOTICE, "%s ticket_mask = 0x%08x",__FUNCTION__, ticket_mask);
 
-	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         if(dev.chain_exist[which_chain] == 1)
         {
             set_config(dev.dev_fd[which_chain], 1, 0, TICK_MASK, ticket_mask);
-			usleep(5000);
+            cgsleep_ms(5);
+            //check_asic_reg(which_chain, 1, 0, TICK_MASK);
         }
     }
 }
@@ -2044,54 +2250,57 @@ void set_ticket_mask(unsigned int ticket_mask)
 
 int is_nonce_or_reg_value(unsigned char data)
 {
-	if((data & 0x80) == 0x80)
-	{
-		return 1;	// it is a nonce
-	}
-	else
-	{
-		return 0;	// it is a register value
-	}
+    if((data & 0x80) == 0x80)
+    {
+        return 1;   // it is a nonce
+    }
+    else
+    {
+        return 0;   // it is a register value
+    }
 }
 
-	
+
 void open_core(void)
 {
-	unsigned int reg_value = 0x0;
-	unsigned int which_chain = 0, which_core = 0;
-	struct work_dash null_work;	
-	
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+    unsigned int reg_value = 0x0;
+    unsigned int which_chain = 0, which_core = 0;
+    struct work_dash null_work;
 
-	memset(&null_work, 0, sizeof(struct work_dash));
-	null_work.type = WORK_INPUT_TYPE_WITHOUT_SNO;
-	null_work.wc = 0x7f;
-	null_work.crc16 = Swap16(CRC16(0xffff, (unsigned char *)(&null_work), WORK_INPUT_LENGTH_WITHOUT_CRC));
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
 
-	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    memset(&null_work, 0, sizeof(struct work_dash));
+    null_work.type = WORK_INPUT_TYPE_WITHOUT_SNO;
+    null_work.wc = 0x7f;
+    null_work.crc16 = Swap16(CRC16(0xffff, (unsigned char *)(&null_work), WORK_INPUT_LENGTH_WITHOUT_CRC));
+
+    for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         if(dev.chain_exist[which_chain] == 1)
         {
+            reg_value = 0;
+
             for(which_core=0; which_core < dev.corenum; which_core++)
             {
-				reg_value = (reg_value << which_core) | 0x00000001;
-				set_config(dev.dev_fd[which_chain], 1, 0, CORE_ENABLE, reg_value);
-				cgsleep_ms(50);
-				DASH_write(dev.dev_fd[which_chain], &null_work, WORK_INPUT_LENGTH_WITH_CRC);
-				cgsleep_ms(100*1000);
-			}
+                reg_value = (reg_value << 1) | 0x00000001;
+                set_config(dev.dev_fd[which_chain], 1, 0, CORE_ENABLE, reg_value);
+                cgsleep_ms(50);
+                DASH_write(dev.dev_fd[which_chain], &null_work, WORK_INPUT_LENGTH_WITH_CRC);
+                cgsleep_ms(200);
+                //applog(LOG_DEBUG, "%s: chain%d core%d reg_value=0x%08x", __FUNCTION__, which_chain, which_core, reg_value);
+            }
         }
     }
 
-	applog(LOG_DEBUG, "%s end", __FUNCTION__);
+    applog(LOG_DEBUG, "%s end", __FUNCTION__);
 }
 
 
 void init_asic_display_status()
 {
-	unsigned char which_chain, which_asic, offset;
-	
-	for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    unsigned char which_chain, which_asic, offset;
+
+    for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         if(dev.chain_exist[which_chain])
         {
@@ -2101,24 +2310,24 @@ void init_asic_display_status()
                 if(which_asic % 8 == 0)
                 {
                     if ( ( which_asic + offset ) > ( ASIC_NUM_EACH_CHAIN + 16 ))
-					{
-						applog(LOG_ERR, "offset[%d] ERR", (which_asic + offset));
+                    {
+                        applog(LOG_ERR, "offset[%d] ERR", (which_asic + offset));
                     }
                     dev.chain_asic_status_string[which_chain][which_asic + offset] = ' ';
                     offset++;
                 }
 
                 if ( ( which_asic + offset ) > ( ASIC_NUM_EACH_CHAIN + 16 ))
-				{
-					applog(LOG_ERR, "offset[%d] ERR", (which_asic + offset));
+                {
+                    applog(LOG_ERR, "offset[%d] ERR", (which_asic + offset));
                 }
                 dev.chain_asic_status_string[which_chain][which_asic + offset] = 'o';
                 dev.chain_asic_nonce[which_chain][which_asic] = 0;
             }
 
             if ( ( which_asic + offset ) > ( ASIC_NUM_EACH_CHAIN + 16 ))
-			{
-				applog(LOG_ERR, "offset[%d] ERR", (which_asic + offset));
+            {
+                applog(LOG_ERR, "offset[%d] ERR", (which_asic + offset));
             }
             dev.chain_asic_status_string[which_chain][which_asic + offset] = '\0';
         }
@@ -2128,146 +2337,225 @@ void init_asic_display_status()
 
 void calculate_hash_rate(void)
 {
-	/*
-	unsigned int i, j, not_reg_data_time = 0;
-    unsigned int reg_value_num = 0, reg_data = 0, received_reg_num = 0;
-    unsigned char crc_check, chip_addr, reg_addr,chain_id;
-    int read_num = 0;
-    uint64_t tmp_rate = 0, temp_average_rate = 0, temp_real_time_rate = 0, Hashboard_temp_average_rate = 0, Hashboard_temp_real_time_rate = 0;
-	uint64_t temp_hash_rate = 0;
-	*/
-	
-	unsigned int i;
-	unsigned int which_chain, which_asic;
-	char displayed_avg_rate[BITMAIN_MAX_CHAIN_NUM][16];
-	bool find_asic = false, avg_hash_rate = false, rt_hash_rate = false;
-	uint64_t tmp_rate = 0;
+    unsigned int i;
+    unsigned int which_chain, which_asic;
+    char displayed_avg_rate[BITMAIN_MAX_CHAIN_NUM][16];
+    bool find_asic = false, avg_hash_rate = false, rt_hash_rate = false;
+    uint64_t tmp_rate = 0, tmp_rt_rate_all_chain = 0;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
+    //applog(LOG_DEBUG,"%s", __FUNCTION__);
 
-	// check if we received all ASIC's HASH_RATE register value
-	for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    // check if we received all ASIC's HASH_RATE register value
+    for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         if(dev.chain_exist[which_chain])
         {
-			if(g_HASH_RATE_reg_value_num[which_chain] == 0)
-			{
-				applog(LOG_DEBUG,"%s: Chain%d get 0 HASH_RATE register value", __FUNCTION__, which_chain);
-				continue;
-			}
+            if(g_HASH_RATE_reg_value_num[which_chain] == 0)
+            {
+                applog(LOG_DEBUG,"%s: Chain%d get 0 HASH_RATE register value", __FUNCTION__, which_chain);
+                continue;
+            }
 
-			avg_hash_rate = false;
-			rt_hash_rate = false;
+            avg_hash_rate = false;
+            rt_hash_rate = false;
 
-			// check if this is avg or rt hash rate
-			if(g_HASH_RATE_reg_value[which_chain][0] & 0x80000000)
-			{
-				avg_hash_rate = true;
-			}
-			else
-			{					
-				rt_hash_rate = true;
-			}
-		
-			if(g_HASH_RATE_reg_value_num[which_chain] < ASIC_NUM_EACH_CHAIN)
-			{
-				for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
-				{
-					find_asic = false;
-					
-					for(i=0; i < g_HASH_RATE_reg_value_num[which_chain]; i++)
-					{
-						if(g_HASH_RATE_reg_value_from_which_asic[which_chain][i] == which_asic)
-						{
-							find_asic = true;
-							break;
-						}
-					}
+            // check if this is avg or rt hash rate
+            if(g_HASH_RATE_reg_value[which_chain][0] & 0x80000000)
+            {
+                avg_hash_rate = true;
+            }
+            else
+            {
+                rt_hash_rate = true;
+            }
 
-					if(!find_asic)
-					{						
-						applog(LOG_DEBUG,"%s: Chain%d ASIC%d didn't send back HASH_RATE register value", __FUNCTION__, which_chain, which_asic);
-					}					
-				}
+            if(g_HASH_RATE_reg_value_num[which_chain] < ASIC_NUM_EACH_CHAIN)
+            {
+                for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
+                {
+                    find_asic = false;
 
-				if(rt_hash_rate)
-				{
-					rate_error[which_chain]++;
-					if((rate_error[which_chain] > 3) | status_error)
-					{
-						rate[which_chain] = 0;
-						suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-						applog(LOG_DEBUG,"%s: 1 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
-					}
-				}
-			}
-			else
-			{
-				// check every register value is avg_hash_rate or rt_hash_rate
-				if(rt_hash_rate)
-				{
-					for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
-					{
-						if((g_HASH_RATE_reg_value[which_chain][which_asic] & 0x80000000) != 0)
-						{
-							rate_error[which_chain]++;
-							avg_hash_rate = false;
-							rt_hash_rate = false;
-							applog(LOG_DEBUG,"%s: Chain%d ASIC%d is not rt hash rate", __FUNCTION__, which_chain, which_asic);
-							break;
-						}
-					}
-				}
-				else
-				{
-					if((g_HASH_RATE_reg_value[which_chain][which_asic] & 0x80000000) != 1)
-					{
-						avg_hash_rate = false;
-						rt_hash_rate = false;
-						applog(LOG_DEBUG,"%s: Chain%d ASIC%d is not avg hash rate", __FUNCTION__, which_chain, which_asic);
-						break;
-					}
-				}
+                    for(i=0; i < g_HASH_RATE_reg_value_num[which_chain]; i++)
+                    {
+                        if(g_HASH_RATE_reg_value_from_which_asic[which_chain][i] == which_asic)
+                        {
+                            find_asic = true;
+                            break;
+                        }
+                    }
 
-				if((rate_error[which_chain] > 3) | status_error)
-				{
-					rate[which_chain] = 0;
-					suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-					applog(LOG_DEBUG,"%s: 2 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
-				}
+                    if(!find_asic)
+                    {
+                        applog(LOG_DEBUG,"%s: Chain%d ASIC%d didn't send back HASH_RATE register value", __FUNCTION__, which_chain, which_asic);
+                    }
+                }
 
-				tmp_rate = 0;
+                if(rt_hash_rate)
+                {
+                    rate_error[which_chain]++;
+                    if((rate_error[which_chain] > 3) | status_error)
+                    {
+                        rate[which_chain] = 0;
+                        suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
+                        applog(LOG_ERR,"%s: 1 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
+                    }
+                }
+            }
+            else
+            {
+                // check every register value is avg_hash_rate or rt_hash_rate
+                if(rt_hash_rate)
+                {
+                    for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
+                    {
+                        if((g_HASH_RATE_reg_value[which_chain][which_asic] & 0x80000000) != 0)
+                        {
+                            rate_error[which_chain]++;
+                            avg_hash_rate = false;
+                            rt_hash_rate = false;
+                            applog(LOG_DEBUG,"%s: Chain%d ASIC%d is not rt hash rate", __FUNCTION__, which_chain, which_asic);
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
+                    {
+                        if((g_HASH_RATE_reg_value[which_chain][which_asic] & 0x80000000) != 0x80000000)
+                        {
+                            avg_hash_rate = false;
+                            rt_hash_rate = false;
+                            applog(LOG_DEBUG,"%s: Chain%d ASIC%d is not avg hash rate", __FUNCTION__, which_chain, which_asic);
+                            break;
+                        }
+                    }
+                }
 
-				// RT hash rate is displayed on the web. The avg hash rate on web is calculated by software
-				if(rt_hash_rate)
-				{
-					for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
-					{
-						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
-					}
-					
-					rate_error[which_chain] = 0;
-					rate[which_chain] = tmp_rate;
+                if((rate_error[which_chain] > 3) | status_error)
+                {
+                    rate[which_chain] = 0;
                     suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);                    
-				}
+                    applog(LOG_ERR,"%s: 2 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
+                }
 
-				// the ASIC's avg hash rate just displayed in log
-				if(avg_hash_rate)
-				{
-					for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
-					{
-						tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
-					}
-					
-					suffix_string_DASH(tmp_rate, (char * )displayed_avg_rate[which_chain], sizeof(displayed_avg_rate[which_chain]), 6, true);
-					applog(LOG_DEBUG,"%s: chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_avg_rate[which_chain]);
-				}
-			}
+                tmp_rate = 0;
+
+                // RT hash rate is displayed on the web. The avg hash rate on web is calculated by software
+                if(rt_hash_rate)
+                {
+                    for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
+                    {
+                        tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
+                        //applog(LOG_DEBUG,"%s: RT g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
+                    }
+                    applog(LOG_DEBUG,"%s: chain%d RT hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);
+
+                    rate_error[which_chain] = 0;
+                    rate[which_chain] = tmp_rate * 1000 * 1000;
+                    suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, false);
+
+                    //applog(LOG_DEBUG,"%s: chain%d rate = %lld, displayed_rate is %s", __FUNCTION__, which_chain, rate[which_chain], displayed_rate[which_chain]);
+                }
+
+                // the ASIC's avg hash rate just displayed in log
+                if(avg_hash_rate)
+                {
+                    for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
+                    {
+                        tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
+                        //applog(LOG_DEBUG,"%s: avg g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
+                    }
+                    applog(LOG_DEBUG,"%s: chain%d avg hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);
+
+                    //suffix_string_DASH(tmp_rate, (char * )displayed_avg_rate[which_chain], sizeof(displayed_avg_rate[which_chain]), 6, true);
+                }
+            }
+
+            tmp_rt_rate_all_chain += rate[which_chain];
         }
-	}
+    }
+
+    suffix_string_DASH(tmp_rt_rate_all_chain, (char * )displayed_hash_rate, sizeof(displayed_hash_rate), 6, false);
 }
 
+
+int calculate_asic_number(unsigned int actual_asic_number)
+{
+    int i = 0;
+    if(actual_asic_number == 1)
+    {
+        i = 1;
+    }
+    else if(actual_asic_number == 2)
+    {
+        i = 2;
+    }
+    else if((actual_asic_number > 2) && (actual_asic_number <= 4))
+    {
+        i = 4;
+    }
+    else if((actual_asic_number > 4) && (actual_asic_number <= 8))
+    {
+        i = 8;
+    }
+    else if((actual_asic_number > 8) && (actual_asic_number <= 16))
+    {
+        i = 16;
+    }
+    else if((actual_asic_number > 16) && (actual_asic_number <= 32))
+    {
+        i = 32;
+    }
+    else if((actual_asic_number > 32) && (actual_asic_number <= 64))
+    {
+        i = 64;
+    }
+    else if((actual_asic_number > 64) && (actual_asic_number <= 128))
+    {
+        i = 128;
+    }
+    else
+    {
+        applog(LOG_DEBUG,"actual_asic_number = %d, but it is error\n", actual_asic_number);
+        return -1;
+    }
+    return i;
+}
+
+
+void calculate_address_interval(void)
+{
+    int temp_asic_number = 0;
+
+    // according to the max asic number of all the hash boards to calculate address interval
+    //temp_asic_number = dev.max_asic_num_in_one_chain;
+    temp_asic_number = calculate_asic_number(dev.max_asic_num_in_one_chain);
+    //temp_asic_number = calculate_asic_number(60);
+    if(temp_asic_number <= 0)
+    {
+        dev.addrInterval = 7;
+        applog(LOG_ERR, "%s: temp_asic_number = %d, set addrInterval = '%d'", __FUNCTION__, temp_asic_number, dev.addrInterval);
+        return;
+    }
+
+    dev.addrInterval = 0x100 / temp_asic_number;
+    dev.addrInterval = 1;
+    applog(LOG_NOTICE, "%s: temp_asic_number = %d, addrInterval = %d", __FUNCTION__, temp_asic_number, dev.addrInterval);
+
+
+    // according to the address interval, calculate out the temperature sensor's address
+    TempChipAddr[0] = TEMP_CHIP_0_LOCATION * dev.addrInterval;
+    TempChipAddr[1] = TEMP_CHIP_1_LOCATION * dev.addrInterval;
+    TempChipAddr[2] = TEMP_CHIP_2_LOCATION * dev.addrInterval;
+
+    // according to the address interval, calculate out the chip/core offset
+    //gChipOffset = (0x01 << 1) * ((0x01 << 31) / temp_asic_number / dev.addrInterval); // 2^32 / temp_asic_number / dev.addrInterval
+    //gChipOffset = 0x1000000;  // 2^32 / 0x100 (0x100 = temp_asic_number * dev.addrInterval)
+    gChipOffset = 0x04000000;
+    gCoreOffset = gChipOffset / BM1760_CORE_NUM;
+    applog(LOG_NOTICE,"%s: CHIP_OFFSET = 0x%08x, CORE_OFFSET = 0x%08x", __FUNCTION__, gChipOffset, gCoreOffset);
+}
 /**************** about BM1760 ASIC end ****************/
 
 
@@ -2308,9 +2596,9 @@ void tty_init(struct bitmain_DASH_info *info, int baud)
     int which_chain = 0,ret;
     char dev_fname[PATH_MAX] = "";
     struct termios options;
-	
-    applog(LOG_NOTICE,"%s",__FUNCTION__);
-	
+
+    applog(LOG_NOTICE, "%s",__FUNCTION__);
+
     for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         if(info->chain_status[which_chain] == 1)
@@ -2321,7 +2609,7 @@ void tty_init(struct bitmain_DASH_info *info, int baud)
             {
                 applog(LOG_ERR, "%s : open %s failed", __FUNCTION__, dev_fname);
             }
-			
+
             tcgetattr(info->dev_fd[which_chain], &options);
             speed_t speed = tiospeed_t(baud);
             if (speed == B0)
@@ -2350,28 +2638,29 @@ void tty_init(struct bitmain_DASH_info *info, int baud)
             info->chain_index = dev_info[which_chain].chainid = which_chain;
             dev_info[which_chain].dev_fd = info->dev_fd[which_chain];
             applog(LOG_NOTICE, "%s chainid = %d",__FUNCTION__,dev_info[which_chain].chainid);
-			
+
             ret = pthread_create(&info->uart_rx_t[which_chain], NULL, get_asic_response, (void *)&dev_info[which_chain]);
             if(unlikely(ret != 0))
             {
                 applog(LOG_ERR,"create rx read thread for %s failed", dev_fname);
             }
-			else
-			{
-				applog(LOG_ERR,"create rx read thread for %s ok", dev_fname);
-			}
+            else
+            {
+                applog(LOG_ERR,"create rx read thread for %s ok", dev_fname);
+            }
 
-			cgsleep_ms(50);
-			
-            ret = pthread_create(&info->uart_tx_t[which_chain], NULL, DASH_fill_work, (void *)info);            
+            cgsleep_ms(50);
+
+            ret = pthread_create(&info->uart_tx_t[which_chain], NULL, DASH_fill_work, (void *)info);
+            cgsleep_ms(200);
             if(unlikely(ret != 0))
             {
                 applog(LOG_ERR,"create tx read thread for %s failed",dev_fname);
             }
-			else
-			{
-				applog(LOG_ERR,"create tx read thread for %s ok",dev_fname);
-			}
+            else
+            {
+                applog(LOG_ERR,"create tx read thread for %s ok",dev_fname);
+            }
         }
     }
     applog(LOG_NOTICE,"open device over");
@@ -2380,21 +2669,21 @@ void tty_init(struct bitmain_DASH_info *info, int baud)
     {
         dev.dev_fd[which_chain] = info->dev_fd[which_chain];
     }
-	
-	cgsleep_ms(10);	
+
+    cgsleep_ms(10);
 }
 
 
 int DASH_write(int fd, const void *buf, size_t bufLen)
 {
     size_t ret = 0;
-	unsigned char header[ASIC_INPUT_HEADER_LENGTH] = {INPUT_HEADER_1, INPUT_HEADER_2};
-	
+    unsigned char header[ASIC_INPUT_HEADER_LENGTH] = {INPUT_HEADER_1, INPUT_HEADER_2};
+
     if (unlikely(fd == -1))
         ret = -1;
 
     flock(fd,LOCK_EX);
-	ret = write(fd, header, ASIC_INPUT_HEADER_LENGTH);
+    ret = write(fd, header, ASIC_INPUT_HEADER_LENGTH);
     ret += write(fd, buf, bufLen);
 
     if(unlikely(ret != (bufLen + ASIC_INPUT_HEADER_LENGTH)))
@@ -2407,41 +2696,45 @@ int DASH_write(int fd, const void *buf, size_t bufLen)
 }
 
 
-int DASH_read(int fd, unsigned char *buf, size_t bufLen)
+int DASH_read(int uart_fd, unsigned char *buf, size_t MAX_READ_BYTES)
 {
-	int fs_sel, nbytes=0, ret = 0;
-	ssize_t len=0;
-	
-    if (unlikely(fd == -1))
-        ret = -1;
-	
-	if(ioctl(fd, FIONREAD, &nbytes) == 0)
-	{
-		if(nbytes >= ASIC_RETURN_DATA_LENGTH)
-		{
-			len = read(fd, buf, (nbytes/ASIC_RETURN_DATA_LENGTH)*ASIC_RETURN_DATA_LENGTH);
-			if(len < (nbytes/ASIC_RETURN_DATA_LENGTH)*ASIC_RETURN_DATA_LENGTH)
-			{
-				applog(LOG_ERR,"!!! %s: There are %d bytes in UART, but we just read out %d bytes\n", __FUNCTION__, (nbytes/ASIC_RETURN_DATA_LENGTH)*ASIC_RETURN_DATA_LENGTH, len);
-			}
-        	return len;
-		}
-		else
-		{
-			return 0;
-		}
-	}
+    int fs_sel, nbytes=0, ret = 0;
+    ssize_t len=0;
+
+    if (unlikely(uart_fd == -1))
+    {
+        applog(LOG_ERR, "%s: fd = %d", __FUNCTION__, uart_fd);
+        return 0;
+    }
+
+    if(ioctl(uart_fd, FIONREAD, &nbytes) == 0)
+    {
+        if(nbytes < MAX_READ_BYTES)
+        {
+            len = read(uart_fd, buf, nbytes);
+        }
+        else
+        {
+            len = read(uart_fd, buf, MAX_READ_BYTES);
+        }
+    }
+    else
+    {
+        applog(LOG_ERR, "%s: ioctl error", __FUNCTION__);
+        len = 0;
+    }
+    return len;
 }
 
 
 void i2c_init(struct bitmain_DASH_info *info)
 {
     int which_chain;
-	
+
     if(unlikely((info->i2c_fd = open(IIC_DEVIVEE, O_RDWR | O_NONBLOCK)) < 0))
     {
         perror(IIC_DEVIVEE);
-		return;
+        return;
     }
 
     for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
@@ -2454,10 +2747,10 @@ void i2c_init(struct bitmain_DASH_info *info)
             }
         }
     }
-	
+
     dev.i2c_fd = info->i2c_fd;
     applog(LOG_NOTICE,"i2c init ok");
-	cgsleep_ms(10);
+    cgsleep_ms(10);
 }
 
 
@@ -2466,24 +2759,24 @@ void check_chain(struct bitmain_DASH_info *info)
 {
     int i, fd, ret;
     char dev_fname[PATH_MAX], command[2];
-	
+
     for(i = 0; i < sizeof(plug)/sizeof(int); i++)
     {
         sprintf(dev_fname, GPIO_DEVICE_TEMPLATE, plug[i]);
-		
+
         if((fd = open(dev_fname, O_RDONLY)) < 0)
         {
             applog(LOG_ERR,"%s :open %s failed",__FUNCTION__,dev_fname);
-			continue;
+            continue;
         }
-		
+
         if(lseek(fd, 0, SEEK_SET) < 0)
         {
             perror(dev_fname);
-			applog(LOG_ERR,"%s :lseek %s failed",__FUNCTION__,dev_fname);
-			continue;
+            applog(LOG_ERR,"%s :lseek %s failed",__FUNCTION__,dev_fname);
+            continue;
         }
-		
+
         ret = read(fd, command, 2);
 
         if(ret > 0 && command[0] == '1')
@@ -2492,7 +2785,7 @@ void check_chain(struct bitmain_DASH_info *info)
             info->chain_status[i] = 1;
             dev.chain_exist[i] = 1;
             dev.chain_num++;
-            applog(LOG_NOTICE," detected at %s  chain %d",dev_fname,i);
+            applog(LOG_NOTICE,"detected at %s  chain %d",dev_fname,i);
         }
         else
         {
@@ -2502,7 +2795,18 @@ void check_chain(struct bitmain_DASH_info *info)
     }
 
     applog(LOG_NOTICE,"detect total chain num %d",info->chain_num);
-	cgsleep_ms(10);
+
+    if(info->chain_num == 0)
+    {
+        set_PWM(0);
+
+        while(1)
+        {
+            applog(LOG_ERR,"No Hash Board\n");
+            sleep(3);
+        }
+    }
+    cgsleep_ms(10);
 }
 
 
@@ -2511,8 +2815,8 @@ static void reset_all_hash_board(void)
     char rstBuf[128] = "";
     unsigned char which_chain = 0;
 
-	applog(LOG_DEBUG,"%s", __FUNCTION__);
-	
+    applog(LOG_NOTICE, "%s", __FUNCTION__);
+
     for (which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
         sprintf(rstBuf, SET_ASIC_RST_0, g_gpio_data[which_chain]);
@@ -2527,7 +2831,7 @@ static void reset_all_hash_board(void)
         system(rstBuf);
     }
 
-	cgsleep_ms(500);
+    cgsleep_ms(200);
 }
 
 
@@ -2535,7 +2839,7 @@ static void reset_hash_board(unsigned char which_chain)
 {
     char rstBuf[128] = "";
 
-	applog(LOG_DEBUG,"%s: which_chain = %d", __FUNCTION__, which_chain);
+    applog(LOG_DEBUG,"%s: which_chain = %d", __FUNCTION__, which_chain);
 
     sprintf(rstBuf, SET_ASIC_RST_0, g_gpio_data[which_chain]);
     system(rstBuf);
@@ -2553,7 +2857,7 @@ void set_led(bool stop)
     static bool blink = true;
     char cmd[100];
     blink = !blink;
-	
+
     if(stop)
     {
         sprintf(cmd,LED_CTRL_TEMPLATE,0,green_led);
@@ -2574,10 +2878,144 @@ void set_led(bool stop)
 void set_beep(bool flag)
 {
     char cmd[128] = {0};
-	
+
     sprintf(cmd,BEEP_CTRL_TEMPLATE,flag?1:0,beep);
     system(cmd);
 }
+
+
+static unsigned int getNum(const char* buffer)
+{
+    char* pos = strstr(buffer, ":");
+
+    while(*(++pos) == ' ');
+    char* startPos = pos;
+
+    while(*(++pos) != ' ');
+    *pos = '\0';
+
+    return (atoi(startPos));
+}
+
+
+void check_fan_speed(void)
+{
+
+    uint32_t fan0SpeedHist = 0;
+    uint32_t fan1SpeedHist = 0;
+    uint32_t fan0SpeedCur = 0;
+    uint32_t fan1SpeedCur = 0;
+    uint32_t fan0Speed = 0, fan0Speed_ok = 0;
+    uint32_t fan1Speed = 0, fan1Speed_ok = 0;
+    uint32_t fan0_exist = 0;
+    uint32_t fan1_exist = 0;
+    unsigned char ok_counter = 0;
+    char buffer[256] = "";
+    char* pos = NULL;
+    FILE* fanpfd = fopen(PROCFILENAME, "r");
+
+    if(fanpfd == NULL)
+    {
+        while(1)
+        {
+            applog(LOG_ERR, "open /proc/interrupt error");
+            sleep(3);
+        }
+    }
+
+    fseek(fanpfd, 0, SEEK_SET);
+
+    while(fgets(buffer, 256, fanpfd))
+    {
+        if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
+        {
+            applog(LOG_DEBUG, "find fan1.");
+            fan0SpeedHist = fan0SpeedCur = getNum(buffer);
+        }
+
+        if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
+        {
+            applog(LOG_DEBUG, "find fan2.");
+            fan1SpeedHist = fan1SpeedCur = getNum(buffer);
+        }
+    }
+
+    cgsleep_ms(500);
+
+    while(1)
+    {
+        applog(LOG_DEBUG, "test_loop = %d", ok_counter);
+
+        fseek(fanpfd, 0, SEEK_SET);
+
+        while(fgets(buffer, 256, fanpfd))
+        {
+            if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
+            {
+                applog(LOG_DEBUG, "find fan1");
+                fan0SpeedCur = getNum(buffer);
+                if (fan0SpeedHist > fan0SpeedCur)
+                {
+                    fan0Speed = (0xffffffff - fan0SpeedHist + fan0SpeedCur);
+                }
+                else
+                {
+                    fan0Speed = ( fan0SpeedCur - fan0SpeedHist );
+                }
+                fan0Speed = fan0Speed * 60 / 2 * 2; // 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
+                fan0SpeedHist = fan0SpeedCur;
+                applog(LOG_DEBUG, "fan1Speed = %d", fan0Speed);
+                if( fan0Speed > FAN1_MAX_SPEED * FAN_SPEED_OK_PERCENT)
+                {
+                    fan0Speed_ok++;
+                }
+            }
+
+            if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
+            {
+                applog(LOG_DEBUG, "find fan2");
+                fan1SpeedCur = getNum(buffer);
+                if (fan1SpeedHist > fan1SpeedCur)
+                {
+                    fan1Speed = (0xffffffff - fan1SpeedHist + fan1SpeedCur);
+                }
+                else
+                {
+                    fan1Speed = ( fan1SpeedCur - fan1SpeedHist );
+                }
+                fan1SpeedHist = fan1SpeedCur;
+                fan1Speed = fan1Speed * 60 / 2 * 2; // 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
+                fan1SpeedHist = fan1SpeedCur;
+                applog(LOG_DEBUG, "fan2Speed = %d", fan1Speed);
+                if( fan1Speed > FAN2_MAX_SPEED * FAN_SPEED_OK_PERCENT)
+                {
+                    fan1Speed_ok++;
+                }
+            }
+        }
+
+        if((fan0Speed_ok >= 3) && (fan1Speed_ok >= 3))
+        {
+            applog(LOG_WARNING, "%s OK", __FUNCTION__);
+            return;
+        }
+        else
+        {
+            if(fan0Speed_ok < 3)
+            {
+                applog(LOG_ERR, "FAN1 too slow ...");   // FAN1 is fan0
+            }
+
+            if(fan1Speed_ok < 3)
+            {
+                applog(LOG_ERR, "FAN2 too slow ...");   // FAN2 is fan1
+            }
+        }
+
+        cgsleep_ms(500);
+    }
+}
+
 
 
 void set_PWM(unsigned char pwm_percent)
@@ -2595,11 +3033,11 @@ void set_PWM(unsigned char pwm_percent)
     {
         temp_pwm_percent = MAX_PWM_PERCENT;
     }
-	
+
     dev.duty_ns = PWM_PERIOD_NS * temp_pwm_percent /100;
     dev.pwm_percent = temp_pwm_percent;
-	
-    applog(LOG_DEBUG,"set pwm duty_ns %d",dev.duty_ns);
+
+    //applog(LOG_DEBUG,"set pwm duty_ns %d",dev.duty_ns);
     sprintf(buf,PWM_CTRL_TEMPLATE,dev.duty_ns);
     system(buf);
 }
@@ -2608,11 +3046,11 @@ void set_PWM(unsigned char pwm_percent)
 void set_PWM_according_to_temperature(void)
 {
     int pwm_percent = 0, temp_change = 0;
-	
+
     temp_highest = dev.temp_top1;
     if(temp_highest >= MAX_FAN_TEMP)
     {
-        applog(LOG_DEBUG,"%s: Temperature is higher than %d 'C", __FUNCTION__, temp_highest);
+        //applog(LOG_DEBUG,"%s: Temperature is higher than %d 'C", __FUNCTION__, temp_highest);
     }
 
     if(dev.fan_eft)
@@ -2630,7 +3068,7 @@ void set_PWM_according_to_temperature(void)
     {
         set_PWM(MAX_PWM_PERCENT);
         dev.fan_pwm = MAX_PWM_PERCENT;
-        applog(LOG_DEBUG,"%s: Set PWM percent : MAX_PWM_PERCENT", __FUNCTION__);
+        //applog(LOG_DEBUG,"%s: Set PWM percent : MAX_PWM_PERCENT", __FUNCTION__);
         return;
     }
 
@@ -2638,7 +3076,7 @@ void set_PWM_according_to_temperature(void)
     {
         set_PWM(MIN_PWM_PERCENT);
         dev.fan_pwm = MIN_PWM_PERCENT;
-        applog(LOG_DEBUG,"%s: Set PWM percent : MIN_PWM_PERCENT", __FUNCTION__);
+        //applog(LOG_DEBUG,"%s: Set PWM percent : MIN_PWM_PERCENT", __FUNCTION__);
         return;
     }
 
@@ -2659,114 +3097,128 @@ void set_PWM_according_to_temperature(void)
 
 int bitmain_DASH_init(struct bitmain_DASH_info *info)
 {
-    struct init_config config = info->DASH_config;    
+    struct init_config config = info->DASH_config;
     struct init_config config_parameter;
-	uint16_t crc = 0;
-	unsigned char which_chain = 0;
+    uint16_t crc = 0, freq = 0;
+    unsigned char which_chain = 0;
     int i = 0,check_asic_times = 0, ret = 0;
     bool check_asic_fail = false;
 
-	applog(LOG_ERR, "%s", __FUNCTION__);
+    applog(LOG_WARNING, "%s", __FUNCTION__);
 
     memcpy(&config_parameter, &config, sizeof(struct init_config));
 
     sprintf(g_miner_version, "1.0.0.0");
 
-	// start fans
-    set_PWM(100);
+    // start fans
 
-	// check parameters
+    set_PWM(100);
+    check_fan_speed();
+
+    // check parameters
     if(config_parameter.token_type != INIT_CONFIG_TYPE)
     {
-        applog(LOG_DEBUG,"%s: config_parameter.token_type != 0x%x, it is 0x%x", __FUNCTION__, INIT_CONFIG_TYPE, config_parameter.token_type);
+        applog(LOG_ERR,"%s: config_parameter.token_type != 0x%x, it is 0x%x", __FUNCTION__, INIT_CONFIG_TYPE, config_parameter.token_type);
         return -1;
     }
 
-    crc = crc_itu_t(0xff,(uint8_t*)(&config_parameter), sizeof(struct init_config) - sizeof(uint16_t));
+    crc = crc_itu_t(0xff, (uint8_t*)(&config_parameter), sizeof(struct init_config) - sizeof(uint16_t));
     if(crc != config_parameter.crc)
     {
-        applog(LOG_DEBUG,"%s: config_parameter.crc = 0x%x, but we calculate it as 0x%x", __FUNCTION__, config_parameter.crc, crc);
+        applog(LOG_ERR,"%s: config_parameter.crc = 0x%x, but we calculate it as 0x%x", __FUNCTION__, config_parameter.crc, crc);
         return -2;
     }
 
-	// init the work queue which stores the latest work that sent to hash boards
+    // init the work queue which stores the latest work that sent to hash boards
     for(i=0; i < BITMAIN_MAX_QUEUE_NUM; i++)
     {
         info->work_queue[i] = NULL;
     }
 
-	/*
-	dev = calloc(sizeof(struct all_parameters), sizeof(char));
+    /*
+    dev = calloc(sizeof(struct all_parameters), sizeof(char));
     if(unlikely(!dev))
-	{
+    {
         applog(LOG_ERR,"calloc dev failed");
     }
     */
 
-	// check chain
+    // check chain
     check_chain(info);
 
-	// init i2c
+    // init i2c
     i2c_init(info);
-     
+
+    check_whether_need_update_pic_program();
+
     every_chain_reset_PIC16F1704_pic_new();
- 
-#ifdef UPDATE_PIC
-	every_chain_update_pic_program();
-#endif
 
-	every_chain_jump_from_loader_to_app_PIC16F1704_new();
+    every_chain_jump_from_loader_to_app_PIC16F1704_new();
 
-	ret = send_heart_beat_to_every_chain();
-	if(ret == -3)
-	{
-		return ret;
-	}    
-	
-	every_chain_enable_PIC16F1704_dc_dc_new(1);
-    
-	reset_all_hash_board();
+    ret = send_heart_beat_to_every_chain();
+    if(ret == -3)
+    {
+        return ret;
+    }
+
+    every_chain_enable_PIC16F1704_dc_dc_new();
+
+    reset_all_hash_board();
 
     tty_init(info, config_parameter.baud);
- 
-	clear_register_value_buf();
+
+    clear_register_value_buf();
 
     cgsleep_ms(100);
 
-	ret = creat_bitmain_scanreg_pthread();
-	if(ret == -4)
-	{
-		return ret;
-	}
+    ret = creat_bitmain_scanreg_pthread();
+    if(ret == -4)
+    {
+        return ret;
+    }
 
-	// set core ticket mask
-	set_ticket_mask(DEVICE_DIFF);	// if we set this register value as 0x16, we will not need to set
-	
-	// check ASIC number for every chain    
-	check_every_chain_asic_number(true);
+    // check ASIC number for every chain
+    check_every_chain_asic_number(true);
+    cgsleep_ms(300);
+    calculate_address_interval();
+    //cgsleep_ms(1000);
+    //update_asic_num = false;
+
+    // set core ticket mask
+    set_ticket_mask(DEVICE_DIFF_SET);   // if we set this register value as 0x16, we will not need to set
 
     //set core number
     dev.corenum = BM1760_CORE_NUM;
 
-	// set frequency
+    // set frequency
     if(config_parameter.frequency_eft)
     {
         dev.frequency = config_parameter.frequency;
-        set_frequency(dev.frequency);
+		if(dev.frequency == 0)
+		{
+        	every_chain_get_PIC16F1704_freq_new(&freq);
+			dev.frequency = freq;
+			set_frequency(dev.frequency);
+		}
+		else
+		{
+			set_frequency(dev.frequency);
+		}
         sprintf(dev.frequency_t,"%u",dev.frequency);
     }
 
-	// set every chain's ASIC address
+    // set every chain's ASIC address
     software_set_address();
-	check_every_chain_asic_number(false);
+    //check_every_chain_asic_number(false);
 
-	// about temperature sensor
-	enable_read_temperature_from_asic(config_parameter.analog_mux_control_reg_value);
-	select_core_to_check_temperature(DIODE_MUX_SEL_DEFAULT_VALUE, VDD_MUX_SEL_DEFAULT_VALUE);
+    // about temperature sensor
+    enable_read_temperature_from_asic(config_parameter.misc_control_reg_value);
+    select_core_to_check_temperature(DIODE_MUX_SEL_DEFAULT_VALUE, VDD_MUX_SEL_DEFAULT_VALUE);
+    //check_sensor_ID();
     calibration_sensor_offset();
-	set_temperature_offset_value();
+    set_temperature_offset_value();
 
-	// check who control fan
+    // check who control fan
     dev.fan_eft = config_parameter.fan_eft;
     dev.fan_pwm = config_parameter.fan_pwm_percent;
     applog(LOG_DEBUG,"%s: fan_eft : %d  fan_pwm : %d", __FUNCTION__, dev.fan_eft, dev.fan_pwm);
@@ -2793,7 +3245,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
         {
             applog(LOG_NOTICE, "frequency = '%d'", dev.frequency);
             // timeout = 2^32 / (256 / AddrInterval) / Freq / core number
-            dev.timeout = 0xffffffff / (0x100 / dev.addrInterval) / (dev.frequency*1000000) / dev.corenum * 0.95;
+            dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.95 * 40;
             applog(LOG_NOTICE,"dev.timeout = %d us", dev.timeout);
         }
         else
@@ -2803,38 +3255,101 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
     }
 
     //set baud
-    //set_misc_ctrl();		// dash use 115200 baud, so no need to set baud
+    //set_misc_ctrl();      // dash use 115200 baud, so no need to set baud
 
     //open core
     open_core();
 
-	// create some pthread
+    // create some pthread
     ret = create_bitmain_check_fan_pthread();
-	if(ret == -8)
-	{
-		return ret;
-	}    
+    if(ret == -8)
+    {
+        return ret;
+    }
 
-	ret = create_bitmain_read_temp_pthread();
-	if(ret == -7)
-	{
-		return ret;
-	}    
+    ret = create_bitmain_read_temp_pthread();
+    if(ret == -7)
+    {
+        return ret;
+    }
 
-	ret = create_bitmain_check_miner_status_pthread();
-	if(ret == -5)
-	{
-		return ret;
-	}	
-	
-	ret = create_bitmain_get_hash_rate_pthread();
-	if(ret == -6)
-	{
-		return ret;
-	}
+    ret = create_bitmain_check_miner_status_pthread(info);
+    if(ret == -5)
+    {
+        return ret;
+    }
 
-	// init ASIC status which will be display on the web
-	init_asic_display_status();
+    ret = create_bitmain_get_hash_rate_pthread();
+    if(ret == -6)
+    {
+        return ret;
+    }
+
+    // init ASIC status which will be display on the web
+    init_asic_display_status();
+
+    start_send = true;
+
+    return 0;
+}
+
+
+int bitmain_DASH_reinit(struct bitmain_DASH_info *info)
+{
+    struct init_config config = info->DASH_config;
+    struct init_config config_parameter;
+    uint16_t crc = 0;
+    unsigned char which_chain = 0;
+    int i = 0,check_asic_times = 0, ret = 0;
+    bool check_asic_fail = false;
+
+    applog(LOG_WARNING, "%s", __FUNCTION__);
+
+    // start fans
+    set_PWM(100);
+    check_fan_speed();
+
+    // init the work queue which stores the latest work that sent to hash boards
+    for(i=0; i < BITMAIN_MAX_QUEUE_NUM; i++)
+    {
+        info->work_queue[i] = NULL;
+    }
+
+    every_chain_enable_PIC16F1704_dc_dc_new();
+    cgsleep_ms(100);
+
+    reset_all_hash_board();
+
+    clear_register_value_buf();
+
+    cgsleep_ms(100);
+
+    // set frequency
+    if(config_parameter.frequency_eft)
+    {
+        dev.frequency = config_parameter.frequency;
+        set_frequency(dev.frequency);
+        sprintf(dev.frequency_t,"%u",dev.frequency);
+    }
+
+    // set every chain's ASIC address
+    software_set_address();
+    //check_every_chain_asic_number(false);
+
+    // about temperature sensor
+    enable_read_temperature_from_asic(config_parameter.misc_control_reg_value);
+    select_core_to_check_temperature(DIODE_MUX_SEL_DEFAULT_VALUE, VDD_MUX_SEL_DEFAULT_VALUE);
+    calibration_sensor_offset();
+    set_temperature_offset_value();
+
+    //set baud
+    //set_misc_ctrl();      // dash use 115200 baud, so no need to set baud
+
+    //open core
+    open_core();
+
+    // init ASIC status which will be display on the web
+    init_asic_display_status();
 
     start_send = true;
 
@@ -2851,35 +3366,34 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 
 void enable_read_temperature_from_asic(unsigned int misc_control_reg_value)
 {
-	unsigned int which_chain=0, which_sensor=0;
+    unsigned int which_chain=0, which_sensor=0, reg_value = 0;
 
-	applog(LOG_DEBUG, "--- %s", __FUNCTION__);
-	
-	misc_control_reg_value |= (RFS | TFS(3)); 
-	
-	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    reg_value = misc_control_reg_value | RFS | TFS(3);
+
+    applog(LOG_NOTICE, "%s: reg_value = 0x%08x", __FUNCTION__, reg_value);
+
+    for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         if ( dev.chain_exist[which_chain] == 1)
         {
             for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++)
             {
-                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], MISC_CONTROL, misc_control_reg_value);
+                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], MISC_CONTROL, reg_value);
                 cgsleep_ms(2);
             }
         }
     }
-    cgsleep_ms(100);
 }
 
 
 void select_core_to_check_temperature(unsigned char diode_mux_sel, unsigned char vdd_mux_sel)
 {
-	unsigned int which_chain=0, which_sensor=0;
-	unsigned int regdata = ((diode_mux_sel & 0x0f) << 16) | (vdd_mux_sel & 0x1f);
-	
-	applog(LOG_DEBUG, "--- %s: diode_mux_sel = %d, vdd_mux_sel = %d\n", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
-	
-	for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+    unsigned int which_chain=0, which_sensor=0;
+    unsigned int regdata = ((diode_mux_sel & 0x0f) << 16) | (vdd_mux_sel & 0x1f);
+
+    applog(LOG_NOTICE, "%s: diode_mux_sel = %d, vdd_mux_sel = %d", __FUNCTION__, diode_mux_sel, vdd_mux_sel);
+
+    for (which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
     {
         if ( dev.chain_exist[which_chain] == 1)
         {
@@ -2895,111 +3409,184 @@ void select_core_to_check_temperature(unsigned char diode_mux_sel, unsigned char
 
 void calibration_sensor_offset(void)
 {
-	unsigned char which_chain, which_sensor, read_temperature_time;
-	signed char local_temp=0, remote_temp=0, temp_offset_value=0;
-	unsigned int ret = 0;
-	bool not_read_out_temperature = false;
+    unsigned char which_chain, which_sensor, read_temperature_time;
+    signed char local_temp=0, remote_temp=0, temp_offset_value=0;
+    unsigned int ret = 0;
+    bool not_read_out_temperature = false;
 
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+    //applog(LOG_NOTICE, "%s", __FUNCTION__);
 
-	for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+    for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
         if ( dev.chain_exist[which_chain] == 1 )
         {
             for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
             {
                 // check whether the GENERAL_I2C_COMMAND is busy
-				do
-				{
-					check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-					read_temperature_time++;
-	
-					if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-					{
-						ret = 0xc0000000;
-					}
-					else
-					{
-						ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-					}					
-				}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
-				read_temperature_time = 0;
+                do
+                {
+                    check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                    read_temperature_time++;
 
-				// write config data to read back EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
-				set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_VALUE_HIGH_BYTE) | DATA(0) & (~RW));
-				
-				// read back the EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
-				do
-				{
-					check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-					read_temperature_time++;
+                    if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                    {
+                        ret = 0xc0000000;
+                    }
+                    else
+                    {
+                        ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                    }
+                }
+                while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                read_temperature_time = 0;
 
-					if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-					{
-						ret = 0xc0000000;
-					}
-					else
-					{
-						ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-					}
-				}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));			
-				read_temperature_time = 0;
+                // write config data to read back EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
+                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_VALUE_HIGH_BYTE) | DATA(0) & (~RW));
 
-				if((ret & 0xc0000000) == 0)
-				{
-					remote_temp = (signed char)(ret & 0xff);
-				}
-				else
-				{
-					not_read_out_temperature = true;
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
-				}
+                // read back the EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
+                do
+                {
+                    check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                    read_temperature_time++;
 
-				// write config data to read back LOCAL_TEMPERATURE_VALUE
-				set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(LOCAL_TEMP_VALUE) | DATA(0) & (~RW));
+                    if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                    {
+                        ret = 0xc0000000;
+                    }
+                    else
+                    {
+                        ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                    }
+                }
+                while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                read_temperature_time = 0;
 
-				// read back the LOCAL_TEMPERATURE_VALUE
-				do
-				{
-					check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-					read_temperature_time++;
+                if((ret & 0xc0000000) == 0)
+                {
+                    remote_temp = (signed char)(ret & 0xff);
+                }
+                else
+                {
+                    not_read_out_temperature = true;
+                    applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x", __FUNCTION__, which_chain, which_sensor, ret);
+                }
 
-					if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-					{
-						ret = 0xc0000000;
-					}
-					else
-					{
-						ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-					}
-				}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));			
-				read_temperature_time = 0;
+                // write config data to read back LOCAL_TEMPERATURE_VALUE
+                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(LOCAL_TEMP_VALUE) | DATA(0) & (~RW));
 
-				if((ret & 0xc0000000) == 0)
-				{
-					local_temp = (signed char)(ret & 0xff);
-				}
-				else
-				{
-					not_read_out_temperature = true;
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", 
-						__FUNCTION__, which_chain, which_sensor, ret);
-				}
+                // read back the LOCAL_TEMPERATURE_VALUE
+                do
+                {
+                    check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                    read_temperature_time++;
 
-				// calculate temperature offset value
-				if(not_read_out_temperature)
-				{
-					temp_offset_value = 0;
-				}
-				else
-				{
-					temp_offset_value = local_temp - remote_temp;
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d: local_temp = %d, remote_temp = %d, offset_value = %d", 
-						__FUNCTION__, which_chain, which_sensor, local_temp, remote_temp, temp_offset_value);
-				}
+                    if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                    {
+                        ret = 0xc0000000;
+                    }
+                    else
+                    {
+                        ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                    }
+                }
+                while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                read_temperature_time = 0;
 
-				// record temperature offset value
-				gTempOffsetValue[which_chain][which_sensor] = temp_offset_value;
+                if((ret & 0xc0000000) == 0)
+                {
+                    local_temp = (signed char)(ret & 0xff);
+                }
+                else
+                {
+                    not_read_out_temperature = true;
+                    applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x",
+                           __FUNCTION__, which_chain, which_sensor, ret);
+                }
+
+                // calculate temperature offset value
+                if(not_read_out_temperature)
+                {
+                    temp_offset_value = 0;
+                }
+                else
+                {
+                    temp_offset_value = local_temp - remote_temp;
+                    applog(LOG_NOTICE, "%s: Chain%d Sensor%d: local_temp = %d, remote_temp = %d, offset_value = %d",
+                           __FUNCTION__, which_chain, which_sensor, local_temp, remote_temp, temp_offset_value);
+                }
+
+                // record temperature offset value
+                gTempOffsetValue[which_chain][which_sensor] = temp_offset_value;
+            }
+        }
+    }
+}
+
+
+void check_sensor_ID(void)
+{
+    unsigned char which_chain, which_sensor, read_temperature_time;
+    signed char manufacturer_id=0;
+    unsigned int ret = 0;
+    bool not_read_out_temperature = false;
+
+    applog(LOG_DEBUG, "%s", __FUNCTION__);
+
+    for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+    {
+        if ( dev.chain_exist[which_chain] == 1 )
+        {
+            for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+            {
+                // check whether the GENERAL_I2C_COMMAND is busy
+                do
+                {
+                    check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                    read_temperature_time++;
+
+                    if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                    {
+                        ret = 0xc0000000;
+                    }
+                    else
+                    {
+                        ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                    }
+                }
+                while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                read_temperature_time = 0;
+
+                // write config data to read back id
+                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(MANUFACTURER_ID) | DATA(0) & (~RW));
+
+                // read back the id
+                do
+                {
+                    check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                    read_temperature_time++;
+
+                    if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                    {
+                        ret = 0xc0000000;
+                    }
+                    else
+                    {
+                        ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                    }
+                }
+                while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                read_temperature_time = 0;
+
+                if((ret & 0xc0000000) == 0)
+                {
+                    manufacturer_id = (signed char)(ret & 0xff);
+                    applog(LOG_ERR, "%s: Chain%d Sensor%d Manufacturer ID = 0x%02x", __FUNCTION__, which_chain, which_sensor, manufacturer_id);
+                }
+                else
+                {
+                    not_read_out_temperature = true;
+                    applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out Manufacturer ID. ret = 0x%08x", __FUNCTION__, which_chain, which_sensor, ret);
+                }
             }
         }
     }
@@ -3008,108 +3595,111 @@ void calibration_sensor_offset(void)
 
 void set_temperature_offset_value(void)
 {
-	unsigned char which_chain, which_sensor, read_temperature_time;
-	signed char local_temp=0, remote_temp=0, offset=0;
-	unsigned int reg_data = 0, ret = 0;
-	bool not_read_out_temperature = false;
+    unsigned char which_chain, which_sensor, read_temperature_time;
+    signed char local_temp=0, remote_temp=0, offset=0;
+    unsigned int reg_data = 0, ret = 0;
+    bool not_read_out_temperature = false;
 
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+    applog(LOG_WARNING, "%s", __FUNCTION__);
 
-	for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+    for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
         if ( dev.chain_exist[which_chain] == 1 )
         {
             for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
             {
-            	// check whether the GENERAL_I2C_COMMAND is busy
-				do
-				{
-					check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-					read_temperature_time++;
-	
-					if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-					{
-						ret = 0xc0000000;
-					}
-					else
-					{
-						ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-					}					
-				}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
-				read_temperature_time = 0;
+                // check whether the GENERAL_I2C_COMMAND is busy
+                do
+                {
+                    check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                    read_temperature_time++;
 
-				// write the offset value into GENERAL_I2C_COMMAND register to send to temperature sensor
-				reg_data = 0x000000ff & DATA(gTempOffsetValue[which_chain][which_sensor]);
-				reg_data |= REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_OFFSET_HIGH_BYTE) | RW;
-				set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
+                    if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                    {
+                        ret = 0xc0000000;
+                    }
+                    else
+                    {
+                        ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                    }
+                }
+                while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                read_temperature_time = 0;
 
-				// check whether the GENERAL_I2C_COMMAND is wrote done
-				do
-				{
-					check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-					read_temperature_time++;
-	
-					if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-					{
-						ret = 0xc0000000;
-					}
-					else
-					{
-						ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-					}					
-				}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
-				read_temperature_time = 0;
+                // write the offset value into GENERAL_I2C_COMMAND register to send to temperature sensor
+                reg_data = 0x000000ff & DATA(gTempOffsetValue[which_chain][which_sensor]);
+                reg_data |= REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_OFFSET_HIGH_BYTE) | RW;
+                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
 
-				// read back EXTERNAL_TEMPERATURE_OFFSET_HIGH_BYTE through GENERAL_I2C_COMMAND register
-				reg_data = REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_OFFSET_HIGH_BYTE) | DATA(0) & (~RW);
-				set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
+                // check whether the GENERAL_I2C_COMMAND is wrote done
+                do
+                {
+                    check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                    read_temperature_time++;
 
-				// read back the EXTERNAL_TEMPERATURE_OFFSET_HIGH_BYTE
-				do
-				{
-					check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-					read_temperature_time++;
-	
-					if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-					{
-						ret = 0xc0000000;
-					}
-					else
-					{
-						ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-					}					
-				}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
-				read_temperature_time = 0;
+                    if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                    {
+                        ret = 0xc0000000;
+                    }
+                    else
+                    {
+                        ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                    }
+                }
+                while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                read_temperature_time = 0;
 
-				if((ret & 0xc0000000) == 0)
-				{
-					offset = (signed char)(ret & 0xff);
-				}
-				else
-				{
-					offset = 0;
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out offset value. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
-				}
+                // read back EXTERNAL_TEMPERATURE_OFFSET_HIGH_BYTE through GENERAL_I2C_COMMAND register
+                reg_data = REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_OFFSET_HIGH_BYTE) | DATA(0) & (~RW);
+                set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
 
-				// check whether the offset value really write into the temperature sensor
-				if(offset != gTempOffsetValue[which_chain][which_sensor])
-				{
-					applog(LOG_DEBUG, "%s: Chain%d Sensor%d temp offset value set error. It should be %02d, but read back is %02d\n", 
-						__FUNCTION__, which_chain, which_sensor, gTempOffsetValue[which_chain][which_sensor], offset);
-				}
-        	}
-    	}
-	}
+                // read back the EXTERNAL_TEMPERATURE_OFFSET_HIGH_BYTE
+                do
+                {
+                    check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                    read_temperature_time++;
+
+                    if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                    {
+                        ret = 0xc0000000;
+                    }
+                    else
+                    {
+                        ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                    }
+                }
+                while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                read_temperature_time = 0;
+
+                if((ret & 0xc0000000) == 0)
+                {
+                    offset = (signed char)(ret & 0xff);
+                }
+                else
+                {
+                    offset = 0;
+                    applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out offset value. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
+                }
+
+                // check whether the offset value really write into the temperature sensor
+                if(offset != gTempOffsetValue[which_chain][which_sensor])
+                {
+                    applog(LOG_ERR, "%s: Chain%d Sensor%d temp offset value set error. It should be %02d, but read back is %02d\n",
+                           __FUNCTION__, which_chain, which_sensor, gTempOffsetValue[which_chain][which_sensor], offset);
+                }
+            }
+        }
+    }
 }
 
 /*
 void SetTempRead(unsigned char pos)
 {
     uint32_t reg_data=0, which_chain, which_sensor;
-	
-	reg_data = GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR | REGADDR(pos) | DATA(0) & (~RW);
-	
-	for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+
+    reg_data = GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR | REGADDR(pos) | DATA(0) & (~RW);
+
+    for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
     {
         if ( dev.chain_exist[which_chain] == 1 )
         {
@@ -3127,10 +3717,10 @@ void SetTempRead(unsigned char pos)
 
 static void SetTempOffset(int8_t offset, int which_sensor, int chainid)
 {
-	uint32_t reg_data = 0;
+    uint32_t reg_data = 0;
 
-	reg_data = (0xff & DATA(offset)) | REGADDRVALID | DEVICEADDR | REGADDR(EXT_TEMP_OFFSET_HIGH_BYTE) | RW;
-	
+    reg_data = (0xff & DATA(offset)) | REGADDRVALID | DEVICEADDR | REGADDR(EXT_TEMP_OFFSET_HIGH_BYTE) | RW;
+
     set_config(dev.dev_fd[chainid], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
     usleep(2000);
 }
@@ -3138,7 +3728,7 @@ static void SetTempOffset(int8_t offset, int which_sensor, int chainid)
 static int GetResponseResult(const unsigned int which_sensor)
 {
     int count = 0;
-	int which_chain = 0;
+    int which_chain = 0;
     int activedChain = 0;
     int successData = 0;
 
@@ -3146,19 +3736,19 @@ static int GetResponseResult(const unsigned int which_sensor)
     {
         if ( count++ > 3 )
         {
-        	applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND register is not ready for %d times\n", __FUNCTION__, count);
+            applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND register is not ready for %d times\n", __FUNCTION__, count);
             return -1;
         }
-		
-		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-	    {
-	        if(dev.chain_exist[which_chain])
-	        {
-	            check_asic_reg(dev.dev_fd[which_chain],0,HASH_RATE,1);
-	        }
-	        cgsleep_ms(10);
-	    }
-        
+
+        for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+        {
+            if(dev.chain_exist[which_chain])
+            {
+                check_asic_reg(dev.dev_fd[which_chain],0,HASH_RATE,1);
+            }
+            cgsleep_ms(10);
+        }
+
         for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
         {
             if ( dev.chain_asic_in_full[which_chain] == 1 )
@@ -3181,47 +3771,47 @@ static int GetResponseResult(const unsigned int which_sensor)
 void calibration_sensor_offset()
 {
     int i , j , rightFlag, error_Limit = 0, retryTime = 0, activedChain = 0;
-	int which_chain, which_sensor;
+    int which_chain, which_sensor;
     int8_t localTemp[BITMAIN_MAX_CHAIN_NUM][BITMAIN_REAL_TEMP_CHIP_NUM] = {{0}};
     int8_t remoteTemp[BITMAIN_MAX_CHAIN_NUM][BITMAIN_REAL_TEMP_CHIP_NUM] = {{0}};
-	int8_t m_offset[BITMAIN_MAX_CHAIN_NUM][BITMAIN_REAL_TEMP_CHIP_NUM] = {{0}};
+    int8_t m_offset[BITMAIN_MAX_CHAIN_NUM][BITMAIN_REAL_TEMP_CHIP_NUM] = {{0}};
     bool wether_error = false;
 
-	while(1)
-	{
-		wether_error = false;
-		
-		if (retryTime++ > 10)
-		{
-			return;
+    while(1)
+    {
+        wether_error = false;
+
+        if (retryTime++ > 10)
+        {
+            return;
         }
 
-		// read pcb temperature
-		SetTempRead(LOCAL_TEMP_VALUE);
+        // read pcb temperature
+        SetTempRead(LOCAL_TEMP_VALUE);
 
-		for ( which_sensor = 0; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-	    {
-	        if ( GetResponseResult(which_sensor) == 0 )
-	        {
-	            for (which_chain = 0 ; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
-	            {
-	                if ( dev.chain_asic_in_full[which_chain] == 1)
-	                {
-	                    localTemp[which_chain][which_sensor] = TempBuffer[which_chain][which_sensor].data;
-	                    applog(LOG_DEBUG, "Chain %d chip %d LocalTemp 0x%x ", which_chain, which_sensor, localTemp[which_chain][which_sensor]);
-	                    TempBuffer[which_chain][which_sensor].state = BUF_IDLE;
-	                }
-	            }
-	        }
-	        else
-	        {
-	            applog(LOG_ERR, "Get [%d]Temp Data Failed!", i);
-	        }
-	        cgsleep_ms(2);
-	    }
+        for ( which_sensor = 0; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+        {
+            if ( GetResponseResult(which_sensor) == 0 )
+            {
+                for (which_chain = 0 ; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+                {
+                    if ( dev.chain_asic_in_full[which_chain] == 1)
+                    {
+                        localTemp[which_chain][which_sensor] = TempBuffer[which_chain][which_sensor].data;
+                        applog(LOG_DEBUG, "Chain %d chip %d LocalTemp 0x%x ", which_chain, which_sensor, localTemp[which_chain][which_sensor]);
+                        TempBuffer[which_chain][which_sensor].state = BUF_IDLE;
+                    }
+                }
+            }
+            else
+            {
+                applog(LOG_ERR, "Get [%d]Temp Data Failed!", i);
+            }
+            cgsleep_ms(2);
+        }
 
-		// read ASIC temperature
-		SetTempRead(EXT_TEMP_VALUE_HIGH_BYTE);
+        // read ASIC temperature
+        SetTempRead(EXT_TEMP_VALUE_HIGH_BYTE);
 
         for ( which_sensor = 0; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
         {
@@ -3244,53 +3834,53 @@ void calibration_sensor_offset()
             cgsleep_ms(2);
         }
 
-		// calculate and set temperature offset value
-		for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+        // calculate and set temperature offset value
+        for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
         {
             if ( dev.chain_asic_in_full[which_chain] == 1 )
             {
                 for ( which_sensor = 0; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
                 {
-					m_offset[which_chain][which_sensor] = localTemp[which_chain][which_sensor] - remoteTemp[which_chain][which_sensor];
-					SetTempOffset(m_offset[which_chain][which_sensor], which_sensor, which_chain);
-				}
-        	}
-		}
+                    m_offset[which_chain][which_sensor] = localTemp[which_chain][which_sensor] - remoteTemp[which_chain][which_sensor];
+                    SetTempOffset(m_offset[which_chain][which_sensor], which_sensor, which_chain);
+                }
+            }
+        }
 
-		// check whether we set offset value ok
-		SetTempRead(EXT_TEMP_OFFSET_HIGH_BYTE);
-		for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
-	    {
-	        if ( dev.chain_exist[which_chain] == 1 )
-	        {
-	            for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-	            {
-					if(TempBuffer[which_chain][which_sensor].data != m_offset[which_chain][which_sensor])
-					{
-						wether_error = true;
-						applog(LOG_ERR, "%s: chain:%d, sensor:%d, read out temp offset value is: 0x%02x, but we set it as: 0x%02x\n",
-							__FUNCTION__, which_chain, which_sensor, TempBuffer[which_chain][which_sensor].data, m_offset[which_chain][which_sensor]);
-					}										
-	                usleep(200);
-	            }
-	        }
-	    }
+        // check whether we set offset value ok
+        SetTempRead(EXT_TEMP_OFFSET_HIGH_BYTE);
+        for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+        {
+            if ( dev.chain_exist[which_chain] == 1 )
+            {
+                for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+                {
+                    if(TempBuffer[which_chain][which_sensor].data != m_offset[which_chain][which_sensor])
+                    {
+                        wether_error = true;
+                        applog(LOG_ERR, "%s: chain:%d, sensor:%d, read out temp offset value is: 0x%02x, but we set it as: 0x%02x\n",
+                            __FUNCTION__, which_chain, which_sensor, TempBuffer[which_chain][which_sensor].data, m_offset[which_chain][which_sensor]);
+                    }
+                    usleep(200);
+                }
+            }
+        }
 
-		if(!wether_error)	// if no error, return
-		{
-			return;
-		}
-	}
+        if(!wether_error)   // if no error, return
+        {
+            return;
+        }
+    }
 }
 
 
 static int ProcessTempData(const unsigned int reg_data, const unsigned char chip_addr, const unsigned char chain_id)
 {
-    unsigned char buffer[4] = {0,0,0,0};    
+    unsigned char buffer[4] = {0,0,0,0};
     unsigned char tmpChar = buffer[0];
 
-	memcpy(buffer, buf, 4);
-	
+    memcpy(buffer, buf, 4);
+
     if ( (tmpChar & 0xc0 ) == 0 )
     {
         switch(chip_addr)
@@ -3334,10 +3924,10 @@ static int ProcessTempData(const unsigned int reg_data, const unsigned char chip
         }
         return 0;
     }
-	else
-	{
-		applog(LOG_ERR,"%s: read GENERAL_I2C_COMMAND error! ret = %d", __FUNCTION__, tmpChar);
-	}
+    else
+    {
+        applog(LOG_ERR,"%s: read GENERAL_I2C_COMMAND error! ret = %d", __FUNCTION__, tmpChar);
+    }
     return -1;
 }
 */
@@ -3422,20 +4012,6 @@ void suffix_string_DASH(uint64_t val, char *buf, size_t bufsiz, int sigdigits,bo
 }
 
 
-static unsigned int getNum(const char* buffer)
-{
-    char* pos = strstr(buffer, ":");
-
-    while(*(++pos) == ' ');
-    char* startPos = pos;
-
-    while(*(++pos) != ' ');
-    *pos = '\0';
-
-    return (atoi(startPos));
-}
-
-
 void clear_register_value_buf(void)
 {
     pthread_mutex_lock(&reg_mutex);
@@ -3459,44 +4035,16 @@ void clear_nonce_fifo()
 }
 
 
+static inline void my_be32enc(void *pp, uint32_t x)
+{
+    uint8_t *p = (uint8_t *)pp;
+    p[3] = x & 0xff;
+    p[2] = (x >> 8) & 0xff;
+    p[1] = (x >> 16) & 0xff;
+    p[0] = (x >> 24) & 0xff;
+}
+
 /**************** about other functions end ****************/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #define ABOUT_CGMINER_PTHREAD
@@ -3509,10 +4057,27 @@ void *bitmain_scanhash(void *arg)
     struct bitmain_DASH_info *info = bitmain_DASH->device_data;
     struct timeval current;
     uint8_t nonce_bin[4],crc_check,which_asic_nonce;
-    uint32_t nonce;
+    uint32_t nonce, i,k, *work_nonce=NULL;
     int submitfull = 0;
     bool submitnonceok = true;
-	unsigned char work_id = 0, chain_id = 0, nonce_diff = 0, nonce_crc5 = 0;
+    unsigned char work_id = 0, chain_id = 0, nonce_diff = 0, nonce_crc5 = 0;
+    unsigned char pworkdata[128]= {0},  hash1[32]= {0};
+    unsigned int endiandata[32]= {0};
+    unsigned char *ob_hex=NULL;
+
+    unsigned char buf[80] =
+    {
+        0x00,0x00,0x00,0x20,0xD8,0xC4,0x6A,0xAE,
+        0x69,0x2C,0x0D,0xA5,0x5F,0xEA,0xB7,0x74,
+        0x15,0x67,0xD6,0x4E,0x42,0x8E,0xBB,0x90,
+        0x4B,0x68,0x49,0x5D,0xD5,0x05,0x00,0x00,
+        0x00,0x00,0x00,0x00,0x2E,0x29,0x56,0x66,
+        0x91,0x76,0xDD,0xE1,0x8D,0x08,0x9E,0x89,
+        0x8B,0x76,0xF8,0x35,0xB4,0xC1,0xB4,0xF6,
+        0x28,0xDB,0xA4,0x2F,0x35,0x2F,0xA9,0xA8,
+        0xF1,0xAE,0x3E,0xD9,0x70,0x23,0x5A,0x59,
+        0xCD,0x4A,0x53,0x1A,0x00,0x30,0xD9,0x1A
+    };
 
     struct work *work = NULL;
     cgtime(&current);
@@ -3523,18 +4088,18 @@ void *bitmain_scanhash(void *arg)
     while(nonce_fifo.nonce_num)
     {
         nonce_fifo.nonce_num--;
-		
+
         crc_check = CRC5((uint8_t *)&(nonce_fifo.nonce_buffer[nonce_fifo.p_rd]), ASIC_RETURN_DATA_LENGTH_WITHOUT_HEADER*8-5);
-		nonce = Swap32(nonce_fifo.nonce_buffer[nonce_fifo.p_rd].nonce);
-		work_id = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].wc;
-		chain_id = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].chainid;
-		nonce_diff = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].diff;
-		nonce_crc5 = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].crc5 & 0x1f;
-		
+        nonce = (nonce_fifo.nonce_buffer[nonce_fifo.p_rd].nonce);
+        work_id = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].wc;
+        chain_id = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].chainid;
+        nonce_diff = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].diff;
+        nonce_crc5 = nonce_fifo.nonce_buffer[nonce_fifo.p_rd].crc5 & 0x1f;
+
         if(crc_check != nonce_crc5)
         {
-            applog(LOG_ERR,"crc5 error,should be 0x%02x,but check as 0x%02x", nonce_crc5, crc_check);
-            applog(LOG_NOTICE,"get nonce: 0x%08x, wc: 0x%02x, diff: 0x%02x, crc5: 0x%02x, chainid: 0x%02x", nonce, work_id, nonce_diff, nonce_crc5, chain_id);
+            //applog(LOG_ERR,"%s: crc5 error,should be 0x%02x,but check as 0x%02x", __FUNCTION__, nonce_crc5, crc_check);
+            applog(LOG_ERR,"%s: get nonce: 0x%08x, diff: 0x%02x, wc: 0x%02x, crc_received: 0x%02x, crc_checked: 0x%02x,chainid: 0x%02x", __FUNCTION__, nonce, nonce_diff, work_id, nonce_fifo.nonce_buffer[nonce_fifo.p_rd].crc5, crc_check, chain_id);
 
             //if signature enabled,check SIG_INFO register
             goto crc_error;
@@ -3543,14 +4108,72 @@ void *bitmain_scanhash(void *arg)
         work = info->work_queue[work_id];
         if(work)
         {
+            //applog(LOG_ERR,"%s: work_id = 0x%02x", __FUNCTION__, work_id);
+
             submitfull = 0;
-            if(submit_nonce_1(thr, work, nonce, &submitfull))
+            //hexdump((uint8_t *)&work->data, 128);
+
+            work_nonce = (uint32_t *)(work->data + 64 + 12);
+            *work_nonce = Swap32(nonce);
+            applog(LOG_DEBUG,"%s: work_nonce = 0x%08x", __FUNCTION__, nonce);
+
+            memcpy(pworkdata, work->data, 80);
+
+            /*
+            for(i=0;i<WORK_DATA_INPUT_LENGTH; i++)
             {
-                submitnonceok = true;
-                submit_nonce_2(work);
+                applog(LOG_NOTICE, "%s: work->data[%d] = 0x%02x", __FUNCTION__, i, work->data[i]);
+            }
+            */
+
+            for (k=0; k < 20; k++)
+            {
+                endiandata[k] = ((uint32_t*)pworkdata)[k];
+                endiandata[k] = Swap32(endiandata[k]);
+                //applog(LOG_DEBUG,"%s: endiandata[%d] = 0x%08x", __FUNCTION__, k, endiandata[k]);
+            }
+
+
+#if 0
+            for (k=0; k < 20; k++)
+            {
+                my_be32enc(&endiandata[k], ((uint32_t*)buf)[k]);
+                endiandata[k] = Swap32(endiandata[k]);
+                applog(LOG_ERR,"%s: endiandata[%d] = 0x%08x", __FUNCTION__, k, endiandata[k]);
+            }
+#endif
+
+
+            Xhash(hash1, endiandata);
+            memcpy(work->hash, hash1, 32);
+            /*
+            for (i=0; i < 8; i++)
+            {
+                applog(LOG_DEBUG,"%s: work->hash[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->hash) + i));
+            }
+            */
+
+            if(*((uint32_t *)(&work->hash) + 7) <= DEVICE_DIFF_SET_MASK)
+            {
+                update_work_stats(thr, work);
+
+                if (fulltest(hash1, work->target))
+                {
+                    submitnonceok = true;
+                    submit_nonce_direct(thr,work,Swap32(nonce));
+                }
             }
             else
             {
+                applog(LOG_WARNING,"got a hw from Chain%d Asic%d", chain_id, ((Swap32(nonce) & 0xFC000000) >> 26) / dev.addrInterval);
+                /*
+                ob_hex = bin2hex((uint8_t *)(endiandata), 80);
+                applog(LOG_WARNING, "workdata %s", ob_hex);
+                free(ob_hex);
+                */
+
+                inc_hw_errors(thr);
+
                 if(submitfull)
                 {
                     submitnonceok = true;
@@ -3559,30 +4182,34 @@ void *bitmain_scanhash(void *arg)
                 {
                     submitnonceok = false;
                     if ( chain_id > BITMAIN_MAX_CHAIN_NUM )
-					{
-						applog( LOG_ERR, "Chain_ID [%d] Error!", chain_id);
+                    {
+                        applog( LOG_ERR, "%s: Chain_ID [%d] Error!", __FUNCTION__, chain_id);
                     }
                     dev.chain_hw[chain_id] ++;
                 }
             }
-			
+
+
             if(submitnonceok)
             {
-                h += 0x1UL << DEVICE_DIFF;
-				
-                which_asic_nonce = (((nonce >> (20)) & 0xff) / dev.addrInterval);
+                h += 0x1UL << (DEVICE_DIFF_SET- DEVICE_DIFF_STANDARD);
+
+                //which_asic_nonce = ((nonce & 0xFC000000) >> 26) / dev.addrInterval;
+                which_asic_nonce = ((Swap32(nonce) & 0xFC000000) >> 26) / dev.addrInterval;
                 applog(LOG_DEBUG,"%s: chain %d which_asic_nonce %d ", __FUNCTION__, chain_id, which_asic_nonce);
-				
-                if ( chain_id > BITMAIN_MAX_CHAIN_NUM )
-				{
-					applog(LOG_ERR, "ChainID Cause Error! ChainID:[%d]", chain_id);
+
+                if (( chain_id > BITMAIN_MAX_CHAIN_NUM ) || (!dev.chain_exist[chain_id]))
+                {
+                    applog(LOG_ERR, "ChainID Cause Error! ChainID:[%d]", chain_id);
+                    goto crc_error;
                 }
-				
-                if ( which_asic_nonce > D1_MINER_ASIC_NUM_EACH_CHAIN )
-				{
-					applog(LOG_ERR, "Which Nonce Cause Err![%d]", which_asic_nonce);
+
+                if ( which_asic_nonce >= D1_MINER_ASIC_NUM_EACH_CHAIN )
+                {
+                    applog(LOG_ERR, "Which Nonce Cause Err![%d]", which_asic_nonce);
+                    goto crc_error;
                 }
-				
+
                 dev.chain_asic_nonce[chain_id][which_asic_nonce]++;
             }
             cg_logwork(work, nonce_bin, submitnonceok);
@@ -3590,7 +4217,7 @@ void *bitmain_scanhash(void *arg)
         }
         else
         {
-            applog(LOG_ERR, "%s%d: work %02x not find error", bitmain_DASH->drv->name, bitmain_DASH->device_id, work_id);
+            applog(LOG_ERR, "%s %d: work %02x not find error", bitmain_DASH->drv->name, bitmain_DASH->device_id, work_id);
         }
     crc_error:
         if(nonce_fifo.p_rd < MAX_NONCE_NUMBER_IN_FIFO)
@@ -3610,10 +4237,10 @@ void *bitmain_scanhash(void *arg)
 
     if(h != 0)
     {
-        applog(LOG_DEBUG,"%s: hashes %"PRIu64"...", __FUNCTION__,h * 0x0000ffffull);
+        applog(LOG_DEBUG,"%s: hashes %"PRIu64"...", __FUNCTION__,h * DEVICE_DIFF_STANDARD_MASK);
     }
 
-    h = h * 0x0000ffffull;
+    h = h * DEVICE_DIFF_STANDARD_MASK;
     return 0;
 }
 
@@ -3629,14 +4256,42 @@ void *check_fan_thr(void *arg)
     uint32_t fan1Speed = 0;
     uint32_t fan0_exist = 0;
     uint32_t fan1_exist = 0;
-	char buffer[256] = "";
+    char buffer[256] = "";
     char* pos = NULL;
     FILE* fanpfd = fopen(PROCFILENAME, "r");
+
+    if(fanpfd == NULL)
+    {
+        while(1)
+        {
+            applog(LOG_ERR, "%s: open /proc/interrupt error", __FUNCTION__);
+            sleep(3);
+        }
+    }
+
+    fseek(fanpfd, 0, SEEK_SET);
+
+    while(fgets(buffer, 256, fanpfd))
+    {
+        if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
+        {
+            applog(LOG_DEBUG, "find fan1.");
+            fan0SpeedHist = fan0SpeedCur = getNum(buffer);
+        }
+
+        if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
+        {
+            applog(LOG_DEBUG, "find fan2.");
+            fan1SpeedHist = fan1SpeedCur = getNum(buffer);
+        }
+    }
+
+    sleep(FANINT);
 
     while( 1 )
     {
         fseek(fanpfd, 0, SEEK_SET);
-        
+
         while( fgets(buffer, 256, fanpfd) )
         {
             if ( ((pos = strstr(buffer, FAN0)) != 0) && (strstr(buffer, "gpiolib") != 0 ) )
@@ -3650,13 +4305,13 @@ void *check_fan_thr(void *arg)
                 {
                     fan0Speed = ( fan0SpeedCur - fan0SpeedHist );
                 }
-                fan0Speed = fan0Speed * 60 / 2 / FANINT;	// 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
+                fan0Speed = fan0Speed * 60 / 2 / FANINT;    // 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
                 if ( fan0Speed )
                 {
                     fan0_exist = 1;
-                    if( fan0Speed > MAX_FAN_SPEED)
+                    if( fan0Speed > FAN1_MAX_SPEED)
                     {
-                        fan0Speed = MAX_FAN_SPEED;
+                        fan0Speed = FAN1_MAX_SPEED;
                     }
                 }
                 else
@@ -3670,7 +4325,7 @@ void *check_fan_thr(void *arg)
                     dev.fan_speed_top1 = fan0Speed;
                 }
             }
-			
+
             if (((pos = strstr(buffer, FAN1)) != 0) && (strstr(buffer, "gpiolib") != 0 ))
             {
                 fan1SpeedCur = getNum(buffer);
@@ -3683,13 +4338,13 @@ void *check_fan_thr(void *arg)
                     fan1Speed = ( fan1SpeedCur - fan1SpeedHist );
                 }
                 fan1SpeedHist = fan1SpeedCur;
-                fan1Speed = fan1Speed * 60 / 2 / FANINT;	// 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
+                fan1Speed = fan1Speed * 60 / 2 / FANINT;    // 60: 1 minute; 2: 1 interrupt has 2 edges; FANINT: check fan speed every FANINT senconds
                 if ( fan1Speed )
                 {
                     fan1_exist = 1;
-                    if( fan1Speed > MAX_FAN_SPEED)
+                    if( fan1Speed > FAN2_MAX_SPEED)
                     {
-                        fan1Speed = MAX_FAN_SPEED;
+                        fan1Speed = FAN2_MAX_SPEED;
                     }
                 }
                 else
@@ -3704,9 +4359,9 @@ void *check_fan_thr(void *arg)
                 }
             }
         }
-		
+
         dev.fan_num = fan1_exist + fan0_exist;
-		
+
         sleep(FANINT);
     }
 }
@@ -3714,20 +4369,20 @@ void *check_fan_thr(void *arg)
 
 int create_bitmain_check_fan_pthread(void)
 {
-	check_fan_id = calloc(1,sizeof(struct thr_info));
-	if(thr_info_create(check_fan_id, NULL, check_fan_thr, NULL))
+    check_fan_id = calloc(1,sizeof(struct thr_info));
+    if(thr_info_create(check_fan_id, NULL, check_fan_thr, NULL))
     {
         applog(LOG_DEBUG,"%s: create thread for check miner_status", __FUNCTION__);
         return -8;
     }
-	pthread_detach(check_fan_id->pth);
-	cgsleep_ms(500);
+    pthread_detach(check_fan_id->pth);
+    cgsleep_ms(500);
 }
 
 
 void *check_miner_status(void *arg)
 {
-    //asic status,fan,led
+    struct bitmain_DASH_info *info = (struct bitmain_DASH_info*)arg;
     struct timeval tv_start = {0, 0}, diff = {0, 0}, tv_end,tv_send;
     double ghs = 0;
     int i = 0, j = 0;
@@ -3737,23 +4392,23 @@ void *check_miner_status(void *arg)
     copy_time(&tv_send_job,&tv_send);
     bool stop = false;
     unsigned int asic_num = 0, error_asic = 0, avg_num = 0;
-	unsigned int which_chain, which_asic;
-	unsigned int offset = 0;
-
+    unsigned int which_chain, which_asic, which_sensor;
+    unsigned int offset = 0;
+    char read_temp_result = 0, how_many_chains = 0;
 
     while(1)
     {
-		diff.tv_sec = 0;
-		diff.tv_usec = 0;
+        diff.tv_sec = 0;
+        diff.tv_usec = 0;
         cgtime(&tv_end);
         cgtime(&tv_send);
         timersub(&tv_end, &tv_start, &diff);
 
-		// 10 minutes
+        // 10 minutes
         if (diff.tv_sec > 600)
         {
             asic_num = 0, error_asic = 0, avg_num = 0;
-			
+
             for(which_chain=0; which_chain<BITMAIN_MAX_CHAIN_NUM; which_chain++)
             {
                 if(dev.chain_exist[which_chain])
@@ -3769,13 +4424,13 @@ void *check_miner_status(void *arg)
             if (asic_num != 0)
             {
                 applog(LOG_DEBUG,"%s: avg_num %d asic_num %d", __FUNCTION__, avg_num,asic_num);
-                avg_num = avg_num / asic_num / 8;	// why /8 ???
+                avg_num = avg_num / asic_num / 8;   // why /8 ???
             }
             else
             {
                 avg_num = 1;
             }
-			
+
             for(which_chain=0; which_chain<BITMAIN_MAX_CHAIN_NUM; which_chain++)
             {
                 if(dev.chain_exist[which_chain])
@@ -3818,24 +4473,32 @@ void *check_miner_status(void *arg)
             }
 
             ghs = total_mhashes_done / 1 / total_secs;
-            if((ghs < (double)((dev.chain_num * ASIC_NUM_EACH_CHAIN * dev.frequency * dev.corenum * 0.95) / 2500 * 0.8)) && (!status_error))
+            if((ghs < (double)((dev.chain_num * ASIC_NUM_EACH_CHAIN * dev.frequency * dev.corenum * 0.95) / 40 * 0.8)) && (!status_error))
+            {
                 system("echo \"Rate too low, reboot!!\" >> /usr/bin/already_reboot");
+                gMinerStatus_Low_Hashrate = true;
+                applog(LOG_ERR, "%s: Hash rate too low, please reboot the miner", __FUNCTION__);
+            }
+            else
+            {
+                gMinerStatus_Low_Hashrate = false;
+            }
+
             copy_time(&tv_start, &tv_end);
         }
 
-        //check_fan();
-        set_PWM_according_to_temperature();
-        timersub(&tv_send, &tv_send_job, &diff);
-        if(diff.tv_sec > 120 || dev.temp_top1 > MAX_TEMP)
-            //|| dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150))
+
+        // check temperature
+        if(dev.temp_top1 > MAX_TEMP)
         {
-            stop = true;
-            if(dev.temp_top1 > MAX_TEMP)
-                //|| dev.fan_num < MIN_FAN_NUM || dev.fan_speed_top1 < (MAX_FAN_SPEED * dev.fan_pwm / 150))
+            gMinerStatus_High_Temp_Counter++;
+
+            if(gMinerStatus_High_Temp_Counter > 6)
             {
-                // status_error = true;
+                stop = true;
                 status_error = false;
                 once_error = true;
+                gMinerStatus_High_Temp = true;
 
                 for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
                 {
@@ -3844,22 +4507,196 @@ void *check_miner_status(void *arg)
                         pthread_mutex_lock(&iic_mutex);
                         if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
                             applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
-                        applog(LOG_DEBUG, "Temp Err! Please Check Fan! Will Disable PIC!");
-                        //pic_dac_ctrl(0);
-						enable_PIC16F1704_dc_dc_new(0);
+                        applog(LOG_ERR, "Temperature is higher than 85'C!!! Disable PIC!");
+                        disable_PIC16F1704_dc_dc_new();
                         pthread_mutex_unlock(&iic_mutex);
                     }
+                }
+            }
+            else
+            {
+                applog(LOG_ERR, "Temperature is higher than 85'C for %d time", gMinerStatus_High_Temp_Counter);
+                pthread_mutex_lock(&read_temp_mutex);
+                dev.temp_top1 = 0;
+                pthread_mutex_unlock(&read_temp_mutex);
+            }
+        }
+        else
+        {
+            gMinerStatus_High_Temp_Counter = 0;
+            gMinerStatus_High_Temp = false;
+
+            if(!stop)
+            {
+                stop = false;
+            }
+            if (!once_error)
+                status_error = false;
+        }
+
+        // check sensor
+        pthread_mutex_lock(&read_temp_mutex);
+
+        read_temp_result = 0;
+        how_many_chains = 0;
+        for ( which_chain= 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+        {
+            if ( dev.chain_exist[which_chain] == 1 )
+            {
+                how_many_chains++;
+                for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+                {
+                    read_temp_result += dev.whether_read_out_temp[which_chain][which_sensor];
+                    if(dev.whether_read_out_temp[which_chain][which_sensor] == -1)
+                    {
+                        applog(LOG_WARNING, "%s: Don't read out temperature from Chain%d Sensor%d!", __FUNCTION__, which_chain, which_sensor);
+                    }
+                    dev.whether_read_out_temp[which_chain][which_sensor] = 0;
+                }
+            }
+        }
+        pthread_mutex_unlock(&read_temp_mutex);
+
+        if(read_temp_result == (0 - how_many_chains * BITMAIN_REAL_TEMP_CHIP_NUM))
+        {
+            stop = true;
+
+            status_error = false;
+            once_error = true;
+
+            for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+            {
+                if(dev.chain_exist[which_chain] == 1)
+                {
+                    pthread_mutex_lock(&iic_mutex);
+                    if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                        applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
+                    applog(LOG_ERR, "Can't read out temperature from all chains!! Will Disable PIC!");
+                    gMinerStatus_Not_read_all_sensor = true;
+                    disable_PIC16F1704_dc_dc_new();
+                    pthread_mutex_unlock(&iic_mutex);
                 }
             }
         }
         else
         {
-            stop = false;
+            gMinerStatus_Not_read_all_sensor = false;
+            if(!stop)
+            {
+                stop = false;
+            }
             if (!once_error)
                 status_error = false;
         }
-        //if(stop_mining)
-        //    status_error = true;
+
+
+
+        // set fan pwm
+        if(stop)
+        {
+            set_PWM(MAX_PWM_PERCENT);
+        }
+        else
+        {
+            set_PWM_according_to_temperature();
+        }
+
+
+        // check internet connection
+        timersub(&tv_send, &tv_send_job, &diff);
+        if(diff.tv_sec > 120)
+        {
+            stop = true;
+            //start_send = false;
+            gMinerStatus_Lost_connection_to_pool = true;
+            applog(LOG_ERR, "%s: We have lost internet for %d seconds, so don't send work to hashboard anymore", __FUNCTION__, diff.tv_sec);
+        }
+        else
+        {
+            gMinerStatus_Lost_connection_to_pool = false;
+            if(!stop)
+            {
+                stop = false;
+            }
+            if (!once_error)
+                status_error = false;
+        }
+
+#if 0
+        // check internet connection
+        timersub(&tv_send, &tv_send_job, &diff);
+        if(diff.tv_sec > 600)
+        {
+            stop = true;
+            start_send = false;
+            gLost_internet_10_min = true;
+            applog(LOG_ERR, "%s: We have lost internet for %d seconds, so close PIC", __FUNCTION__, diff.tv_sec);
+
+            status_error = false;
+            once_error = true;
+
+            for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+            {
+                if(dev.chain_exist[which_chain] == 1)
+                {
+                    pthread_mutex_lock(&iic_mutex);
+                    if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
+                        applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
+                    applog(LOG_ERR, "Can't read out temperature from all chains!! Will Disable PIC!");
+                    disable_PIC16F1704_dc_dc_new();
+                    pthread_mutex_unlock(&iic_mutex);
+                }
+            }
+        }
+        else if(diff.tv_sec > 120)
+        {
+            stop = true;
+            start_send = false;
+            applog(LOG_ERR, "%s: We have lost internet for %d seconds, so don't send work to hashboard anymore", __FUNCTION__, diff.tv_sec);
+        }
+        else
+        {
+            if(gLost_internet_10_min)
+            {
+                gLost_internet_10_min = false;
+
+                bitmain_DASH_reinit(info);
+
+                if (!once_error)
+                    status_error = false;
+            }
+            else
+            {
+                if(!stop)
+                {
+                    stop = false;
+                }
+                if (!once_error)
+                    status_error = false;
+            }
+        }
+#endif
+
+        if(gMinerStatus_Low_Hashrate)
+        {
+            applog(LOG_ERR,"%s: hash rate is too low, need reboot", __FUNCTION__);
+        }
+
+        if(gMinerStatus_High_Temp)
+        {
+            applog(LOG_ERR,"%s: the temperature is too high, close PIC and need reboot", __FUNCTION__);
+        }
+
+        if(gMinerStatus_Not_read_all_sensor)
+        {
+            applog(LOG_ERR,"%s: can't read all sensor's temperature, close PIC and need reboot", __FUNCTION__);
+        }
+
+        if(gMinerStatus_Lost_connection_to_pool)
+        {
+            applog(LOG_ERR, "%s: We have lost internet for %d seconds, so don't send work to hashboard anymore", __FUNCTION__, diff.tv_sec);
+        }
+
         set_led(stop);
 
         cgsleep_ms(1000);
@@ -3867,38 +4704,38 @@ void *check_miner_status(void *arg)
 }
 
 
-int create_bitmain_check_miner_status_pthread(void)
+int create_bitmain_check_miner_status_pthread(struct bitmain_DASH_info *info)
 {
-	check_miner_status_id = calloc(1,sizeof(struct thr_info));
-    if(thr_info_create(check_miner_status_id, NULL, check_miner_status, check_miner_status_id))
+    check_miner_status_id = calloc(1,sizeof(struct thr_info));
+    if(thr_info_create(check_miner_status_id, NULL, check_miner_status, info))
     {
         applog(LOG_DEBUG,"%s: create thread for check miner_status", __FUNCTION__);
         return -5;
     }
     pthread_detach(check_miner_status_id->pth);
-	cgsleep_ms(500);
+    cgsleep_ms(500);
 }
 
 void *get_hash_rate()
 {
-	uint32_t which_chain = 0;
-	
-    while(42)
-    {
-        pthread_mutex_lock(&reg_read_mutex);
-		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-	    {
-	        if(dev.chain_exist[which_chain])
-	        {
-	            check_asic_reg(which_chain, 1, 0, HASH_RATE);
-	        }
-	        cgsleep_ms(10);
-	    }
-        check_rate = true;
-        pthread_mutex_unlock(&reg_read_mutex);
+    uint32_t which_chain = 0;
 
-		calculate_hash_rate();
-		
+    while(1)
+    {
+        //pthread_mutex_lock(&reg_read_mutex);
+        for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+        {
+            if(dev.chain_exist[which_chain])
+            {
+                check_asic_reg(which_chain, 1, 0, HASH_RATE);
+            }
+            cgsleep_ms(10);
+        }
+        check_rate = true;
+        //pthread_mutex_unlock(&reg_read_mutex);
+
+        calculate_hash_rate();
+
         sleep(READ_HASH_RATE_TIME_GAP);
     }
 }
@@ -3906,38 +4743,38 @@ void *get_hash_rate()
 
 int create_bitmain_get_hash_rate_pthread(void)
 {
-	read_hash_rate = calloc(1,sizeof(struct thr_info));
+    read_hash_rate = calloc(1,sizeof(struct thr_info));
     if(thr_info_create(read_hash_rate, NULL, get_hash_rate, read_hash_rate))
     {
         applog(LOG_DEBUG,"%s: create thread for get hashrate from asic failed", __FUNCTION__);
         return -6;
     }
     pthread_detach(read_hash_rate->pth);
-	cgsleep_ms(500);
+    cgsleep_ms(500);
 }
 
 
 void *bitmain_scanreg(void* args)
 {
-    unsigned int j, not_reg_data_time = 0;
+    unsigned int i,j, not_reg_data_time = 0;
     unsigned int reg_value_num = 0, reg_data = 0, received_reg_num = 0;
     unsigned char crc_check, chip_addr, reg_addr,chain_id;
     int read_num = 0;
     uint64_t tmp_rate = 0, temp_average_rate = 0, temp_real_time_rate = 0, Hashboard_temp_average_rate = 0, Hashboard_temp_real_time_rate = 0;
     bool zero_asic_num = true;
-	uint64_t temp_hash_rate = 0;
+    uint64_t temp_hash_rate = 0;
 
-	
+
 rerun_all:
     clear_register_value_buf();
-	zero_asic_num = true;
+    zero_asic_num = true;
     read_num = 0;
     tmp_rate = 0;
-	received_reg_num = 0;
-	temp_average_rate = 0;
-	temp_real_time_rate = 0;
-	Hashboard_temp_average_rate = 0;
-	Hashboard_temp_real_time_rate = 0;
+    received_reg_num = 0;
+    temp_average_rate = 0;
+    temp_real_time_rate = 0;
+    Hashboard_temp_average_rate = 0;
+    Hashboard_temp_real_time_rate = 0;
 
 
     while(1)
@@ -3946,21 +4783,27 @@ rerun_all:
 
         pthread_mutex_lock(&reg_mutex);
         reg_value_num = reg_fifo.reg_value_num;
-        applog(LOG_DEBUG,"%s: reg_value_num = %d", __FUNCTION__, reg_value_num);
         pthread_mutex_unlock(&reg_mutex);
-		
+
+        /*
+        if(reg_value_num > 0)
+        {
+            applog(LOG_DEBUG,"%s: reg_value_num = %d", __FUNCTION__, reg_value_num);
+        }
+        */
+
         if(reg_value_num >= MAX_NONCE_NUMBER_IN_FIFO || reg_fifo.p_rd >= MAX_NONCE_NUMBER_IN_FIFO)
         {
             applog(LOG_WARNING,"reg fifo is full !!");
             goto rerun_all;
         }
-		
+
         if(reg_value_num > 0)
         {
             for(j = 0; j < reg_value_num; j++)
             {
                 pthread_mutex_lock(&reg_mutex);
-				reg_data = Swap32(reg_fifo.reg_buffer[reg_fifo.p_rd].reg_value);
+                reg_data = Swap32(reg_fifo.reg_buffer[reg_fifo.p_rd].reg_value);
                 chip_addr = reg_fifo.reg_buffer[reg_fifo.p_rd].chipaddr;
                 reg_addr = reg_fifo.reg_buffer[reg_fifo.p_rd].regaddr;
                 chain_id = reg_fifo.reg_buffer[reg_fifo.p_rd].chainid;
@@ -3968,94 +4811,86 @@ rerun_all:
                 crc_check = CRC5((uint8_t *)&(reg_fifo.reg_buffer[reg_fifo.p_rd]), ASIC_RETURN_DATA_LENGTH_WITHOUT_HEADER*8-5);
                 if(crc_check != (reg_fifo.reg_buffer[reg_fifo.p_rd].crc5 & 0x1f))
                 {
-                    applog(LOG_ERR,"%s: crc5 error,should be %02x,but check as %02x",__FUNCTION__,reg_fifo.reg_buffer[reg_fifo.p_rd].crc5 & 0x1f,crc_check);
-                    applog(LOG_ERR,"%s: reg_value = 0x%08x", __FUNCTION__, reg_data);
-					pthread_mutex_unlock(&reg_mutex);
-					continue;
-                }               
-                pthread_mutex_unlock(&reg_mutex);
+                    applog(LOG_ERR,"%s: reg_value = 0x%08x crc5 error,should be %02x,but check as %02x",__FUNCTION__,reg_data, reg_fifo.reg_buffer[reg_fifo.p_rd].crc5 & 0x1f,crc_check);
 
-                if(reg_addr == CHIP_ADDR)
-                {                	
-					g_CHIP_ADDR_reg_value[chain_id][g_CHIP_ADDR_reg_value_num[chain_id]] = reg_data;
-					g_CHIP_ADDR_reg_value_num[chain_id]++;
-					
-                	#if 0
-					if(update_asic_num == true)
+                    reg_fifo.p_rd++;
+                    reg_fifo.reg_value_num--;
+                    if(reg_fifo.p_rd >= MAX_NONCE_NUMBER_IN_FIFO)
                     {
-                    	if(zero_asic_num)
-                    	{
-                        	dev.chain_asic_num[chain_id] = 0;
-                        	zero_asic_num = false;
-                    	}
-						
-						dev.chain_asic_num[chain_id]++;
-						applog(LOG_ERR,"%s: the %02dth CHIP_ADDR reg_value = 0x%08x @chain%d", __FUNCTION__, dev.chain_asic_num[chain_id], reg_data, chain_id);
-					
-						if(dev.chain_asic_num[chain_id] > dev.max_asic_num_in_one_chain)
-	                    {
-	                        dev.max_asic_num_in_one_chain = dev.chain_asic_num[chain_id];
-	                    }
+                        reg_fifo.p_rd = 0;
+                    }
 
-						/*
-						if (dev.chain_asic_num[chain_id] == ASIC_NUM_EACH_CHAIN)
-						{
-                        	applog(LOG_DEBUG,"chian %d get asicnum %d", chain_id, ASIC_NUM_EACH_CHAIN);
-							zero_asic_num = true;
-							update_asic_num = false;
-						}
-						*/
-					}
-					else
-					{
-						received_reg_num++;
-						applog(LOG_ERR,"%s: the %02dth CHIP_ADDR reg_value = 0x%08x @chain%d", __FUNCTION__, received_reg_num, reg_data, chain_id);
-						if(received_reg_num >= ASIC_NUM_EACH_CHAIN)
-						{
-							received_reg_num = 0;
-						}
-					}
-					#endif
+                    pthread_mutex_unlock(&reg_mutex);
+                    continue;
                 }
 
-                if(reg_addr == PLL_PARAMETER)
-                {
-					applog(LOG_ERR,"%s: the %02dth PLL_PARAMETER reg_value = 0x%08x @chain%d", __FUNCTION__, received_reg_num, reg_data, chain_id);
-                }
-
-                if ( reg_addr == MISC_CONTROL )
-                {
-					applog(LOG_ERR,"%s: the %02dth MISC_CONTROL reg_value = 0x%08x @chain%d", __FUNCTION__, received_reg_num, reg_data, chain_id);
-                }
-
-                if ( reg_addr == GENERAL_I2C_COMMAND)
-                {
-					applog(LOG_ERR,"%s: the %02dth GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, received_reg_num, reg_data, chain_id, chip_addr/dev.addrInterval);
-                    //ProcessTempData(reg_data, chip_addr, chain_id);
-                    
-                    g_GENERAL_I2C_COMMAND_reg_value[chain_id][g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]] = reg_data;
-                    g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]++;
-                }
-
-                if(reg_addr == HASH_RATE)
-                {
-                	g_HASH_RATE_reg_value[chain_id][g_HASH_RATE_reg_value_num[chain_id]] = reg_data;
-					g_HASH_RATE_reg_value_from_which_asic[chain_id][g_HASH_RATE_reg_value_num[chain_id]] = chip_addr/dev.addrInterval;
-                    g_HASH_RATE_reg_value_num[chain_id]++;
-                }
-
-				if(reg_addr == CHIP_STATUS)
-                {
-                	g_CHIP_STATUS_reg_value[chain_id][g_CHIP_STATUS_reg_value_num[chain_id]] = reg_data;					
-                    g_CHIP_STATUS_reg_value_num[chain_id]++;
-                }
-                
                 reg_fifo.p_rd++;
                 reg_fifo.reg_value_num--;
                 if(reg_fifo.p_rd >= MAX_NONCE_NUMBER_IN_FIFO)
                 {
                     reg_fifo.p_rd = 0;
                 }
+                pthread_mutex_unlock(&reg_mutex);
+
+                if(reg_addr == CHIP_ADDR)
+                {
+                    if(update_asic_num)
+                    {
+                        g_CHIP_ADDR_reg_value[chain_id][g_CHIP_ADDR_reg_value_num[chain_id]] = reg_data;
+                        //applog(LOG_DEBUG,"%s: Chain%d CHIP_ADDR value = 0x%08x", __FUNCTION__, chain_id, reg_data);
+                        g_CHIP_ADDR_reg_value_num[chain_id]++;
+                    }
+                    else
+                    {
+                        //applog(LOG_DEBUG,"%s: Chain%d CHIP_ADDR value = 0x%08x", __FUNCTION__, chain_id, reg_data);
+                    }
+                }
+
+                if(reg_addr == PLL_PARAMETER)
+                {
+                    applog(LOG_ERR,"%s: the Chip%d PLL_PARAMETER reg_value = 0x%08x @chain%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id);
+                }
+
+                if ( reg_addr == MISC_CONTROL )
+                {
+                    applog(LOG_ERR,"%s: the Chip%d MISC_CONTROL reg_value = 0x%08x @chain%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id);
+                }
+
+                if ( reg_addr == TICK_MASK)
+                {
+                    applog(LOG_ERR,"%s: the Chip%d TICK_MASK reg_value = 0x%08x @chain%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id);
+                }
+
+                if ( reg_addr == GENERAL_I2C_COMMAND)
+                {
+                    //applog(LOG_ERR,"%s: the Chip%d GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id, chip_addr/dev.addrInterval);
+
+                    g_GENERAL_I2C_COMMAND_reg_value[chain_id][g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]] = reg_data;
+                    g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]++;
+                }
+
+                if(reg_addr == HASH_RATE)
+                {
+                    g_HASH_RATE_reg_value[chain_id][g_HASH_RATE_reg_value_num[chain_id]] = reg_data;
+                    g_HASH_RATE_reg_value_from_which_asic[chain_id][g_HASH_RATE_reg_value_num[chain_id]] = chip_addr/dev.addrInterval;
+                    g_HASH_RATE_reg_value_num[chain_id]++;
+                    applog(LOG_DEBUG,"%s: the Chip%d HASH_RATE reg_value = 0x%08x @chain%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id);
+                }
+
+                if(reg_addr == CHIP_STATUS)
+                {
+                    g_CHIP_STATUS_reg_value[chain_id][g_CHIP_STATUS_reg_value_num[chain_id]] = reg_data;
+                    g_CHIP_STATUS_reg_value_num[chain_id]++;
+                }
+
+                /*
+                reg_fifo.p_rd++;
+                reg_fifo.reg_value_num--;
+                if(reg_fifo.p_rd >= MAX_NONCE_NUMBER_IN_FIFO)
+                {
+                    reg_fifo.p_rd = 0;
+                }
+                */
             }
         }
     }
@@ -4064,10 +4899,10 @@ rerun_all:
 
 int creat_bitmain_scanreg_pthread(void)
 {
-	scan_reg_id = calloc(1,sizeof(struct thr_info));
+    scan_reg_id = calloc(1,sizeof(struct thr_info));
     if(thr_info_create(scan_reg_id, NULL, bitmain_scanreg, scan_reg_id))
     {
-        applog(LOG_DEBUG,"%s: create thread error for bitmain_scanreg", __FUNCTION__);
+        applog(LOG_ERR,"%s: create thread error for bitmain_scanreg", __FUNCTION__);
         return -4;
     }
     pthread_detach(scan_reg_id->pth);
@@ -4077,204 +4912,152 @@ int creat_bitmain_scanreg_pthread(void)
 
 void *read_temp_func()
 {
-	unsigned char which_chain, which_sensor, read_temperature_time;
-	signed char local_temp=0, remote_temp=0, temp_offset_value=0;
-	unsigned int ret = 0;
-	bool not_read_out_temperature = false;
+    unsigned char which_chain, which_sensor, read_temperature_time;
+    signed char local_temp=0, remote_temp=0, temp_offset_value=0;
+    unsigned int ret = 0, i = 0, tmpTemp = 0;
+    bool not_read_out_temperature = false;
 
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+    applog(LOG_DEBUG, "%s", __FUNCTION__);
 
-	while(1)
-	{
-		pthread_mutex_lock(&reg_read_mutex);
-		
-		for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
-	    {
-	        if ( dev.chain_exist[which_chain] == 1 )
-	        {
-	            for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-	            {
-	                // check whether the GENERAL_I2C_COMMAND is busy
-					do
-					{
-						check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-						read_temperature_time++;
-		
-						if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-						{
-							ret = 0xc0000000;
-						}
-						else
-						{
-							ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-						}					
-					}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
-					read_temperature_time = 0;
+    while(1)
+    {
+        pthread_mutex_lock(&read_temp_mutex);
 
-					// write config data to read back EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
-					set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_VALUE_HIGH_BYTE) | DATA(0) & (~RW));
-					
-					// read back the EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
-					do
-					{
-						check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-						read_temperature_time++;
-
-						if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-						{
-							ret = 0xc0000000;
-						}
-						else
-						{
-							ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-						}
-					}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));			
-					read_temperature_time = 0;
-
-					if((ret & 0xc0000000) == 0)
-					{
-						remote_temp = (signed char)(ret & 0xff);
-					}
-					else
-					{
-						not_read_out_temperature = true;
-						applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
-					}
-
-					// write config data to read back LOCAL_TEMPERATURE_VALUE
-					set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(LOCAL_TEMP_VALUE) | DATA(0) & (~RW));
-
-					// read back the LOCAL_TEMPERATURE_VALUE
-					do
-					{
-						check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-						read_temperature_time++;
-
-						if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-						{
-							ret = 0xc0000000;
-						}
-						else
-						{
-							ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-						}
-					}while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));			
-					read_temperature_time = 0;
-
-					if((ret & 0xc0000000) == 0)
-					{
-						local_temp = (signed char)(ret & 0xff);
-					}
-					else
-					{
-						not_read_out_temperature = true;
-						applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", 
-							__FUNCTION__, which_chain, which_sensor, ret);
-					}
-
-					dev.chain_asic_temp[which_chain][which_sensor][0] = local_temp;
-	            	dev.chain_asic_temp[which_chain][which_sensor][1] = remote_temp;
-	            }
-	        }
-	    }
-		
-		pthread_mutex_unlock(&reg_read_mutex);
-		
-		sleep(READ_TEMPERATURE_TIME_GAP);
-	}
-
-
-
-
-	
-#if 0
-	uint32_t which_chain, which_sensor, reg_data=0;
-	
-    while( 42 )
-    {        
-		// read local temp
-		reg_data = GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR | REGADDR(LOCAL_TEMP_VALUE) | DATA(0) & (~RW);
-		for (which_chain = 0 ; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+        for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
         {
-        	if ( dev.chain_exist[which_chain] == 1 )
-        	{
-				for ( which_sensor = 0; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-			    {
-			        if ( GetResponseResult(which_sensor) == 0 )		// check whether GENERAL_I2C_COMMAND is busy
-			        {
-			        	// config GENERAL_I2C_COMMAND to read local temp
-	            		set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
-						cgsleep_ms(100);
-						// check the return GENERAL_I2C_COMMAND value
-						TempBuffer[which_chain][which_sensor].state = BUF_IDLE;
-						check_asic_reg(dev.dev_fd[which_chain], TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, 0);
-						if ( GetResponseResult(which_sensor) == 0 )		// get local temp
-						{
-							dev.chain_asic_temp[which_chain][which_sensor][0] = TempBuffer[which_chain][which_sensor].data;
-							if ( dev.chain_asic_temp[which_chain][which_sensor][0] > dev.temp_top1 )
-							{
-								dev.temp_top1 = dev.chain_asic_temp[which_chain][which_sensor][0];
-							}
+            if ( dev.chain_exist[which_chain] == 1 )
+            {
+                for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+                {
+                    // check whether the GENERAL_I2C_COMMAND is busy
+                    do
+                    {
+                        check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                        read_temperature_time++;
 
-							applog(LOG_DEBUG, "%s: chain%d sensor% local temperature is %d\n",
-								__FUNCTION__, which_chain, which_sensor, dev.chain_asic_temp[which_chain][which_sensor][0]);
-						}
-						else
-						{
-							applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND is not ready", __FUNCTION__);
-						}
-		        	}
-					else
-					{
-						applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND is not ready", __FUNCTION__);
-					}
-				}
-			}
-		}
+                        if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                        {
+                            ret = 0xc0000000;
+                        }
+                        else
+                        {
+                            ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                        }
+                    }
+                    while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                    read_temperature_time = 0;
 
-		// read remote temp
-		reg_data = GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR | REGADDR(EXT_TEMP_VALUE_HIGH_BYTE) | DATA(0) & (~RW);
-		for (which_chain = 0 ; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+                    // write config data to read back EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
+                    set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_VALUE_HIGH_BYTE) | DATA(0) & (~RW));
+
+                    // read back the EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
+                    do
+                    {
+                        check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                        read_temperature_time++;
+
+                        if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                        {
+                            ret = 0xc0000000;
+                        }
+                        else
+                        {
+                            ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                        }
+                    }
+                    while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                    read_temperature_time = 0;
+
+                    if((ret & 0xc0000000) == 0)
+                    {
+                        remote_temp = (signed char)(ret & 0xff);
+                        applog(LOG_DEBUG, "%s: Chain%d Sensor%d remote_temp is %d", __FUNCTION__, which_chain, which_sensor, remote_temp);
+                    }
+                    else
+                    {
+                        not_read_out_temperature = true;
+                        applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
+                    }
+
+                    // write config data to read back LOCAL_TEMPERATURE_VALUE
+                    set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(LOCAL_TEMP_VALUE) | DATA(0) & (~RW));
+
+                    // read back the LOCAL_TEMPERATURE_VALUE
+                    do
+                    {
+                        check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
+                        read_temperature_time++;
+
+                        if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
+                        {
+                            ret = 0xc0000000;
+                        }
+                        else
+                        {
+                            ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
+                        }
+                    }
+                    while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
+                    read_temperature_time = 0;
+
+                    if((ret & 0xc0000000) == 0)
+                    {
+                        local_temp = (signed char)(ret & 0xff);
+                        dev.whether_read_out_temp[which_chain][which_sensor] = 1;
+                        if(local_temp > MAX_TEMP)
+                        {
+                            applog(LOG_ERR, "%s: Chain%d Sensor%d local_temp is %d, and it's higher than 85'C", __FUNCTION__, which_chain, which_sensor, local_temp);
+                        }
+                        else
+                        {
+                            applog(LOG_DEBUG, "%s: Chain%d Sensor%d local_temp is %d", __FUNCTION__, which_chain, which_sensor, local_temp);
+                        }
+                    }
+                    else
+                    {
+                        not_read_out_temperature = true;
+                        dev.whether_read_out_temp[which_chain][which_sensor] = -1;
+                        applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
+                    }
+
+                    dev.chain_asic_temp[which_chain][which_sensor][0] = local_temp;
+                    dev.chain_asic_temp[which_chain][which_sensor][1] = remote_temp;
+                }
+            }
+        }
+
+
+        tmpTemp = 0;
+
+        for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
         {
-        	if ( dev.chain_exist[which_chain] == 1 )
-        	{
-				for ( which_sensor = 0; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-			    {
-			        if ( GetResponseResult(which_sensor) == 0 )		// check whether GENERAL_I2C_COMMAND is busy
-			        {
-			        	// config GENERAL_I2C_COMMAND to read remote temp
-	            		set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, reg_data);
-						cgsleep_ms(100);
-						// check the return GENERAL_I2C_COMMAND value
-						TempBuffer[which_chain][which_sensor].state = BUF_IDLE;
-						check_asic_reg(dev.dev_fd[which_chain], TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, 0);
-						if ( GetResponseResult(which_sensor) == 0 )		// get remote temp
-						{
-							dev.chain_asic_temp[which_chain][which_sensor][1] = TempBuffer[which_chain][which_sensor].data;
-							applog(LOG_DEBUG, "%s: chain%d sensor% remote temperature is %d\n",
-								__FUNCTION__, which_chain, which_sensor, dev.chain_asic_temp[which_chain][which_sensor][1]);
-						}
-						else
-						{
-							applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND is not ready", __FUNCTION__);
-						}
-		        	}
-					else
-					{
-						applog(LOG_ERR, "%s: GENERAL_I2C_COMMAND is not ready", __FUNCTION__);
-					}
-				}
-			}
-		}
-        sleep(10);
+            if ( dev.chain_exist[which_chain] == 1 )
+            {
+                for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+                {
+                    if ( dev.chain_asic_temp[which_chain][which_sensor][0] > tmpTemp )
+                    {
+                        tmpTemp = dev.chain_asic_temp[which_chain][which_sensor][0];
+                        if(tmpTemp > MAX_TEMP)
+                        {
+                            applog(LOG_ERR,"%s: Chain%d sensor%d local temp is %d `C, higher than MAX_TEMP", __FUNCTION__, which_chain, which_sensor, tmpTemp);
+                        }
+                    }
+                }
+            }
+        }
+        dev.temp_top1 = tmpTemp;
+
+        pthread_mutex_unlock(&read_temp_mutex);
+
+        sleep(READ_TEMPERATURE_TIME_GAP);
     }
-#endif
 }
 
 
 int create_bitmain_read_temp_pthread(void)
 {
-	read_temp_id = calloc(1,sizeof(struct thr_info));
+    read_temp_id = calloc(1,sizeof(struct thr_info));
     if(thr_info_create(read_temp_id, NULL, read_temp_func, read_temp_id))
     {
         applog(LOG_DEBUG,"%s: create thread for read temp", __FUNCTION__);
@@ -4294,10 +5077,23 @@ void *DASH_fill_work(void *usrdata)
     struct thr_info * thr = info->thr;
     struct timeval send_start, last_send, send_elapsed;
     struct work_dash workdata;
-    unsigned char workbuf[WORK_DATA_INPUT_LENGTH];
+    unsigned int workbuf[WORK_DATA_INPUT_LENGTH/4];
     struct work *work = NULL;
     unsigned char workid = 0;
-	unsigned int i = 0;
+    unsigned int i = 0;
+    unsigned char test_work_data[80] =
+    {
+        0x00, 0x00, 0x00, 0x20, 0xf2, 0xef, 0x22, 0xeb,
+        0x7b, 0x28, 0xae, 0x6a, 0x03, 0x99, 0xb9, 0x73,
+        0xf2, 0x3a, 0x4c, 0x25, 0x26, 0x00, 0x8a, 0x20,
+        0xe3, 0x11, 0xdb, 0xbc, 0x80, 0x09, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0xdb, 0x61, 0x29, 0x8c,
+        0xd3, 0x1c, 0x00, 0x77, 0x19, 0xb9, 0xf2, 0xb7,
+        0x3f, 0xf1, 0x34, 0x8c, 0xf9, 0x2c, 0x7f, 0xab,
+        0x1e, 0x23, 0x24, 0x51, 0x03, 0xf6, 0x11, 0x6c,
+        0x32, 0xb1, 0x63, 0x93, 0x6e, 0x93, 0x5b, 0x59,
+        0xf4, 0x48, 0x50, 0x1a, 0x55, 0x63, 0xea, 0x6a
+    };
 
     applog(LOG_DEBUG, "Start To Fill Work!ChainIndex:[%d]", chainid);
 
@@ -4312,32 +5108,42 @@ void *DASH_fill_work(void *usrdata)
 
         cgtime(&send_start);
         timersub(&send_start, &last_send, &send_elapsed);
-		
-        if(new_block[chainid] || send_elapsed.tv_sec*1000 + send_elapsed.tv_usec/1000  >= (dev.timeout*1000)/*40000*/ )
+        //applog(LOG_DEBUG, "send_elapsed.tv_sec = %d, send_elapsed.tv_usec = %d, dev.timeout = %d", send_elapsed.tv_sec, send_elapsed.tv_usec, dev.timeout);
+
+        if(new_block[chainid] || send_elapsed.tv_sec*1000000 + send_elapsed.tv_usec  >= dev.timeout )
         {
             cgtime(&last_send);
         more_work:
             work = get_work(thr, thr->id);
             if (unlikely(!work))
             {
+                applog(LOG_ERR, "Work Error![%d]", workid);
                 goto more_work;
             }
-
+            applog(LOG_DEBUG, "new_block[chainid] = %d", new_block[chainid]);
+            applog(LOG_DEBUG, "ChainIndex:[%d], workid = %d", chainid, (work->id & 0x7f));
             workid = work->id & 0x7f;
             new_block[chainid] = false;
             memset((void *)(&workdata), 0, sizeof(workdata));
 
-            memcpy(workbuf, work->data, WORK_DATA_INPUT_LENGTH);
-			for(i=0; i<WORK_DATA_INPUT_LENGTH/4; i++)
-			{
-				Swap32(*((int *)workbuf + i));
-			}
+            for(i=0; i<WORK_DATA_INPUT_LENGTH/4; i++)
+            {
+                workdata.work[i*4 + 3] = work->data[i*4 + 0];
+                workdata.work[i*4 + 2] = work->data[i*4 + 1];
+                workdata.work[i*4 + 1] = work->data[i*4 + 2];
+                workdata.work[i*4 + 0] = work->data[i*4 + 3];
+            }
 
-            memcpy(workdata.work, workbuf, WORK_DATA_INPUT_LENGTH);
+            /*
+            for(i=0;i<WORK_DATA_INPUT_LENGTH; i++)
+            {
+                applog(LOG_NOTICE, "%s: workdata.work[%d] = 0x%02x", __FUNCTION__, i, workdata.work[i]);
+            }
+            */
             workdata.type = WORK_INPUT_TYPE_WITHOUT_SNO;
             workdata.wc = workid;
             workdata.crc16 = crc_itu_t(0xffff,(uint8_t *) &workdata, WORK_INPUT_LENGTH_WITHOUT_CRC);
-			
+
             // endian change
             workdata.crc16 = (workdata.crc16 >> 8) | ((workdata.crc16 & 0xff) << 8);
             memcpy((unsigned char *)&workdata + WORK_INPUT_LENGTH_WITHOUT_CRC, &workdata.crc16, 2);
@@ -4347,15 +5153,15 @@ void *DASH_fill_work(void *usrdata)
                 free_work(info->work_queue[workid]);
                 info->work_queue[workid] = NULL;
             }
-			
+
             if ( workid >= BITMAIN_MAX_QUEUE_NUM ) applog(LOG_ERR, "WorkID Error![%d]", workid);
             info->work_queue[workid] = copy_work(work);
-			
-            applog(LOG_DEBUG, "ChainID[%d] Wirte Work", chainid);
+
+            applog(LOG_DEBUG, "ChainID[%d] Wirte Work. workid=%d", chainid, workid);
             DASH_write(info->dev_fd[chainid], (uint8_t *)&workdata, WORK_INPUT_LENGTH_WITH_CRC);
             // cg_runlock(&info->update_lock);
             gBegin_get_nonce = true;
-            hexdump((uint8_t *)&workdata, WORK_INPUT_LENGTH_WITH_CRC);
+            //hexdump((uint8_t *)&workdata, WORK_INPUT_LENGTH_WITH_CRC);
 
             cgtime(&tv_send_job);
 
@@ -4370,7 +5176,23 @@ void *DASH_fill_work(void *usrdata)
     }
 }
 
+inline void add_point(int * point,int MAX_SIZE)
+{
+    (*point)++;
+    if((*point) >= MAX_SIZE)
+        (*point) = 0;
+}
 
+inline int use_point_sub_1(int point,int MAX_SIZE)
+{
+    return (point == 0) ? MAX_SIZE -1 : point -1;
+}
+
+
+inline int use_point_add_1(int point,int MAX_SIZE)
+{
+    return (point >= MAX_SIZE -1) ? 0 : (point + 1) ;
+}
 
 void *get_asic_response(void* arg)
 {
@@ -4384,375 +5206,142 @@ void *get_asic_response(void* arg)
     chainid = dev_i->chainid;
     fd = dev_i->dev_fd;
 
-	unsigned char receive_buf[ASIC_RETURN_DATA_LENGTH*64] = {0};	// used to receive data
-	unsigned char data_buf[ASIC_RETURN_DATA_LENGTH*100] = {0};		// store the data that from receive_buf
-	unsigned char find_header_data_buf[ASIC_RETURN_DATA_LENGTH*100] = {0};		// if we use find header mode, store the correct data with correct header
-	unsigned char temp_buf[ASIC_RETURN_DATA_LENGTH] = {0};			// store 9 bytes data that from data_buf
-	unsigned char nonce_buf[ASIC_RETURN_DATA_LENGTH] = {0};			// the nonce data ready to check
-	unsigned char reg_buf[ASIC_RETURN_DATA_LENGTH] = {0};			// the reg data ready to check
-	unsigned int receive_buf_p=0, data_buf_w_p=0, data_buf_r_p=0, remaining_len=0;
-	int fs_sel, j=0, m=0, get_9_bytes_counter=0, is_nonce = -1, ret;
-	unsigned int i=0, error_counter=0;
-	bool find_header = false, less_then_9_bytes = false;
-	ssize_t len=0;
+    unsigned char receive_buf[ASIC_RETURN_DATA_LENGTH*10] = {0};    // used to receive data
+    unsigned char tmp[ASIC_RETURN_DATA_LENGTH] = {0};          // store 9 bytes data that from data_buf
+    unsigned char data_buf[ASIC_RETURN_DATA_LENGTH * 512] = {0};
+    int data_buf_rp = 0, data_buf_wp = 0;
+    ssize_t len=0;
+    int i = 0;
+    int max = ASIC_RETURN_DATA_LENGTH * 512;
 
     tcflush(fd, TCIOFLUSH);
     applog(LOG_NOTICE, "Start A New Asic Response.Chain Id:[%d]", chainid);
     applog(LOG_DEBUG, "%s %d",__FUNCTION__,chainid);
 
-	memset(data_buf, 0, sizeof(data_buf));
-	memset(find_header_data_buf, 0, sizeof(find_header_data_buf));
+    while(1)
+    {
+        cgsleep_ms(1);
+        len = DASH_read(fd, receive_buf, ASIC_RETURN_DATA_LENGTH*10);
+        for(i = 0; i < len; i++)
+        {
+            data_buf[data_buf_wp] = receive_buf[i];
+            add_point(&data_buf_wp,max);
+        }
 
-	while(1)
-	{
-		usleep(1*1000);
-		for(i=0; i<5000000; i++)
-		{
-			memset(receive_buf,0,sizeof(receive_buf));
-			len = DASH_read(fd, receive_buf, ASIC_RETURN_DATA_LENGTH*64);
+        if(data_buf_rp != data_buf_wp)
+        {
+            len = (data_buf_wp > data_buf_rp) ? (data_buf_wp - data_buf_rp):( ASIC_RETURN_DATA_LENGTH * 512 - data_buf_rp + data_buf_wp);
+        }
+        else
+        {
+            continue;
+        }
+        while(len >= ASIC_RETURN_DATA_LENGTH)
+        {
+            if(data_buf[data_buf_rp] == OUTPUT_HEADER_1 && data_buf[use_point_add_1(data_buf_rp,max)] == OUTPUT_HEADER_2)
+            {
+                for(i = 0; i < ASIC_RETURN_DATA_LENGTH; i++)
+                {
+                    tmp[i] = data_buf[data_buf_rp];
+                    add_point(&data_buf_rp,max);
+                }
+            }
+            else
+            {
+                for(i=0 ; i < ASIC_RETURN_DATA_LENGTH - 1; i++ )
+                {
+                    if(data_buf[data_buf_rp] != OUTPUT_HEADER_1 || data_buf[use_point_add_1(data_buf_rp,max)] != OUTPUT_HEADER_2)
+                    {
+                        add_point(&data_buf_rp,max);
+                        printf("%s: %d Headers are not corret! Header0 = 0x%02x, Header1 = 0x%02x, Header2 = 0x%02x rp = %d\n", __FUNCTION__,chainid ,data_buf[use_point_sub_1(data_buf_rp,max)],data_buf[data_buf_rp], data_buf[use_point_add_1(data_buf_rp,max)],data_buf_rp);
+                        continue;
+                    }
+                    else
+                        break;
+                }
+                len = len -i;
+                continue;
+            }
 
+            len = len - ASIC_RETURN_DATA_LENGTH;
 
-			if(0)
-			{
-#if 0
-				if(( len > 0) && (error_counter < 3))
-				{
-					// step 1: store the received data throuth UART
-					//printf("receive_buf: len = %d, data_buf_w_p = %d\n", len, data_buf_w_p);
-					//printf("receive_buf: ");
-					for(j=0; j<len; j++)
-					{
-						data_buf[data_buf_w_p++] = receive_buf[j];	// store the received data into data_buf
-						//printf("0x%02x ", receive_buf[j]);
-					}
-					//printf("\n");
-					//printf("\ndata_buf_w_p = %d\n\n", data_buf_w_p);
+            if(is_nonce_or_reg_value(tmp[ASIC_RETURN_DATA_LENGTH -1])) // get a nonce
+            {
+                if(gBegin_get_nonce)
+                {
+                    pthread_mutex_lock(&nonce_mutex);
 
-					// step 2: check how many data in data_buf
-					if(data_buf_w_p < ASIC_RETURN_DATA_LENGTH)
-					{
-						//printf("get_9_bytes_counter = %d\n", get_9_bytes_counter);
-						break;	// the data in data_buf is not enough, so break out the for loop and receive data again
-					}
-					else
-					{
-						get_9_bytes_counter = data_buf_w_p / ASIC_RETURN_DATA_LENGTH;	// caculate how many 9 bytes in data_buf
-						//printf("get_9_bytes_counter = %d\n", get_9_bytes_counter);
-					}
+                    memcpy((unsigned char *)(&nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce), &tmp[2], 4);    // we do not swap32 here, but swap it when we analyse nonce
+                    nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff           = tmp[6];
+                    nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc             = tmp[7] & 0x7f;
+                    nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5           = tmp[8];
+                    nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid        = chainid;
 
-					// step 3: check every 9 bytes
-					for(j=0; j<get_9_bytes_counter; j++)
-					{
-						memset(temp_buf, 0, sizeof(temp_buf));
-						//printf("every 9 bytes: ");
-						for(m=0; m<ASIC_RETURN_DATA_LENGTH; m++)
-						{
-							temp_buf[m] = find_header_data_buf[j*ASIC_RETURN_DATA_LENGTH + m];		// store 9 bytes data into temp_buf for check
-							//printf("0x%02x ", temp_buf[m]);
-						}
-						//printf("\n");
+                    if(nonce_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO)
+                    {
+                        nonce_fifo.p_wr++;
+                    }
+                    else
+                    {
+                        nonce_fifo.p_wr = 0;
+                    }
 
-						applog(LOG_DEBUG, "Chain [%d] Read Data", chainid);
-	                	applog(LOG_DEBUG,"get sth %02x%02x%02x%02x%02x%02x%02x%02x%02x",temp_buf[0],temp_buf[1],temp_buf[2],temp_buf[3],
-	                       temp_buf[4],temp_buf[5],temp_buf[6],temp_buf[7],temp_buf[8]);
+                    if(nonce_fifo.nonce_num < MAX_NONCE_NUMBER_IN_FIFO)
+                    {
+                        nonce_fifo.nonce_num++;
+                    }
+                    else
+                    {
+                        nonce_fifo.nonce_num = MAX_NONCE_NUMBER_IN_FIFO;
+                        applog(LOG_WARNING, "%s: nonce fifo full!!!", __FUNCTION__);
+                    }
+                    pthread_mutex_unlock(&nonce_mutex);
 
-						if(is_nonce_or_reg_value(temp_buf[ASIC_RETURN_DATA_LENGTH -1]))	// get a nonce
-						{
-							if(gBegin_get_nonce)
-		                    {
-		                        pthread_mutex_lock(&nonce_mutex);
-								
-		                        memcpy(nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce, &temp_buf[2], 4);
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff           = temp_buf[6];
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc             = temp_buf[7] & 0x7f;
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5           = temp_buf[8] & 0x1f;
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid        = chainid;
-		                        applog(LOG_DEBUG,"get nonce %02x%02x%02x%02x wc %02x diff %02x crc5 %02x chainid %02x",nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce[0], \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce[1],nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce[2], \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce[3],nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff, \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5,    \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid);
+                    //applog(LOG_DEBUG,"get nonce num %d",nonce_fifo.nonce_num);
+                }
+            }
+            else    // get a register value
+            {
+                if(reg_fifo.reg_value_num >= MAX_NONCE_NUMBER_IN_FIFO || reg_fifo.p_wr >= MAX_NONCE_NUMBER_IN_FIFO)
+                {
+                    applog(LOG_DEBUG, "Will Clean!");
+                    clear_register_value_buf();
+                    continue;
+                }
+                pthread_mutex_lock(&reg_mutex);
 
-		                        if(nonce_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO)
-		                        {
+                memcpy((unsigned char *)(&reg_fifo.reg_buffer[reg_fifo.p_wr].reg_value), &tmp[2], 4);      // we do not swap32 here, but swap it when we analyse register value
+                reg_fifo.reg_buffer[reg_fifo.p_wr].chipaddr         = tmp[6];
+                reg_fifo.reg_buffer[reg_fifo.p_wr].regaddr          = tmp[7];
+                reg_fifo.reg_buffer[reg_fifo.p_wr].crc5             = tmp[8] & 0x1f;
+                reg_fifo.reg_buffer[reg_fifo.p_wr].chainid          = chainid;
 
-		                            nonce_fifo.p_wr++;
-		                        }
-		                        else
-		                        {
-		                            nonce_fifo.p_wr = 0;
-		                        }
+                if(reg_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO )
+                {
+                    //applog(LOG_DEBUG,"%s: p_wr = %d reg_value_num = %d", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);
+                    reg_fifo.p_wr++;
+                }
+                else
+                {
+                    reg_fifo.p_wr = 0;
+                }
 
-		                        if(nonce_fifo.nonce_num < MAX_NONCE_NUMBER_IN_FIFO)
-		                        {
-		                            nonce_fifo.nonce_num++;
-		                        }
-		                        else
-		                        {
-		                            nonce_fifo.nonce_num = MAX_NONCE_NUMBER_IN_FIFO;
-		                        }
-								
-								pthread_mutex_unlock(&nonce_mutex);
-								
-		                        applog(LOG_DEBUG,"get nonce num %d",nonce_fifo.nonce_num);
-		                    }
-						}
-						else	// get a register value
-						{
-							if(reg_fifo.reg_value_num >= MAX_NONCE_NUMBER_IN_FIFO || reg_fifo.p_wr >= MAX_NONCE_NUMBER_IN_FIFO)
-		                    {
-		                        applog(LOG_DEBUG, "Will Clean!");
-		                        clear_register_value_buf();
-		                        continue;
-		                    }
-		                    pthread_mutex_lock(&reg_mutex);
-
-		                    memcpy(reg_fifo.reg_buffer[reg_fifo.p_wr].reg_value, &temp_buf[2], 4);
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].chipaddr      = temp_buf[6];
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].regaddr       = temp_buf[7];
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].crc5          = temp_buf[8] & 0x1f;
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].chainid = chainid;
-
-		                    if(reg_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO )
-		                    {
-		                        applog(LOG_DEBUG,"%s: p_wr = %d reg_value_num = %d", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);
-		                        reg_fifo.p_wr++;
-		                    }
-		                    else
-		                    {
-		                        reg_fifo.p_wr = 0;
-		                    }
-
-		                    if(reg_fifo.reg_value_num < MAX_NONCE_NUMBER_IN_FIFO)
-		                    {
-		                        reg_fifo.reg_value_num++;
-		                    }
-		                    else
-		                    {
-		                        reg_fifo.reg_value_num = MAX_NONCE_NUMBER_IN_FIFO;
-		                    }
-							pthread_mutex_unlock(&reg_mutex);
-							
-		                    //applog(LOG_NOTICE,"%s: p_wr = %d reg_value_num = %d\n", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);	                    
-							}					
-					}
-
-					//printf("\ndata_buf_w_p = %d, data_buf_r_p = %d\n\n", data_buf_w_p, data_buf_r_p);
-
-					// step 4: reset variable value
-					remaining_len = data_buf_w_p - data_buf_r_p;
-					//printf("remaining data: remaining_len = %d : ", remaining_len);
-					for(m=0; m<remaining_len; m++)
-					{
-						data_buf[m] = data_buf[data_buf_r_p++];	// move the remaining data to the head of the data_buf
-						//printf("0x%02x ", data_buf[m]);
-					}				
-
-					data_buf_w_p = remaining_len;
-					data_buf_r_p = 0;
-					get_9_bytes_counter = 0;
-					break;
-				}
-			}
-			else	// find header
-			{
-#endif
-				if(len > 0)
-				{
-					// step 1: store the received data throuth UART
-					//printf("receive_buf: len = %d, data_buf_w_p = %d\n", len, data_buf_w_p);
-					//printf("receive_buf: ");
-					for(j=0; j<len; j++)
-					{
-						data_buf[data_buf_w_p++] = receive_buf[j];	// store the received data into data_buf
-						//printf("0x%02x ", receive_buf[j]);
-					}
-					//printf("\n");
-					//printf("\ndata_buf_w_p = %d\n\n", data_buf_w_p);
-
-					// step 2: check how many data in data_buf
-					if(data_buf_w_p < ASIC_RETURN_DATA_LENGTH)
-					{
-						//printf("get_9_bytes_counter = %d\n", get_9_bytes_counter);
-						break;	// the data in data_buf is not enough, so break out the for loop and receive data again
-					}
-					else
-					{
-						remaining_len = data_buf_w_p;
-					}
-
-					// setp 3: find the headers
-					data_buf_r_p = 0;
-					get_9_bytes_counter = 0;
-					while(remaining_len >= ASIC_RETURN_DATA_LENGTH)
-					{
-						// step 3.1: find header
-						while(1)
-						{
-							if((data_buf[data_buf_r_p] != OUTPUT_HEADER_1) || (data_buf[data_buf_r_p+1] != OUTPUT_HEADER_2))
-							{
-								data_buf_r_p++;		// don't find correct header, move to next bytes
-								remaining_len--;
-								if(remaining_len < ASIC_RETURN_DATA_LENGTH)
-								{
-									break;
-								}
-							}
-							else
-							{	
-								find_header = true;
-								break;				// find correct header
-							}
-						}
-
-						// step 3.2: check the next 9 bytes data format and copy data
-						if(find_header)
-						{
-							find_header = false;
-
-							for(i=1; i<ASIC_RETURN_DATA_LENGTH; i++)
-							{
-								if((data_buf[data_buf_r_p + i] == OUTPUT_HEADER_1) && (data_buf[data_buf_r_p + 1 + i] == OUTPUT_HEADER_2))
-								{
-									less_then_9_bytes = true;
-									break;
-								}
-							}
-
-							if(less_then_9_bytes)	// data is not enough 9 bytes
-							{
-								less_then_9_bytes = false;
-								data_buf_r_p += i;
-								remaining_len -= i;
-							}
-							else					// data is 9 bytes, copy it
-							{
-								for(i=0; i<ASIC_RETURN_DATA_LENGTH; i++)
-								{
-									find_header_data_buf[get_9_bytes_counter*ASIC_RETURN_DATA_LENGTH + i] = data_buf[data_buf_r_p + i];
-								}
-								get_9_bytes_counter++;
-								data_buf_r_p += ASIC_RETURN_DATA_LENGTH;
-								remaining_len -= ASIC_RETURN_DATA_LENGTH;
-							}
-						}
-					}
-					data_buf_w_p = remaining_len;
-					for(m=0; m<remaining_len; m++)
-					{
-						data_buf[m] = data_buf[data_buf_r_p++];	// move the remaining data to the head of the data_buf
-						//printf("0x%02x ", data_buf[m]);
-					}
-					data_buf_r_p = 0;
-
-					// step 4: check every 9 bytes
-					for(j=0; j<get_9_bytes_counter; j++)
-					{
-						memset(temp_buf, 0, sizeof(temp_buf));
-						//printf("every 9 bytes: ");
-						for(m=0; m<ASIC_RETURN_DATA_LENGTH; m++)
-						{
-							temp_buf[m] = find_header_data_buf[j*ASIC_RETURN_DATA_LENGTH + m];		// store 9 bytes data into temp_buf for check
-							//printf("0x%02x ", temp_buf[m]);
-						}
-						//printf("\n");
-
-						applog(LOG_DEBUG, "Chain [%d] Read Data", chainid);
-	                	applog(LOG_DEBUG,"get sth %02x%02x%02x%02x%02x%02x%02x%02x%02x",temp_buf[0],temp_buf[1],temp_buf[2],temp_buf[3],
-	                       temp_buf[4],temp_buf[5],temp_buf[6],temp_buf[7],temp_buf[8]);
-
-						if(is_nonce_or_reg_value(temp_buf[ASIC_RETURN_DATA_LENGTH -1]))	// get a nonce
-						{
-							if(gBegin_get_nonce)
-		                    {
-		                        pthread_mutex_lock(&nonce_mutex);
-								
-		                        memcpy((unsigned char *)(&nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce), &temp_buf[2], 4);	// we do not swap32 here, but swap it when we analyse nonce
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff           = temp_buf[6];
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc             = temp_buf[7] & 0x7f;
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5           = temp_buf[8] & 0x1f;
-		                        nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid        = chainid;
-		                        applog(LOG_DEBUG,"get nonce 0x%08x%, wc 0x%02x, diff 0x%02x, crc5 0x%02x, chainid 0x%02x",nonce_fifo.nonce_buffer[nonce_fifo.p_wr].nonce, \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].diff, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].wc,  \
-		                               nonce_fifo.nonce_buffer[nonce_fifo.p_wr].crc5, nonce_fifo.nonce_buffer[nonce_fifo.p_wr].chainid);		                               
-
-		                        if(nonce_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO)
-		                        {
-
-		                            nonce_fifo.p_wr++;
-		                        }
-		                        else
-		                        {
-		                            nonce_fifo.p_wr = 0;
-		                        }
-
-		                        if(nonce_fifo.nonce_num < MAX_NONCE_NUMBER_IN_FIFO)
-		                        {
-		                            nonce_fifo.nonce_num++;
-		                        }
-		                        else
-		                        {
-		                            nonce_fifo.nonce_num = MAX_NONCE_NUMBER_IN_FIFO;
-		                        }
-								
-								pthread_mutex_unlock(&nonce_mutex);
-								
-		                        applog(LOG_DEBUG,"get nonce num %d",nonce_fifo.nonce_num);
-		                    }
-						}
-						else	// get a register value
-						{
-							if(reg_fifo.reg_value_num >= MAX_NONCE_NUMBER_IN_FIFO || reg_fifo.p_wr >= MAX_NONCE_NUMBER_IN_FIFO)
-		                    {
-		                        applog(LOG_DEBUG, "Will Clean!");
-		                        clear_register_value_buf();
-		                        continue;
-		                    }
-		                    pthread_mutex_lock(&reg_mutex);
-
-		                    memcpy((unsigned char *)(&reg_fifo.reg_buffer[reg_fifo.p_wr].reg_value), &temp_buf[2], 4);		// we do not swap32 here, but swap it when we analyse register value
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].chipaddr			= temp_buf[6];
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].regaddr			= temp_buf[7];
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].crc5				= temp_buf[8] & 0x1f;
-		                    reg_fifo.reg_buffer[reg_fifo.p_wr].chainid			= chainid;
-
-		                    if(reg_fifo.p_wr < MAX_NONCE_NUMBER_IN_FIFO )
-		                    {
-		                        applog(LOG_DEBUG,"%s: p_wr = %d reg_value_num = %d", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);
-		                        reg_fifo.p_wr++;
-		                    }
-		                    else
-		                    {
-		                        reg_fifo.p_wr = 0;
-		                    }
-
-		                    if(reg_fifo.reg_value_num < MAX_NONCE_NUMBER_IN_FIFO)
-		                    {
-		                        reg_fifo.reg_value_num++;
-		                    }
-		                    else
-		                    {
-		                        reg_fifo.reg_value_num = MAX_NONCE_NUMBER_IN_FIFO;
-		                    }
-							pthread_mutex_unlock(&reg_mutex);
-							
-		                    //applog(LOG_NOTICE,"%s: p_wr = %d reg_value_num = %d\n", __FUNCTION__,reg_fifo.p_wr,reg_fifo.reg_value_num);	                    
-						}					
-					}
-
-					get_9_bytes_counter = 0;
-				}
-			}
-		}		
-	}
+                if(reg_fifo.reg_value_num < MAX_NONCE_NUMBER_IN_FIFO)
+                {
+                    reg_fifo.reg_value_num++;
+                }
+                else
+                {
+                    reg_fifo.reg_value_num = MAX_NONCE_NUMBER_IN_FIFO;
+                    applog(LOG_WARNING, "%s: reg fifo full!!!", __FUNCTION__);
+                }
+                pthread_mutex_unlock(&reg_mutex);
+            }
+        }
+    }
 }
 
-
-
 /****************** about cgminer pthread end ******************/
-
-
-
 
 
 
@@ -4820,14 +5409,14 @@ static bool bitmain_DASH_prepare(struct thr_info *thr)
         .reg_address                = 0,
         .chain_min_freq             = 400,
         .chain_max_freq             = 600,
-        .misc_control_reg_value		= MISC_CONTROL_DEFAULT_VALUE,
-		.diode_mux_sel				= DIODE_MUX_SEL_DEFAULT_VALUE,
-		.vdd_mux_sel				= VDD_MUX_SEL_DEFAULT_VALUE,
+        .misc_control_reg_value     = MISC_CONTROL_DEFAULT_VALUE,
+        .diode_mux_sel              = DIODE_MUX_SEL_DEFAULT_VALUE,
+        .vdd_mux_sel                = VDD_MUX_SEL_DEFAULT_VALUE,
     };
-	
+
     DASH_config.crc = crc_itu_t(0xff,(uint8_t *)(&DASH_config), sizeof(DASH_config)-2);
     info->DASH_config = DASH_config;
-	
+
     bitmain_DASH_init(info);
 
     return true;
@@ -4867,6 +5456,8 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
     root = api_add_string(root, "frequency", dev.frequency_t, copy_data);
     root = api_add_uint8(root, "fan_num", &(dev.fan_num), copy_data);
 
+    // dev.fan_speed_value[0] is FAN1
+    // dev.fan_speed_value[1] is FAN2
     for(i = 0; i < BITMAIN_MAX_FAN_NUM; i++)
     {
         char fan_name[12];
@@ -4875,11 +5466,12 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
     }
 
     root = api_add_uint8(root, "temp_num", &(dev.chain_num), copy_data);
+
     for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
     {
         char temp_name[12];
         sprintf(temp_name,"temp%d",i+1);
-        root = api_add_int16(root, temp_name, &(dev.chain_asic_temp[i][2][0]), copy_data);
+        root = api_add_int16(root, temp_name, &(dev.chain_asic_temp[i][0][0]), copy_data);
     }
 
 
@@ -4887,9 +5479,10 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
     {
         char temp2_name[12];
         sprintf(temp2_name,"temp2_%d",i+1);
-        root = api_add_int16(root, temp2_name, &(dev.chain_asic_temp[i][2][1]), copy_data);
+        root = api_add_int16(root, temp2_name, &(dev.chain_asic_temp[i][0][1]), copy_data);
     }
-#ifdef L3_P
+
+    /*
     for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
     {
         char temp_name[12];
@@ -4904,13 +5497,16 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
         sprintf(temp2_name,"temp4_%d",i+1);
         root = api_add_int16(root, temp2_name, &(dev.chain_asic_temp[i][1][1]), copy_data);
     }
-#endif
+    */
+
     root = api_add_uint32(root, "temp_max", &(dev.temp_top1), copy_data);
+
     total_diff1 = total_diff_accepted + total_diff_rejected + total_diff_stale;
     double hwp = (hw_errors + total_diff1) ?
-                 (double)(hw_errors) / (double)(hw_errors + total_diff1) : 0;
-    root = api_add_percent(root, "Device Hardware%", &hwp, false);
-    root = api_add_int(root, "no_matching_work", &hw_errors, false);
+                 (double)(hw_errors) / (pow(2, (32 - DEVICE_DIFF_SET))) / (double)(hw_errors + total_diff1) : 0;
+
+    root = api_add_percent(root, "Device Hardware%", &hwp, true);
+    root = api_add_int(root, "no_matching_work", &hw_errors, true);
 
     for(i = 0; i < BITMAIN_MAX_CHAIN_NUM; i++)
     {
@@ -4964,7 +5560,7 @@ static void bitmain_DASH_reinit_device(struct cgpu_info *bitmain)
 
 static void get_bitmain_statline_before(char *buf, size_t bufsiz, struct cgpu_info *bitmain_DASH)
 {
-	struct bitmain_DASH_info *info = bitmain_DASH->device_data;
+    struct bitmain_DASH_info *info = bitmain_DASH->device_data;
 }
 
 

@@ -10,7 +10,7 @@
 /******************** about D1 miner *********************/
 
 // how many Hash board that the A8 control board will connect
-#define BITMAIN_MAX_CHAIN_NUM           3
+#define BITMAIN_MAX_CHAIN_NUM           4
 
 // about send mac address to minerlink
 #define AUTH_URL    					"auth.minerlink.com"
@@ -23,13 +23,31 @@
 #define BITMAIN_DEFAULT_BAUD            115200
 
 // default ticket mask
-#define DEVICE_DIFF                     0x16
+//#define DEVICE_DIFF_SET					0x1B
+//#define DEVICE_DIFF_SET_MASK			0x31
+
+#define DEVICE_DIFF_SET					0x1D
+#define DEVICE_DIFF_SET_MASK			0x7
+
+
+
+//#define DEVICE_DIFF_SET					0x16
+//#define DEVICE_DIFF_SET_MASK			0x3ff
+//#define DEVICE_DIFF_SET					0x18
+//#define DEVICE_DIFF_SET_MASK			0xff
+
+
+#define DEVICE_DIFF_STANDARD			0x16
+#define DEVICE_DIFF_STANDARD_MASK		0x003fffffull
+
 
 // something about fan
 #define BITMAIN_MAX_FAN_NUM             2
 #define PWM_PERIOD_NS                   100000
 #define MIN_FAN_NUM                     1
-#define MAX_FAN_SPEED                   4100
+#define FAN1_MAX_SPEED					6000
+#define FAN2_MAX_SPEED					4100
+#define FAN_SPEED_OK_PERCENT			(0.85)
 #define MIN_PWM_PERCENT                 0
 #define MAX_PWM_PERCENT                 100
 #define TEMP_INTERVAL                   2
@@ -84,7 +102,9 @@
 #define D1_MINER_REAL_TEMP_CHIP_NUM				1
 #define BITMAIN_REAL_TEMP_CHIP_NUM				D1_MINER_REAL_TEMP_CHIP_NUM		
 
-#define TEMP_CHIP_0_LOCATION					5	// the 1st temperature sensor connect to the 5th ASIC(count from 1)
+// about temperature sensor
+//#define D1
+#define TEMP_CHIP_0_LOCATION					4	// the 1st temperature sensor connect to the 4th ASIC(count from 0)
 #define TEMP_CHIP_1_LOCATION					0	// 0 means no temperature sensor
 #define TEMP_CHIP_2_LOCATION					0	// 0 means no temperature sensor
 
@@ -199,17 +219,9 @@
 #define GET_VOLTAGE									0x18
 #define WR_TEMP_OFFSET_VALUE						0x22
 #define RD_TEMP_OFFSET_VALUE						0x23
+#define SAVE_FREQ									0x24
+#define READ_OUT_FREQ								0x25
 
-
-//#define PIC_FLASH_POINTER_START_ADDRESS_H       0x03
-//#define PIC_FLASH_POINTER_START_ADDRESS_L       0x00
-//#define PIC_FREQ_START_ADDRESS_H                0x0f
-//#define PIC_FREQ_START_ADDRESS_L                0xA0
-//#define PIC_FLASH_POINTER_FREQ_START_ADDRESS_H  0x0F
-//#define PIC_FLASH_POINTER_FREQ_START_ADDRESS_L  0xA0
-//#define PIC_FLASH_POINTER_FREQ_END_ADDRESS_H    0x0f
-//#define PIC_FLASH_POINTER_FREQ_END_ADDRESS_L    0xDF
-//#define FREQ_MAGIC                              0x7D
 
 // data address in pic
 #define PIC_FLASH_POINTER_START_ADDRESS_H_NEW		0x06
@@ -225,9 +237,10 @@
 #define HEART_BEAT_TIME_GAP							10      // 10s
 
 // pic update file
-#define PIC16F1704_PROGRAM_NEW						"/sbin/pic_new.txt"
-#define PIC_PROGRAM									"/sbin/pic.txt"
+#define PIC16F1704_PROGRAM_NEW						"/sbin/pic.txt"
 #define MAX_CHAR_NUM                        		1024
+
+#define PIC_VERSION									0x81
 
 /****************** about PIC16F1704 end ******************/
 
@@ -246,6 +259,9 @@
 #define EXT_TEMP_VALUE_LOW_BYTE     				0x10
 #define EXT_TEMP_OFFSET_HIGH_BYTE   				0x11
 #define EXT_TEMP_OFFSET_LOW_BYTE    				0x12
+#define MANUFACTURER_ID								0xFE
+#define MANUFACTURER_ID_ECT218						0x1A
+
 
 /************** about temperature sensor end **************/
 
@@ -256,7 +272,7 @@
 /******************** other MACRO ********************/
 
 #define MAX_RETURNED_NONCE_NUM          			30
-#define MAX_NONCE_NUMBER_IN_FIFO        			(ASIC_NUM_EACH_CHAIN * BITMAIN_MAX_CHAIN_NUM * 3)
+#define MAX_NONCE_NUMBER_IN_FIFO        			(ASIC_NUM_EACH_CHAIN * BITMAIN_MAX_CHAIN_NUM * 30)
 
 #define IIC_SLEEP									200
 
@@ -328,9 +344,9 @@ struct init_config
     uint16_t    chain_min_freq;
     uint16_t    chain_max_freq;
 	uint32_t	misc_control_reg_value;
-	uint32_t	analog_mux_control_reg_value;
 	uint8_t		diode_mux_sel;
 	uint8_t		vdd_mux_sel;
+	uint8_t     reserved3[2];
     uint16_t    crc;
 } __attribute__((packed, aligned(4)));
 
@@ -390,6 +406,7 @@ struct all_parameters
     uint32_t    chain_asic_exist[BITMAIN_MAX_CHAIN_NUM][8];
     uint32_t    chain_asic_status[BITMAIN_MAX_CHAIN_NUM][8];
     int16_t     chain_asic_temp[BITMAIN_MAX_CHAIN_NUM][8][4];
+	char		whether_read_out_temp[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM];	// -1: not read out; 1: read out. only local temp
     int8_t      chain_asic_iic[ASIC_NUM_EACH_CHAIN];
     uint32_t    chain_hw[BITMAIN_MAX_CHAIN_NUM];
     uint32_t    chain_asic_nonce[BITMAIN_MAX_CHAIN_NUM][ASIC_NUM_EACH_CHAIN];
@@ -661,8 +678,8 @@ void calibration_sensor_offset(void);
 void set_temperature_offset_value(void);
 void suffix_string_DASH(uint64_t val, char *buf, size_t bufsiz, int sigdigits,bool display);
 void clear_register_value_buf(void);
-
-
+void check_sensor_ID(void);
+void set_PWM(unsigned char pwm_percent);
 
 
 #endif
