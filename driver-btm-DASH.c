@@ -4619,13 +4619,13 @@ void *check_miner_status(void *arg)
         }
 
 		// check fan
-		if((dev.fan_num < MIN_FAN_NUM) ||
+		if((dev.fan_num < BITMAIN_MAX_FAN_NUM) ||
 			(dev.fan_speed_value[0] < (FAN1_MAX_SPEED * dev.fan_pwm / 150)) ||
 			(dev.fan_speed_value[1] < (FAN2_MAX_SPEED * dev.fan_pwm / 150)))
 		{
 			gFan_Error = true;
 
-			if(dev.fan_num < MIN_FAN_NUM)
+			if(dev.fan_num < BITMAIN_MAX_FAN_NUM)
 			{
 				applog(LOG_ERR,"%s: Lost fan! fan number is %d", __FUNCTION__, dev.fan_num);
 				if(!dev.fan_exist[0])
@@ -4660,7 +4660,7 @@ void *check_miner_status(void *arg)
                     pthread_mutex_lock(&iic_mutex);
                     if(unlikely(ioctl(dev.i2c_fd,I2C_SLAVE,i2c_slave_addr[which_chain] >> 1 ) < 0))
                         applog(LOG_ERR,"ioctl error @ line %d",__LINE__);
-                    applog(LOG_ERR, "Can't read out temperature from all chains!! Will Disable PIC!");
+                    applog(LOG_ERR, "Fan error!! Will Disable PIC!");
                     gMinerStatus_Not_read_all_sensor = true;
                     disable_PIC16F1704_dc_dc_new();
                     pthread_mutex_unlock(&iic_mutex);
