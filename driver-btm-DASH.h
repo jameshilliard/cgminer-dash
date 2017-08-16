@@ -5,66 +5,49 @@
 #include <poll.h>
 #include <termios.h>
 
-
-
 /******************** about D1 miner *********************/
 
 // how many Hash board that the A8 control board will connect
 #define BITMAIN_MAX_CHAIN_NUM           4
 
-// about send mac address to minerlink
-#define AUTH_URL    					"auth.minerlink.com"
-#define PORT        					"7000"
-#define ID_STRING_LEN 					34
-//#define id_string_len 					34
-
-
 // default baud
 #define BITMAIN_DEFAULT_BAUD            115200
 
 // default ticket mask
-//#define DEVICE_DIFF_SET					0x1B
-//#define DEVICE_DIFF_SET_MASK			0x31
+//#define DEVICE_DIFF_SET                   0x1B
+//#define DEVICE_DIFF_SET_MASK          0x31
 
-#define DEVICE_DIFF_SET					0x1D
-#define DEVICE_DIFF_SET_MASK			0x7
+#define DEVICE_DIFF_SET                 0x1D
+#define DEVICE_DIFF_SET_MASK            0x7
 
+//#define DEVICE_DIFF_SET                   0x16
+//#define DEVICE_DIFF_SET_MASK          0x3ff
+//#define DEVICE_DIFF_SET                   0x18
+//#define DEVICE_DIFF_SET_MASK          0xff
 
-
-//#define DEVICE_DIFF_SET					0x16
-//#define DEVICE_DIFF_SET_MASK			0x3ff
-//#define DEVICE_DIFF_SET					0x18
-//#define DEVICE_DIFF_SET_MASK			0xff
-
-
-#define DEVICE_DIFF_STANDARD			0x16
-#define DEVICE_DIFF_STANDARD_MASK		0x003fffffull
-
-
+#define DEVICE_DIFF_STANDARD            0x16
+#define DEVICE_DIFF_STANDARD_MASK       0x003fffffull
 // something about fan
 #define BITMAIN_MAX_FAN_NUM             2
 #define PWM_PERIOD_NS                   100000
 #define MIN_FAN_NUM                     1
-#define FAN1_MAX_SPEED					6000
-#define FAN2_MAX_SPEED					4300
-#define FAN_SPEED_OK_PERCENT			(0.85)
-#define MIN_PWM_PERCENT                 0
+#define FAN1_MAX_SPEED                  6000
+#define FAN2_MAX_SPEED                  4300
+#define FAN_SPEED_OK_PERCENT            (0.85)
+#define MIN_PWM_PERCENT                 20
 #define MAX_PWM_PERCENT                 100
 #define TEMP_INTERVAL                   2
 #define MAX_TEMP                        85
 #define MAX_FAN_TEMP                    75
 #define MIN_FAN_TEMP                    35
 #define PWM_ADJUST_FACTOR               ((100 - MIN_PWM_PERCENT)/(MAX_FAN_TEMP - MIN_FAN_TEMP))
-#define FANINT							5
-#define FAN0							"256"	// front fan
-#define FAN1							"254"	// back fan
-#define PROCFILENAME					"/proc/interrupts"
+#define FANINT                          5
+#define FAN0                            "256"   // front fan
+#define FAN1                            "254"   // back fan
+#define PROCFILENAME                    "/proc/interrupts"
 
 
 /****************** about D1 miner end *******************/
-
-
-
 
 
 /******************** about A8 platform ********************/
@@ -75,235 +58,195 @@
 #define LED_CTRL_TEMPLATE       "echo %d > /sys/class/gpio/gpio%d/value"
 #define BEEP_CTRL_TEMPLATE      LED_CTRL_TEMPLATE
 #define IIC_DEVIVEE             "/dev/i2c-0"
-#define SET_ASIC_RST_0 			"echo 0 > /sys/class/gpio/gpio%d/value"
-#define SET_ASIC_RST_1 			"echo 1 > /sys/class/gpio/gpio%d/value"
-
-
-
+#define SET_ASIC_RST_0          "echo 0 > /sys/class/gpio/gpio%d/value"
+#define SET_ASIC_RST_1          "echo 1 > /sys/class/gpio/gpio%d/value"
 /****************** about A8 platform end *******************/
-
-
-
 
 
 /******************** about D1 Hash board ********************/
 
 // how many BM1760 on 1 D1 Hash board
-#define D1_MINER_ASIC_NUM_EACH_CHAIN			60
-#define ASIC_NUM_EACH_CHAIN						D1_MINER_ASIC_NUM_EACH_CHAIN
-//#define CHAIN_ASIC_NUM                  		60
-
-#define D1_MINER_CHIP_ADDR_INTERVAL				(0x100 / ASIC_NUM_EACH_CHAIN)
-
+#define D1_MINER_ASIC_NUM_EACH_CHAIN            60
+#define ASIC_NUM_EACH_CHAIN                     D1_MINER_ASIC_NUM_EACH_CHAIN
+//#define CHAIN_ASIC_NUM                        60
+#define D1_MINER_CHIP_ADDR_INTERVAL             (0x100 / ASIC_NUM_EACH_CHAIN)
 // Each Chain support max sensor number
-#define BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM		3
-
+#define BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM       3
 // the real number sensor on each hash board
-#define D1_MINER_REAL_TEMP_CHIP_NUM				1
-#define BITMAIN_REAL_TEMP_CHIP_NUM				D1_MINER_REAL_TEMP_CHIP_NUM		
-
+#define D1_MINER_REAL_TEMP_CHIP_NUM             1
+#define BITMAIN_REAL_TEMP_CHIP_NUM              D1_MINER_REAL_TEMP_CHIP_NUM
 // about temperature sensor
 //#define D1
-#define TEMP_CHIP_0_LOCATION					4	// the 1st temperature sensor connect to the 4th ASIC(count from 0)
-#define TEMP_CHIP_1_LOCATION					0	// 0 means no temperature sensor
-#define TEMP_CHIP_2_LOCATION					0	// 0 means no temperature sensor
-
+#define TEMP_CHIP_0_LOCATION                    4   // the 1st temperature sensor connect to the 4th ASIC(count from 0)
+#define TEMP_CHIP_1_LOCATION                    0   // 0 means no temperature sensor
+#define TEMP_CHIP_2_LOCATION                    0   // 0 means no temperature sensor
 
 //ASIC_TEMP_T TempBuffer[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM] = {{{0},{0}}};
 
 /****************** about D1 Hash board end ******************/
 
 
-
-
-
 /******************** about BM1760 ASIC ********************/
 
 // how many cores in BM1760
-#define BM1760_CORE_NUM								8
+#define BM1760_CORE_NUM                             8
 
 // BM1760 ASIC input/output data header
-#define INPUT_HEADER_1								0x55
-#define INPUT_HEADER_2								0xAA
-#define OUTPUT_HEADER_1								0xAA
-#define OUTPUT_HEADER_2								0x55
+#define INPUT_HEADER_1                              0x55
+#define INPUT_HEADER_2                              0xAA
+#define OUTPUT_HEADER_1                             0xAA
+#define OUTPUT_HEADER_2                             0x55
 
 // BM1760 ASIC input data length
-#define WORK_INPUT_TYPE_WITH_SNO					0x30
-#define WORK_INPUT_TYPE_WITHOUT_SNO					0x20
-#define WORK_DATA_INPUT_LENGTH						80
-#define WORK_INPUT_LENGTH_WITHOUT_CRC				82
-#define WORK_INPUT_LENGTH_WITH_CRC					84
+#define WORK_INPUT_TYPE_WITH_SNO                    0x30
+#define WORK_INPUT_TYPE_WITHOUT_SNO                 0x20
+#define WORK_DATA_INPUT_LENGTH                      80
+#define WORK_INPUT_LENGTH_WITHOUT_CRC               82
+#define WORK_INPUT_LENGTH_WITH_CRC                  84
 
 // BM1760 ASIC output data length
-#define ASIC_INPUT_HEADER_LENGTH					0x2			// CPU send data to ASIC
-#define ASIC_OUTPUT_HEADER_LENGTH					0x2			// ASIC send data to CPU
-#define ASIC_RETURN_DATA_LENGTH_WITHOUT_HEADER		0x7
-#define ASIC_RETURN_DATA_LENGTH             		0x9
+#define ASIC_INPUT_HEADER_LENGTH                    0x2         // CPU send data to ASIC
+#define ASIC_OUTPUT_HEADER_LENGTH                   0x2         // ASIC send data to CPU
+#define ASIC_RETURN_DATA_LENGTH_WITHOUT_HEADER      0x7
+#define ASIC_RETURN_DATA_LENGTH                     0x9
 
 // Command description
-#define CMD_TYPE            						(0x2 << 5)
-#define CMD_ALL             						(0x01 << 4)
-#define SET_ADDR            						0x0
-#define SET_CONFIG          						0x1
-#define GET_STATUS          						0x2
-#define CHAIN_INACTIVE      						0x3
-#define CMD_LENTH           						0x5
-#define CONFIG_LENTH        						0x9
+#define CMD_TYPE                                    (0x2 << 5)
+#define CMD_ALL                                     (0x01 << 4)
+#define SET_ADDR                                    0x0
+#define SET_CONFIG                                  0x1
+#define GET_STATUS                                  0x2
+#define CHAIN_INACTIVE                              0x3
+#define CMD_LENTH                                   0x5
+#define CONFIG_LENTH                                0x9
 
 // Register description
-#define CHIP_ADDR									0x0
-#define HASH_RATE									0x8
-#define PLL_PARAMETER								0xc
-#define START_NONCE_OFFSET							0x10
-#define TICK_MASK									0x14
-#define MISC_CONTROL								0x1c
-#define GENERAL_I2C_COMMAND							0x20
-#define CHIP_OFFSET									0x28
-#define CORE_OFFSET									0x2C
-#define CORE_ENABLE									0x30
-#define CHIP_STATUS									0x34
-#define TIME_OUT									0x38
-#define PMONITOR_CTRL								0x3C
-#define ANALOG_MUX_CONTROL							0x40
-#define PROCESS_MONITOR_RETURE_DATA					0xAA
+#define CHIP_ADDR                                   0x0
+#define HASH_RATE                                   0x8
+#define PLL_PARAMETER                               0xc
+#define START_NONCE_OFFSET                          0x10
+#define TICK_MASK                                   0x14
+#define MISC_CONTROL                                0x1c
+#define GENERAL_I2C_COMMAND                         0x20
+#define CHIP_OFFSET                                 0x28
+#define CORE_OFFSET                                 0x2C
+#define CORE_ENABLE                                 0x30
+#define CHIP_STATUS                                 0x34
+#define TIME_OUT                                    0x38
+#define PMONITOR_CTRL                               0x3C
+#define ANALOG_MUX_CONTROL                          0x40
+#define PROCESS_MONITOR_RETURE_DATA                 0xAA
 
 // Register bits value
 
 // misc control
-#define MISC_CONTROL_DEFAULT_VALUE					0x07003A01
-#define RFS                 						(0x1 << 14)
-#define TFS(X)              						((X & 0x03) << 5)
+#define MISC_CONTROL_DEFAULT_VALUE                  0x07003A01
+#define RFS                                         (0x1 << 14)
+#define TFS(X)                                      ((X & 0x03) << 5)
 
 // analog mux control
-#define DIODE_MUX_SEL_DEFAULT_VALUE					4
-#define VDD_MUX_SEL_DEFAULT_VALUE					0
+#define DIODE_MUX_SEL_DEFAULT_VALUE                 4
+#define VDD_MUX_SEL_DEFAULT_VALUE                   0
 
 // general i2c command
-#define REGADDRVALID								(1 << 24)
-#define DEVICEADDR(addr)							(addr << 17)
-//#define DEVICEADDR									(0x4c << 17)
-#define RW											(1 << 16)	// default: write; 1:write; 0:read
-#define REGADDR(addr)								(addr << 8)
-#define DATA(data)									(data << 0)
+#define REGADDRVALID                                (1 << 24)
+#define DEVICEADDR(addr)                            (addr << 17)
+//#define DEVICEADDR                                    (0x4c << 17)
+#define RW                                          (1 << 16)   // default: write; 1:write; 0:read
+#define REGADDR(addr)                               (addr << 8)
+#define DATA(data)                                  (data << 0)
 
 // hash rate
-#define HASH_RATE_LEFT_SHIFT_BITS					10
+#define HASH_RATE_LEFT_SHIFT_BITS                   10
 
 
 /****************** about BM1760 ASIC end ******************/
 
 
-
-
-
 /******************** about PIC16F1704 ********************/
 
 // about command between CPU and PIC16F1704
-#define PIC_COMMAND_1								0x55
-#define PIC_COMMAND_2								0xaa
-#define SET_PIC_FLASH_POINTER						0x01
-#define SEND_DATA_TO_PIC							0x02    // just send data into pic's cache
-#define READ_DATA_FROM_PIC_FLASH					0x03
-#define ERASE_PIC_FLASH								0x04    // erase 32 bytes one time
-#define WRITE_DATA_INTO_FLASH						0x05    // tell pic write data into flash from cache
-#define JUMP_FROM_LOADER_TO_APP						0x06
-#define RESET_PIC									0x07
-#define GET_PIC_FLASH_POINTER						0x08
-#define SET_VOLTAGE									0x10
-#define SET_HASH_BOARD_ID							0x12
-#define READ_HASH_BOARD_ID							0x13
-#define ENABLE_VOLTAGE								0x15
-#define SEND_HEART_BEAT								0x16
-#define READ_PIC_SOFTWARE_VERSION					0x17
-#define GET_VOLTAGE									0x18
-#define WR_TEMP_OFFSET_VALUE						0x22
-#define RD_TEMP_OFFSET_VALUE						0x23
-#define SAVE_FREQ									0x24
-#define READ_OUT_FREQ								0x25
-
+#define PIC_COMMAND_1                               0x55
+#define PIC_COMMAND_2                               0xaa
+#define SET_PIC_FLASH_POINTER                       0x01
+#define SEND_DATA_TO_PIC                            0x02    // just send data into pic's cache
+#define READ_DATA_FROM_PIC_FLASH                    0x03
+#define ERASE_PIC_FLASH                             0x04    // erase 32 bytes one time
+#define WRITE_DATA_INTO_FLASH                       0x05    // tell pic write data into flash from cache
+#define JUMP_FROM_LOADER_TO_APP                     0x06
+#define RESET_PIC                                   0x07
+#define GET_PIC_FLASH_POINTER                       0x08
+#define SET_VOLTAGE                                 0x10
+#define SET_HASH_BOARD_ID                           0x12
+#define READ_HASH_BOARD_ID                          0x13
+#define ENABLE_VOLTAGE                              0x15
+#define SEND_HEART_BEAT                             0x16
+#define READ_PIC_SOFTWARE_VERSION                   0x17
+#define GET_VOLTAGE                                 0x18
+#define WR_TEMP_OFFSET_VALUE                        0x22
+#define RD_TEMP_OFFSET_VALUE                        0x23
+#define SAVE_FREQ                                   0x24
+#define READ_OUT_FREQ                               0x25
 
 // data address in pic
-#define PIC_FLASH_POINTER_START_ADDRESS_H_NEW		0x06
-#define PIC_FLASH_POINTER_START_ADDRESS_L_NEW		0x00
-#define PIC_FLASH_POINTER_END_ADDRESS_H				0x0f
-#define PIC_FLASH_POINTER_END_ADDRESS_L				0x7f
-#define PIC_FLASH_LENGTH							(((unsigned int)PIC_FLASH_POINTER_END_ADDRESS_H<<8 + PIC_FLASH_POINTER_END_ADDRESS_L) - ((unsigned int)PIC_FLASH_POINTER_START_ADDRESS_H_NEW<<8 + PIC_FLASH_POINTER_START_ADDRESS_L_NEW) + 1)
-
+#define PIC_FLASH_POINTER_START_ADDRESS_H_NEW       0x06
+#define PIC_FLASH_POINTER_START_ADDRESS_L_NEW       0x00
+#define PIC_FLASH_POINTER_END_ADDRESS_H             0x0f
+#define PIC_FLASH_POINTER_END_ADDRESS_L             0x7f
+#define PIC_FLASH_LENGTH                            (((unsigned int)PIC_FLASH_POINTER_END_ADDRESS_H<<8 + PIC_FLASH_POINTER_END_ADDRESS_L) - ((unsigned int)PIC_FLASH_POINTER_START_ADDRESS_H_NEW<<8 + PIC_FLASH_POINTER_START_ADDRESS_L_NEW) + 1)
 // pic flash erase range. 4 lines, 8 short in each line, 1 short = 2 bytes(0x3FFF).
-#define PIC_FLASH_SECTOR_LENGTH						32
-
+#define PIC_FLASH_SECTOR_LENGTH                     32
 // pic heart beat time gap
-#define HEART_BEAT_TIME_GAP							10      // 10s
-
+#define HEART_BEAT_TIME_GAP                         10      // 10s
 // pic update file
-#define PIC16F1704_PROGRAM_NEW						"/sbin/pic.txt"
-#define MAX_CHAR_NUM                        		1024
-
-#define PIC_VERSION									0x81
+#define PIC16F1704_PROGRAM_NEW                      "/sbin/pic.txt"
+#define MAX_CHAR_NUM                                1024
+#define PIC_VERSION                                 0x81
 
 /****************** about PIC16F1704 end ******************/
-
-
-
 
 
 /**************** about temperature sensor ****************/
 
 // TMP451 register
-#define TMP451_IIC_SALVE_ADDR						0x4c
-#define LOCAL_TEMP_VALUE            				0x0
-#define EXT_TEMP_VALUE_HIGH_BYTE    				0x1
-#define STATUS                      				0x2
-#define CONFIGURATION               				0x3
-#define EXT_TEMP_VALUE_LOW_BYTE     				0x10
-#define EXT_TEMP_OFFSET_HIGH_BYTE   				0x11
-#define EXT_TEMP_OFFSET_LOW_BYTE    				0x12
-#define MANUFACTURER_ID								0xFE
-#define MANUFACTURER_ID_ECT218						0x1A
+#define TMP451_IIC_SALVE_ADDR                       0x4c
+#define LOCAL_TEMP_VALUE                            0x0
+#define EXT_TEMP_VALUE_HIGH_BYTE                    0x1
+#define STATUS                                      0x2
+#define CONFIGURATION                               0x3
+#define EXT_TEMP_VALUE_LOW_BYTE                     0x10
+#define EXT_TEMP_OFFSET_HIGH_BYTE                   0x11
+#define EXT_TEMP_OFFSET_LOW_BYTE                    0x12
+#define MANUFACTURER_ID                             0xFE
+#define MANUFACTURER_ID_ECT218                      0x1A
 
 
 /************** about temperature sensor end **************/
 
 
-
-
-
 /******************** other MACRO ********************/
 
-#define MAX_RETURNED_NONCE_NUM          			30
-#define MAX_NONCE_NUMBER_IN_FIFO        			(ASIC_NUM_EACH_CHAIN * BITMAIN_MAX_CHAIN_NUM * 30)
-
-#define IIC_SLEEP									200
-
+#define MAX_RETURNED_NONCE_NUM                      30
+#define MAX_NONCE_NUMBER_IN_FIFO                    (ASIC_NUM_EACH_CHAIN * BITMAIN_MAX_CHAIN_NUM * 30)
+#define IIC_SLEEP                                   200
 // how many bytes uart received will trigger return before timeout
-#define C_CC_VMIN									ASIC_RETURN_DATA_LENGTH
+#define C_CC_VMIN                                   ASIC_RETURN_DATA_LENGTH
 
 // the max work number in the queue where stores the latest works sent to Hash board
-#define BITMAIN_MAX_QUEUE_NUM 						128
+#define BITMAIN_MAX_QUEUE_NUM                       128
 
 // swap unsigned int data
-#define Swap32(l)									(((l) >> 24) | (((l) & 0x00ff0000) >> 8) | (((l) & 0x0000ff00) << 8) | ((l) << 24))
-#define Swap16(l)									(l >> 8) | ((l & 0xff) << 8)
-
-#define hex_print(p) 								applog(LOG_DEBUG, "%s", p)
-
-#define BYTES_PER_LINE								0x10
-
-#define INIT_CONFIG_TYPE							0x51
-
-#define WAIT_REG_VALUE_COUNTER						4		// every time we check register value, we should wait WAIT_REG_VALUE_COUNTER times to make sure recieve the return value
-
-#define READ_LOOP									3		// read temperature sensor times
-
-#define READ_TEMPERATURE_TIME_GAP					10      // 10s
-#define READ_HASH_RATE_TIME_GAP						2		// 1s
-
+#define Swap32(l)                                   (((l) >> 24) | (((l) & 0x00ff0000) >> 8) | (((l) & 0x0000ff00) << 8) | ((l) << 24))
+#define Swap16(l)                                   (l >> 8) | ((l & 0xff) << 8)
+#define hex_print(p)                                applog(LOG_DEBUG, "%s", p)
+#define BYTES_PER_LINE                              0x10
+#define INIT_CONFIG_TYPE                            0x51
+#define WAIT_REG_VALUE_COUNTER                      4       // every time we check register value, we should wait WAIT_REG_VALUE_COUNTER times to make sure recieve the return value
+#define READ_LOOP                                   3       // read temperature sensor times
+#define READ_TEMPERATURE_TIME_GAP                   2       // 2s
+#define READ_HASH_RATE_TIME_GAP                     5       // 5s
 
 /****************** other MACRO end ******************/
-
-
-
 
 
 /******************** struct definition ********************/
@@ -343,13 +286,12 @@ struct init_config
     uint8_t     reg_address;
     uint16_t    chain_min_freq;
     uint16_t    chain_max_freq;
-	uint32_t	misc_control_reg_value;
-	uint8_t		diode_mux_sel;
-	uint8_t		vdd_mux_sel;
-	uint8_t     reserved3[2];
+    uint32_t    misc_control_reg_value;
+    uint8_t     diode_mux_sel;
+    uint8_t     vdd_mux_sel;
+    uint8_t     reserved3[2];
     uint16_t    crc;
 } __attribute__((packed, aligned(4)));
-
 
 struct bitmain_DASH_info
 {
@@ -374,12 +316,12 @@ struct bitmain_DASH_info
     uint8_t     chain_asic_num[BITMAIN_MAX_CHAIN_NUM];
     uint8_t     temp[BITMAIN_MAX_CHAIN_NUM];
     uint8_t     chain_index;
-    uint8_t     chain_status[BITMAIN_MAX_CHAIN_NUM];	// 1: chain exist; 0: chain not exist
+    uint8_t     chain_status[BITMAIN_MAX_CHAIN_NUM];    // 1: chain exist; 0: chain not exist
     uint32_t    dev_fd[BITMAIN_MAX_CHAIN_NUM];
     uint8_t     fan_speed_value[BITMAIN_MAX_FAN_NUM];
     uint16_t    freq[BITMAIN_MAX_CHAIN_NUM];
     uint32_t    i2c_fd;
-    struct work *work_queue[BITMAIN_MAX_QUEUE_NUM];		// store the latest works that sent to Hash boards 
+    struct work *work_queue[BITMAIN_MAX_QUEUE_NUM];     // store the latest works that sent to Hash boards
     struct thr_info *thr;
     pthread_t read_nonce_thr;
     pthread_t uart_tx_t[BITMAIN_MAX_CHAIN_NUM];
@@ -390,15 +332,14 @@ struct bitmain_DASH_info
     uint16_t    crc;
 } __attribute__((packed, aligned(4)));
 
-
 struct all_parameters
 {
 
     uint32_t    pwm_value;
     uint32_t    duty_ns;
     uint32_t    dev_fd[BITMAIN_MAX_CHAIN_NUM];
-    uint8_t     chain_exist[BITMAIN_MAX_CHAIN_NUM];		// 1: chain exist; 0: chain not exist
-	uint8_t		chain_asic_in_full[BITMAIN_MAX_CHAIN_NUM];
+    uint8_t     chain_exist[BITMAIN_MAX_CHAIN_NUM];     // 1: chain exist; 0: chain not exist
+    uint8_t     chain_asic_in_full[BITMAIN_MAX_CHAIN_NUM];
     uint32_t    timeout;
     uint32_t    fan_exist_map;
     uint32_t    temp_sensor_map;
@@ -406,7 +347,7 @@ struct all_parameters
     uint32_t    chain_asic_exist[BITMAIN_MAX_CHAIN_NUM][8];
     uint32_t    chain_asic_status[BITMAIN_MAX_CHAIN_NUM][8];
     int16_t     chain_asic_temp[BITMAIN_MAX_CHAIN_NUM][8][4];
-	char		whether_read_out_temp[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM];	// -1: not read out; 1: read out. only local temp
+    char        whether_read_out_temp[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM];    // -1: not read out; 1: read out. only local temp
     int8_t      chain_asic_iic[ASIC_NUM_EACH_CHAIN];
     uint32_t    chain_hw[BITMAIN_MAX_CHAIN_NUM];
     uint32_t    chain_asic_nonce[BITMAIN_MAX_CHAIN_NUM][ASIC_NUM_EACH_CHAIN];
@@ -473,10 +414,10 @@ struct nonce_ctx
 {
     uint32_t nonce;
     uint8_t diff;
-    uint8_t wc;			// Bit[7]: Reserved. Bit[6:0]: work count
-    uint8_t crc5;		// Bit[7] fixed as 1. Bit[6:5]:reserved. Bit[4:0] crc5
+    uint8_t wc;         // Bit[7]: Reserved. Bit[6:0]: work count
+    uint8_t crc5;       // Bit[7] fixed as 1. Bit[6:5]:reserved. Bit[4:0] crc5
     uint8_t chainid;
-}__attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(4)));
 
 
 struct nonce_buf
@@ -485,7 +426,7 @@ struct nonce_buf
     uint32_t p_rd;
     uint32_t nonce_num;
     struct nonce_ctx nonce_buffer[MAX_NONCE_NUMBER_IN_FIFO];
-}__attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(4)));
 
 
 struct reg_ctx
@@ -493,26 +434,26 @@ struct reg_ctx
     uint32_t reg_value;
     uint8_t chipaddr;
     uint8_t regaddr;
-    uint8_t crc5;		//Bit[7:5]:0, Bit[4:0] crc5
+    uint8_t crc5;       //Bit[7:5]:0, Bit[4:0] crc5
     uint8_t chainid;
-}__attribute__((packed, aligned(4)));
+} __attribute__((packed, aligned(4)));
 
 
 struct reg_buf
 {
     uint32_t p_wr;
     uint32_t p_rd;
-    uint32_t reg_value_num;    
+    uint32_t reg_value_num;
     struct reg_ctx reg_buffer[MAX_NONCE_NUMBER_IN_FIFO];
 } __attribute__((packed, aligned(4)));
 
 
 struct work_dash
 {
-	uint8_t type;							// Bit[7:5]: Type,fixed as 0x01. Bit[4]:sno valid   Bit[3:0]:reserved
-	uint8_t wc;								// bit[7]: reserved, bit[6:0]: work count base
-	uint8_t work[WORK_DATA_INPUT_LENGTH];	// 0-75 bytes are dash work; 76-79 are start nonce field
-	uint16_t crc16;							// crc, but not include the header 0x55, 0xaa
+    uint8_t type;                           // Bit[7:5]: Type,fixed as 0x01. Bit[4]:sno valid   Bit[3:0]:reserved
+    uint8_t wc;                             // bit[7]: reserved, bit[6:0]: work count base
+    uint8_t work[WORK_DATA_INPUT_LENGTH];   // 0-75 bytes are dash work; 76-79 are start nonce field
+    uint16_t crc16;                         // crc, but not include the header 0x55, 0xaa
 };
 
 /* it does not seem to be used
@@ -534,15 +475,14 @@ struct pll_freq
 /****************** struct definition end ******************/
 
 
-
-
-
 /******************** global variable ********************/
 
-static char nibble[] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-	
+static char nibble[] =
+{
+    '0', '1', '2', '3', '4', '5', '6', '7',
+    '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
+};
+
 
 static struct pll_freq freq_pll_map[] =
 {
@@ -648,18 +588,7 @@ static struct pll_freq freq_pll_map[] =
     {650, 0x00680221}
 };
 
-
-
 /****************** global variable end ******************/
-
-
-
-
-
-
-
-
-
 
 
 /******************** referencing functions from other files ********************/
