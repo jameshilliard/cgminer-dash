@@ -388,12 +388,12 @@ pthread_cond_t gws_cond;
 double g_local_mhashes_dones[CG_LOCAL_MHASHES_MAX_NUM] = {0};
 int g_local_mhashes_index = 0;
 double g_displayed_rolling = 0;
-char g_miner_version[256] = {0};		// store cgminer version number
+char g_miner_version[256] = {0};        // store cgminer version number
 char g_miner_compiletime[256] = {0};
 char g_miner_type[256] = {0};
 
-extern int opt_bitmain_fan_pwm;		// if not control fan speed according to temperature, use this parameter to control fan speed
-extern bool opt_bitmain_fan_ctrl;	// false: control fan speed according to temperature; true: use opt_bitmain_fan_pwm to control fan speed
+extern int opt_bitmain_fan_pwm;     // if not control fan speed according to temperature, use this parameter to control fan speed
+extern bool opt_bitmain_fan_ctrl;   // false: control fan speed according to temperature; true: use opt_bitmain_fan_pwm to control fan speed
 extern int opt_bitmain_DASH_freq;
 extern int opt_bitmain_DASH_voltage;
 extern int8_t opt_bitmain_DASH_core_temp;
@@ -1310,629 +1310,629 @@ static struct opt_table opt_config_table[] =
 {
 #ifdef USE_ICARUS
     OPT_WITH_ARG("--anu-freq",
-    set_float_125_to_500, &opt_show_floatval, &opt_anu_freq,
-    "Set AntminerU1/2 frequency in MHz, range 125-500"),
+                 set_float_125_to_500, &opt_show_floatval, &opt_anu_freq,
+                 "Set AntminerU1/2 frequency in MHz, range 125-500"),
 #endif
 
     OPT_WITH_ARG("--version-file",
-    set_version_path, NULL, opt_hidden,
-    "Set miner version file"),
+                 set_version_path, NULL, opt_hidden,
+                 "Set miner version file"),
     OPT_WITH_ARG("--logfile-openflag",
-    set_logfile_openflag, NULL, opt_hidden,
-    "Set log file open flag, default: a+"),
+                 set_logfile_openflag, NULL, opt_hidden,
+                 "Set log file open flag, default: a+"),
     OPT_WITH_ARG("--logwork",
-    set_logwork_path, NULL, opt_hidden,
-    "Set log work file path, following: minertext"),
+                 set_logwork_path, NULL, opt_hidden,
+                 "Set log work file path, following: minertext"),
     OPT_WITH_ARG("--logwork-asicnum",
-    set_logwork_asicnum, NULL, opt_hidden,
-    "Set log work asic num, following: 1, 32, 64"),
+                 set_logwork_asicnum, NULL, opt_hidden,
+                 "Set log work asic num, following: 1, 32, 64"),
     OPT_WITHOUT_ARG("--logwork-diff",
-    opt_set_bool, &opt_logwork_diff,
-    "Allow log work diff"),
+                    opt_set_bool, &opt_logwork_diff,
+                    "Allow log work diff"),
     OPT_WITH_ARG("--logfile",
-    set_logfile_path, NULL, opt_hidden,
-    "Set log file, default: cgminer.log"),
+                 set_logfile_path, NULL, opt_hidden,
+                 "Set log file, default: cgminer.log"),
     OPT_WITH_ARG("--api-allow",
-    opt_set_charp, NULL, &opt_api_allow,
-    "Allow API access only to the given list of [G:]IP[/Prefix] addresses[/subnets]"),
+                 opt_set_charp, NULL, &opt_api_allow,
+                 "Allow API access only to the given list of [G:]IP[/Prefix] addresses[/subnets]"),
     OPT_WITH_ARG("--api-description",
-    opt_set_charp, NULL, &opt_api_description,
-    "Description placed in the API status header, default: cgminer version"),
+                 opt_set_charp, NULL, &opt_api_description,
+                 "Description placed in the API status header, default: cgminer version"),
     OPT_WITH_ARG("--api-groups",
-    opt_set_charp, NULL, &opt_api_groups,
-    "API one letter groups G:cmd:cmd[,P:cmd:*...] defining the cmds a groups can use"),
+                 opt_set_charp, NULL, &opt_api_groups,
+                 "API one letter groups G:cmd:cmd[,P:cmd:*...] defining the cmds a groups can use"),
     OPT_WITHOUT_ARG("--api-listen",
-    opt_set_bool, &opt_api_listen,
-    "Enable API, default: disabled"),
+                    opt_set_bool, &opt_api_listen,
+                    "Enable API, default: disabled"),
     OPT_WITHOUT_ARG("--api-mcast",
-    opt_set_bool, &opt_api_mcast,
-    "Enable API Multicast listener, default: disabled"),
+                    opt_set_bool, &opt_api_mcast,
+                    "Enable API Multicast listener, default: disabled"),
     OPT_WITH_ARG("--api-mcast-addr",
-    opt_set_charp, NULL, &opt_api_mcast_addr,
-    "API Multicast listen address"),
+                 opt_set_charp, NULL, &opt_api_mcast_addr,
+                 "API Multicast listen address"),
     OPT_WITH_ARG("--api-mcast-code",
-    opt_set_charp, NULL, &opt_api_mcast_code,
-    "Code expected in the API Multicast message, don't use '-'"),
+                 opt_set_charp, NULL, &opt_api_mcast_code,
+                 "Code expected in the API Multicast message, don't use '-'"),
     OPT_WITH_ARG("--api-mcast-des",
-    opt_set_charp, NULL, &opt_api_mcast_des,
-    "Description appended to the API Multicast reply, default: ''"),
+                 opt_set_charp, NULL, &opt_api_mcast_des,
+                 "Description appended to the API Multicast reply, default: ''"),
     OPT_WITH_ARG("--api-mcast-port",
-    set_int_1_to_65535, opt_show_intval, &opt_api_mcast_port,
-    "API Multicast listen port"),
+                 set_int_1_to_65535, opt_show_intval, &opt_api_mcast_port,
+                 "API Multicast listen port"),
     OPT_WITHOUT_ARG("--api-network",
-    opt_set_bool, &opt_api_network,
-    "Allow API (if enabled) to listen on/for any address, default: only 127.0.0.1"),
+                    opt_set_bool, &opt_api_network,
+                    "Allow API (if enabled) to listen on/for any address, default: only 127.0.0.1"),
     OPT_WITH_ARG("--api-port",
-    set_int_1_to_65535, opt_show_intval, &opt_api_port,
-    "Port number of miner API"),
+                 set_int_1_to_65535, opt_show_intval, &opt_api_port,
+                 "Port number of miner API"),
     OPT_WITH_ARG("--api-host",
-    opt_set_charp, NULL, &opt_api_host,
-    "Specify API listen address, default: 0.0.0.0"),
+                 opt_set_charp, NULL, &opt_api_host,
+                 "Specify API listen address, default: 0.0.0.0"),
 #ifdef USE_ICARUS
     OPT_WITH_ARG("--au3-freq",
-    set_float_100_to_250, &opt_show_floatval, &opt_au3_freq,
-    "Set AntminerU3 frequency in MHz, range 100-250"),
+                 set_float_100_to_250, &opt_show_floatval, &opt_au3_freq,
+                 "Set AntminerU3 frequency in MHz, range 100-250"),
     OPT_WITH_ARG("--au3-volt",
-    set_int_0_to_9999, &opt_show_intval, &opt_au3_volt,
-    "Set AntminerU3 voltage in mv, range 725-850, 0 to not set"),
+                 set_int_0_to_9999, &opt_show_intval, &opt_au3_volt,
+                 "Set AntminerU3 voltage in mv, range 725-850, 0 to not set"),
 #endif
 #ifdef USE_AVALON
     OPT_WITHOUT_ARG("--avalon-auto",
-    opt_set_bool, &opt_avalon_auto,
-    "Adjust avalon overclock frequency dynamically for best hashrate"),
+                    opt_set_bool, &opt_avalon_auto,
+                    "Adjust avalon overclock frequency dynamically for best hashrate"),
     OPT_WITH_ARG("--avalon-cutoff",
-    set_int_0_to_100, opt_show_intval, &opt_avalon_overheat,
-    "Set avalon overheat cut off temperature"),
+                 set_int_0_to_100, opt_show_intval, &opt_avalon_overheat,
+                 "Set avalon overheat cut off temperature"),
     OPT_WITH_CBARG("--avalon-fan",
-    set_avalon_fan, NULL, &opt_set_avalon_fan,
-    "Set fanspeed percentage for avalon, single value or range (default: 20-100)"),
+                   set_avalon_fan, NULL, &opt_set_avalon_fan,
+                   "Set fanspeed percentage for avalon, single value or range (default: 20-100)"),
     OPT_WITH_CBARG("--avalon-freq",
-    set_avalon_freq, NULL, &opt_set_avalon_freq,
-    "Set frequency range for avalon-auto, single value or range"),
+                   set_avalon_freq, NULL, &opt_set_avalon_freq,
+                   "Set frequency range for avalon-auto, single value or range"),
     OPT_WITH_ARG("--avalon-options",
-    opt_set_charp, NULL, &opt_avalon_options,
-    "Set avalon options baud:miners:asic:timeout:freq:tech"),
+                 opt_set_charp, NULL, &opt_avalon_options,
+                 "Set avalon options baud:miners:asic:timeout:freq:tech"),
     OPT_WITH_ARG("--avalon-temp",
-    set_int_0_to_100, opt_show_intval, &opt_avalon_temp,
-    "Set avalon target temperature"),
+                 set_int_0_to_100, opt_show_intval, &opt_avalon_temp,
+                 "Set avalon target temperature"),
 #endif
 #ifdef USE_AVALON2
     OPT_WITH_CBARG("--avalon2-freq",
-    set_avalon2_freq, NULL, &opt_set_avalon2_freq,
-    "Set frequency range for Avalon2, single value or range, step: 25"),
+                   set_avalon2_freq, NULL, &opt_set_avalon2_freq,
+                   "Set frequency range for Avalon2, single value or range, step: 25"),
     OPT_WITH_CBARG("--avalon2-voltage",
-    set_avalon2_voltage, NULL, &opt_set_avalon2_voltage,
-    "Set Avalon2 core voltage, in millivolts, step: 125"),
+                   set_avalon2_voltage, NULL, &opt_set_avalon2_voltage,
+                   "Set Avalon2 core voltage, in millivolts, step: 125"),
     OPT_WITH_CBARG("--avalon2-fan",
-    set_avalon2_fan, NULL, &opt_set_avalon2_fan,
-    "Set Avalon2 target fan speed"),
+                   set_avalon2_fan, NULL, &opt_set_avalon2_fan,
+                   "Set Avalon2 target fan speed"),
     OPT_WITH_ARG("--avalon2-cutoff",
-    set_int_0_to_100, opt_show_intval, &opt_avalon2_overheat,
-    "Set Avalon2 overheat cut off temperature"),
+                 set_int_0_to_100, opt_show_intval, &opt_avalon2_overheat,
+                 "Set Avalon2 overheat cut off temperature"),
     OPT_WITHOUT_ARG("--avalon2-fixed-speed",
-    set_avalon2_fixed_speed, &opt_avalon2_fan_fixed,
-    "Set Avalon2 fan to fixed speed"),
+                    set_avalon2_fixed_speed, &opt_avalon2_fan_fixed,
+                    "Set Avalon2 fan to fixed speed"),
     OPT_WITH_ARG("--avalon2-polling-delay",
-    set_int_1_to_65535, opt_show_intval, &opt_avalon2_polling_delay,
-    "Set Avalon2 polling delay value (ms)"),
+                 set_int_1_to_65535, opt_show_intval, &opt_avalon2_polling_delay,
+                 "Set Avalon2 polling delay value (ms)"),
 #endif
 #ifdef USE_AVALON4
     OPT_WITHOUT_ARG("--avalon4-automatic-voltage",
-    opt_set_bool, &opt_avalon4_autov,
-    "Automatic adjust voltage base on module DH"),
+                    opt_set_bool, &opt_avalon4_autov,
+                    "Automatic adjust voltage base on module DH"),
     OPT_WITH_CBARG("--avalon4-voltage",
-    set_avalon4_voltage, NULL, &opt_set_avalon4_voltage,
-    "Set Avalon4 core voltage, in millivolts, step: 125"),
+                   set_avalon4_voltage, NULL, &opt_set_avalon4_voltage,
+                   "Set Avalon4 core voltage, in millivolts, step: 125"),
     OPT_WITH_CBARG("--avalon4-freq",
-    set_avalon4_freq, NULL, &opt_set_avalon4_freq,
-    "Set frequency for Avalon4, 1 to 3 values, example: 445:385:370"),
+                   set_avalon4_freq, NULL, &opt_set_avalon4_freq,
+                   "Set frequency for Avalon4, 1 to 3 values, example: 445:385:370"),
     OPT_WITH_CBARG("--avalon4-fan",
-    set_avalon4_fan, NULL, &opt_set_avalon4_fan,
-    "Set Avalon4 target fan speed range"),
+                   set_avalon4_fan, NULL, &opt_set_avalon4_fan,
+                   "Set Avalon4 target fan speed range"),
     OPT_WITH_ARG("--avalon4-temp",
-    set_int_22_to_55, opt_show_intval, &opt_avalon4_temp_target,
-    "Set Avalon4 target temperature"),
+                 set_int_22_to_55, opt_show_intval, &opt_avalon4_temp_target,
+                 "Set Avalon4 target temperature"),
     OPT_WITH_ARG("--avalon4-cutoff",
-    set_int_42_to_65, opt_show_intval, &opt_avalon4_overheat,
-    "Set Avalon4 overheat cut off temperature"),
+                 set_int_42_to_65, opt_show_intval, &opt_avalon4_overheat,
+                 "Set Avalon4 overheat cut off temperature"),
     OPT_WITH_ARG("--avalon4-polling-delay",
-    set_int_1_to_65535, opt_show_intval, &opt_avalon4_polling_delay,
-    "Set Avalon4 polling delay value (ms)"),
+                 set_int_1_to_65535, opt_show_intval, &opt_avalon4_polling_delay,
+                 "Set Avalon4 polling delay value (ms)"),
     OPT_WITH_ARG("--avalon4-ntime-offset",
-    opt_set_intval, opt_show_intval, &opt_avalon4_ntime_offset,
-    "Set Avalon4 MM ntime rolling max offset"),
+                 opt_set_intval, opt_show_intval, &opt_avalon4_ntime_offset,
+                 "Set Avalon4 MM ntime rolling max offset"),
     OPT_WITH_ARG("--avalon4-aucspeed",
-    opt_set_intval, opt_show_intval, &opt_avalon4_aucspeed,
-    "Set Avalon4 AUC IIC bus speed"),
+                 opt_set_intval, opt_show_intval, &opt_avalon4_aucspeed,
+                 "Set Avalon4 AUC IIC bus speed"),
     OPT_WITH_ARG("--avalon4-aucxdelay",
-    opt_set_intval, opt_show_intval, &opt_avalon4_aucxdelay,
-    "Set Avalon4 AUC IIC xfer read delay, 4800 ~= 1ms"),
+                 opt_set_intval, opt_show_intval, &opt_avalon4_aucxdelay,
+                 "Set Avalon4 AUC IIC xfer read delay, 4800 ~= 1ms"),
 #endif
 #ifdef USE_BAB
     OPT_WITH_ARG("--bab-options",
-    opt_set_charp, NULL, &opt_bab_options,
-    "Set bab options max:def:min:up:down:hz:delay:trf"),
+                 opt_set_charp, NULL, &opt_bab_options,
+                 "Set bab options max:def:min:up:down:hz:delay:trf"),
 #endif
     OPT_WITHOUT_ARG("--balance",
-    set_balance, &pool_strategy,
-    "Change multipool strategy from failover to even share balance"),
+                    set_balance, &pool_strategy,
+                    "Change multipool strategy from failover to even share balance"),
     OPT_WITH_ARG("--benchfile",
-    opt_set_charp, NULL, &opt_benchfile,
-    "Run cgminer in benchmark mode using a work file - produces no shares"),
+                 opt_set_charp, NULL, &opt_benchfile,
+                 "Run cgminer in benchmark mode using a work file - produces no shares"),
     OPT_WITHOUT_ARG("--benchfile-display",
-    opt_set_bool, &opt_benchfile_display,
-    "Display each benchfile nonce found"),
+                    opt_set_bool, &opt_benchfile_display,
+                    "Display each benchfile nonce found"),
     OPT_WITHOUT_ARG("--benchmark",
-    opt_set_bool, &opt_benchmark,
-    "Run cgminer in benchmark mode - produces no shares"),
+                    opt_set_bool, &opt_benchmark,
+                    "Run cgminer in benchmark mode - produces no shares"),
 #if defined(USE_BITFORCE)
     OPT_WITHOUT_ARG("--bfl-range",
-    opt_set_bool, &opt_bfl_noncerange,
-    "Use nonce range on bitforce devices if supported"),
+                    opt_set_bool, &opt_bfl_noncerange,
+                    "Use nonce range on bitforce devices if supported"),
 #endif
 #ifdef USE_BFLSC
     OPT_WITH_ARG("--bflsc-overheat",
-    set_int_0_to_200, opt_show_intval, &opt_bflsc_overheat,
-    "Set overheat temperature where BFLSC devices throttle, 0 to disable"),
+                 set_int_0_to_200, opt_show_intval, &opt_bflsc_overheat,
+                 "Set overheat temperature where BFLSC devices throttle, 0 to disable"),
 #endif
 #ifdef USE_AVALON
     OPT_WITH_ARG("--bitburner-voltage",
-    opt_set_intval, NULL, &opt_bitburner_core_voltage,
-    "Set BitBurner (Avalon) core voltage, in millivolts"),
+                 opt_set_intval, NULL, &opt_bitburner_core_voltage,
+                 "Set BitBurner (Avalon) core voltage, in millivolts"),
     OPT_WITH_ARG("--bitburner-fury-voltage",
-    opt_set_intval, NULL, &opt_bitburner_fury_core_voltage,
-    "Set BitBurner Fury core voltage, in millivolts"),
+                 opt_set_intval, NULL, &opt_bitburner_fury_core_voltage,
+                 "Set BitBurner Fury core voltage, in millivolts"),
     OPT_WITH_ARG("--bitburner-fury-options",
-    opt_set_charp, NULL, &opt_bitburner_fury_options,
-    "Override avalon-options for BitBurner Fury boards baud:miners:asic:timeout:freq"),
+                 opt_set_charp, NULL, &opt_bitburner_fury_options,
+                 "Override avalon-options for BitBurner Fury boards baud:miners:asic:timeout:freq"),
 #endif
 #ifdef USE_BMSC
     OPT_WITH_ARG("--bmsc-options",
-    set_bmsc_options, NULL, NULL,
-    opt_hidden),
+                 set_bmsc_options, NULL, NULL,
+                 opt_hidden),
     OPT_WITH_ARG("--bmsc-bandops",
-    set_bmsc_bandops, NULL, NULL,
-    opt_hidden),
+                 set_bmsc_bandops, NULL, NULL,
+                 opt_hidden),
     OPT_WITH_ARG("--bmsc-timing",
-    set_bmsc_timing, NULL, NULL,
-    opt_hidden),
+                 set_bmsc_timing, NULL, NULL,
+                 opt_hidden),
     OPT_WITHOUT_ARG("--bmsc-gray",
-    opt_set_bool, &opt_bmsc_gray,
-    "Use gray"),
+                    opt_set_bool, &opt_bmsc_gray,
+                    "Use gray"),
     OPT_WITH_ARG("--bmsc-freq",
-    set_bmsc_freq, NULL, NULL,
-    opt_hidden),
+                 set_bmsc_freq, NULL, NULL,
+                 opt_hidden),
     OPT_WITH_ARG("--bmsc-rdreg",
-    set_bmsc_rdreg, NULL, NULL,
-    opt_hidden),
+                 set_bmsc_rdreg, NULL, NULL,
+                 opt_hidden),
     OPT_WITH_ARG("--bmsc-voltage",
-    set_bmsc_voltage, NULL, NULL,
-    opt_hidden),
+                 set_bmsc_voltage, NULL, NULL,
+                 opt_hidden),
     OPT_WITHOUT_ARG("--bmsc-bootstart",
-    opt_set_bool, &opt_bmsc_bootstart,
-    "Enable boot start, default: disabled"),
+                    opt_set_bool, &opt_bmsc_bootstart,
+                    "Enable boot start, default: disabled"),
     OPT_WITHOUT_ARG("--bmsc-rdworktest",
-    opt_set_bool, &opt_bmsc_rdworktest,
-    "Record work test data to file"),
+                    opt_set_bool, &opt_bmsc_rdworktest,
+                    "Record work test data to file"),
 #endif
 
 #ifdef USE_BITMAIN_D1
     OPT_WITHOUT_ARG("--bitmain-fan-ctrl",
-    opt_set_bool, &opt_bitmain_fan_ctrl,
-    "Enable bitmain miner fan controlling"),
+                    opt_set_bool, &opt_bitmain_fan_ctrl,
+                    "Enable bitmain miner fan controlling"),
     OPT_WITH_ARG("--bitmain-fan-pwm",
-    set_int_0_to_100, opt_show_intval, &opt_bitmain_fan_pwm,
-    "Set bitmain fan pwm percentage 0~100"),
+                 set_int_0_to_100, opt_show_intval, &opt_bitmain_fan_pwm,
+                 "Set bitmain fan pwm percentage 0~100"),
     OPT_WITH_ARG("--bitmain-freq",
-    set_int_0_to_9999,opt_show_intval, &opt_bitmain_DASH_freq,
-    "Set frequency"),
+                 set_int_0_to_9999,opt_show_intval, &opt_bitmain_DASH_freq,
+                 "Set frequency"),
     OPT_WITH_ARG("--bitmain-core-temp",
-    set_int_0_to_100,opt_show_intval, &opt_bitmain_DASH_core_temp,
-    "Select core temp"),
+                 set_int_0_to_100,opt_show_intval, &opt_bitmain_DASH_core_temp,
+                 "Select core temp"),
     OPT_WITH_ARG("--bitmain-voltage",
-    set_int_0_to_9999,opt_show_intval, &opt_bitmain_DASH_voltage,
-    "Set voltage"),
+                 set_int_0_to_9999,opt_show_intval, &opt_bitmain_DASH_voltage,
+                 "Set voltage"),
 #endif
 
 #ifdef USE_BITMAIN_C5
     OPT_WITHOUT_ARG("--bitmain-fan-ctrl",
-    opt_set_bool, &opt_bitmain_fan_ctrl,
-    "Enable bitmain miner fan controlling"),
+                    opt_set_bool, &opt_bitmain_fan_ctrl,
+                    "Enable bitmain miner fan controlling"),
     OPT_WITH_ARG("--bitmain-fan-pwm",
-    set_int_0_to_100, opt_show_intval, &opt_bitmain_fan_pwm,
-    "Set bitmain fan pwm percentage 0~100"),
+                 set_int_0_to_100, opt_show_intval, &opt_bitmain_fan_pwm,
+                 "Set bitmain fan pwm percentage 0~100"),
     OPT_WITH_ARG("--bitmain-freq",
-    set_int_0_to_9999,opt_show_intval, &opt_bitmain_c5_freq,
-    "Set frequency"),
+                 set_int_0_to_9999,opt_show_intval, &opt_bitmain_c5_freq,
+                 "Set frequency"),
     OPT_WITH_ARG("--bitmain-voltage",
-    set_int_0_to_9999,opt_show_intval, &opt_bitmain_c5_voltage,
-    "Set voltage"),
+                 set_int_0_to_9999,opt_show_intval, &opt_bitmain_c5_voltage,
+                 "Set voltage"),
     OPT_WITHOUT_ARG("--bitmain-use-vil",
-    opt_set_bool, &opt_bitmain_new_cmd_type_vil,
-    "Set bitmain miner use vil mode"),
+                    opt_set_bool, &opt_bitmain_new_cmd_type_vil,
+                    "Set bitmain miner use vil mode"),
 
 #endif
 
 #ifdef USE_BITMAIN
     OPT_WITH_ARG("--bitmain-dev",
-    set_bitmain_dev, NULL, NULL,
-    "Set bitmain device (default: usb mode, other windows: COM1 or linux: /dev/bitmain-asic)"),
+                 set_bitmain_dev, NULL, NULL,
+                 "Set bitmain device (default: usb mode, other windows: COM1 or linux: /dev/bitmain-asic)"),
     OPT_WITHOUT_ARG("--bitmain-hwerror",
-    opt_set_bool, &opt_bitmain_hwerror,
-    "Set bitmain device detect hardware error"),
+                    opt_set_bool, &opt_bitmain_hwerror,
+                    "Set bitmain device detect hardware error"),
     OPT_WITHOUT_ARG("--bitmain-checkall",
-    opt_set_bool, &opt_bitmain_checkall,
-    "Set bitmain check all"),
+                    opt_set_bool, &opt_bitmain_checkall,
+                    "Set bitmain check all"),
     OPT_WITHOUT_ARG("--bitmain-checkn2diff",
-    opt_set_bool, &opt_bitmain_checkn2diff,
-    "Set bitmain check not 2 pow diff"),
+                    opt_set_bool, &opt_bitmain_checkn2diff,
+                    "Set bitmain check not 2 pow diff"),
     OPT_WITHOUT_ARG("--bitmain-nobeeper",
-    opt_set_bool, &opt_bitmain_nobeeper,
-    "Set bitmain beeper no ringing"),
+                    opt_set_bool, &opt_bitmain_nobeeper,
+                    "Set bitmain beeper no ringing"),
     OPT_WITHOUT_ARG("--bitmain-notempoverctrl",
-    opt_set_bool, &opt_bitmain_notempoverctrl,
-    "Set bitmain not stop runing when temprerature is over 80 degree Celsius"),
+                    opt_set_bool, &opt_bitmain_notempoverctrl,
+                    "Set bitmain not stop runing when temprerature is over 80 degree Celsius"),
     OPT_WITHOUT_ARG("--bitmain-auto",
-    opt_set_bool, &opt_bitmain_auto,
-    "Adjust bitmain overclock frequency dynamically for best hashrate"),
+                    opt_set_bool, &opt_bitmain_auto,
+                    "Adjust bitmain overclock frequency dynamically for best hashrate"),
     OPT_WITHOUT_ARG("--bitmain-homemode",
-    opt_set_bool, &opt_bitmain_homemode,
-    "Set bitmain miner to home mode"),
+                    opt_set_bool, &opt_bitmain_homemode,
+                    "Set bitmain miner to home mode"),
     OPT_WITH_ARG("--bitmain-cutoff",
-    set_int_0_to_100, opt_show_intval, &opt_bitmain_overheat,
-    "Set bitmain overheat cut off temperature"),
+                 set_int_0_to_100, opt_show_intval, &opt_bitmain_overheat,
+                 "Set bitmain overheat cut off temperature"),
     OPT_WITH_ARG("--bitmain-fan",
-    set_bitmain_fan, NULL, NULL,
-    "Set fanspeed percentage for bitmain, single value or range (default: 20-100)"),
+                 set_bitmain_fan, NULL, NULL,
+                 "Set fanspeed percentage for bitmain, single value or range (default: 20-100)"),
     OPT_WITH_ARG("--bitmain-freq",
-    set_bitmain_freq, NULL, NULL,
-    "Set frequency"),
+                 set_bitmain_freq, NULL, NULL,
+                 "Set frequency"),
     OPT_WITH_ARG("--bitmain-voltage",
-    set_bitmain_voltage, NULL, NULL,
-    "Set voltage"),
+                 set_bitmain_voltage, NULL, NULL,
+                 "Set voltage"),
     OPT_WITH_ARG("--bitmain-options",
-    set_bitmain_options, NULL, NULL,
-    "Set bitmain options baud:miners:asic:timeout:freq"),
+                 set_bitmain_options, NULL, NULL,
+                 "Set bitmain options baud:miners:asic:timeout:freq"),
     OPT_WITH_ARG("--bitmain-temp",
-    set_int_0_to_100, opt_show_intval, &opt_bitmain_temp,
-    "Set bitmain target temperature"),
+                 set_int_0_to_100, opt_show_intval, &opt_bitmain_temp,
+                 "Set bitmain target temperature"),
 #endif
 #ifdef USE_BITMINE_A1
     OPT_WITH_ARG("--bitmine-a1-options",
-    opt_set_charp, NULL, &opt_bitmine_a1_options,
-    "Bitmine A1 options ref_clk_khz:sys_clk_khz:spi_clk_khz:override_chip_num"),
+                 opt_set_charp, NULL, &opt_bitmine_a1_options,
+                 "Bitmine A1 options ref_clk_khz:sys_clk_khz:spi_clk_khz:override_chip_num"),
 #endif
 #ifdef USE_BITFURY
     OPT_WITH_ARG("--bxf-bits",
-    set_int_32_to_63, opt_show_intval, &opt_bxf_bits,
-    "Set max BXF/HXF bits for overclocking"),
+                 set_int_32_to_63, opt_show_intval, &opt_bxf_bits,
+                 "Set max BXF/HXF bits for overclocking"),
     OPT_WITH_ARG("--bxf-debug",
-    set_int_0_to_4, opt_show_intval, &opt_bxf_debug,
-    "BXF: Debug all USB I/O, > is to the board(s), < is from the board(s)"),
+                 set_int_0_to_4, opt_show_intval, &opt_bxf_debug,
+                 "BXF: Debug all USB I/O, > is to the board(s), < is from the board(s)"),
     OPT_WITH_ARG("--bxf-temp-target",
-    set_int_0_to_200, opt_show_intval, &opt_bxf_temp_target,
-    "Set target temperature for BXF/HXF devices"),
+                 set_int_0_to_200, opt_show_intval, &opt_bxf_temp_target,
+                 "Set target temperature for BXF/HXF devices"),
     OPT_WITH_ARG("--bxm-bits",
-    set_int_0_to_100, opt_show_intval, &opt_bxm_bits,
-    "Set BXM bits for overclocking"),
+                 set_int_0_to_100, opt_show_intval, &opt_bxm_bits,
+                 "Set BXM bits for overclocking"),
 #endif
 #ifdef USE_BLOCKERUPTER
     OPT_WITH_ARG("--bet-clk",
-    opt_set_intval, opt_show_intval, &opt_bet_clk,
-    "Set Block Erupter clock"),
+                 opt_set_intval, opt_show_intval, &opt_bet_clk,
+                 "Set Block Erupter clock"),
 #endif
 #ifdef HAVE_LIBCURL
     OPT_WITH_ARG("--btc-address",
-    opt_set_charp, NULL, &opt_btc_address,
-    "Set bitcoin target address when solo mining to bitcoind (mandatory)"),
+                 opt_set_charp, NULL, &opt_btc_address,
+                 "Set bitcoin target address when solo mining to bitcoind (mandatory)"),
     OPT_WITH_ARG("--btc-sig",
-    opt_set_charp, NULL, &opt_btc_sig,
-    "Set signature to add to coinbase when solo mining (optional)"),
+                 opt_set_charp, NULL, &opt_btc_sig,
+                 "Set signature to add to coinbase when solo mining (optional)"),
 #endif
 #ifdef HAVE_CURSES
     OPT_WITHOUT_ARG("--compact",
-    opt_set_bool, &opt_compact,
-    "Use compact display without per device statistics"),
+                    opt_set_bool, &opt_compact,
+                    "Use compact display without per device statistics"),
 #endif
 #ifdef USE_COINTERRA
     OPT_WITH_ARG("--cta-load",
-    set_int_0_to_255, opt_show_intval, &opt_cta_load,
-    "Set load for CTA devices, 0-255 range"),
+                 set_int_0_to_255, opt_show_intval, &opt_cta_load,
+                 "Set load for CTA devices, 0-255 range"),
     OPT_WITH_ARG("--ps-load",
-    set_int_0_to_100, opt_show_intval, &opt_ps_load,
-    "Set power supply load for CTA devices, 0-100 range"),
+                 set_int_0_to_100, opt_show_intval, &opt_ps_load,
+                 "Set power supply load for CTA devices, 0-100 range"),
 #endif
     OPT_WITHOUT_ARG("--debug|-D",
-    enable_debug, &opt_debug,
-    "Enable debug output"),
+                    enable_debug, &opt_debug,
+                    "Enable debug output"),
     OPT_WITHOUT_ARG("--disable-rejecting",
-    opt_set_bool, &opt_disable_pool,
-    "Automatically disable pools that continually reject shares"),
+                    opt_set_bool, &opt_disable_pool,
+                    "Automatically disable pools that continually reject shares"),
 #ifdef USE_DRILLBIT
     OPT_WITH_ARG("--drillbit-options",
-    opt_set_charp, NULL, &opt_drillbit_options,
-    "Set drillbit options <int|ext>:clock[:clock_divider][:voltage]"),
+                 opt_set_charp, NULL, &opt_drillbit_options,
+                 "Set drillbit options <int|ext>:clock[:clock_divider][:voltage]"),
     OPT_WITH_ARG("--drillbit-auto",
-    opt_set_charp, NULL, &opt_drillbit_auto,
-    "Enable drillbit automatic tuning <every>:[<gooderr>:<baderr>:<maxerr>]"),
+                 opt_set_charp, NULL, &opt_drillbit_auto,
+                 "Enable drillbit automatic tuning <every>:[<gooderr>:<baderr>:<maxerr>]"),
 #endif
     OPT_WITH_ARG("--expiry|-E",
-    set_int_0_to_9999, opt_show_intval, &opt_expiry,
-    "Upper bound on how many seconds after getting work we consider a share from it stale"),
+                 set_int_0_to_9999, opt_show_intval, &opt_expiry,
+                 "Upper bound on how many seconds after getting work we consider a share from it stale"),
     OPT_WITHOUT_ARG("--failover-only",
-    opt_set_bool, &opt_fail_only,
-    "Don't leak work to backup pools when primary pool is lagging"),
+                    opt_set_bool, &opt_fail_only,
+                    "Don't leak work to backup pools when primary pool is lagging"),
     OPT_WITHOUT_ARG("--fix-protocol",
-    opt_set_bool, &opt_fix_protocol,
-    "Do not redirect to a different getwork protocol (eg. stratum)"),
+                    opt_set_bool, &opt_fix_protocol,
+                    "Do not redirect to a different getwork protocol (eg. stratum)"),
 #ifdef USE_HASHFAST
     OPT_WITHOUT_ARG("--hfa-dfu-boot",
-    opt_set_bool, &opt_hfa_dfu_boot,
-    opt_hidden),
+                    opt_set_bool, &opt_hfa_dfu_boot,
+                    opt_hidden),
     OPT_WITH_ARG("--hfa-hash-clock",
-    set_int_0_to_9999, opt_show_intval, &opt_hfa_hash_clock,
-    "Set hashfast clock speed"),
+                 set_int_0_to_9999, opt_show_intval, &opt_hfa_hash_clock,
+                 "Set hashfast clock speed"),
     OPT_WITH_ARG("--hfa-fail-drop",
-    set_int_0_to_100, opt_show_intval, &opt_hfa_fail_drop,
-    "Set how many MHz to drop clockspeed each failure on an overlocked hashfast device"),
+                 set_int_0_to_100, opt_show_intval, &opt_hfa_fail_drop,
+                 "Set how many MHz to drop clockspeed each failure on an overlocked hashfast device"),
     OPT_WITH_CBARG("--hfa-fan",
-    set_hfa_fan, NULL, &opt_set_hfa_fan,
-    "Set fanspeed percentage for hashfast, single value or range (default: 10-85)"),
+                   set_hfa_fan, NULL, &opt_set_hfa_fan,
+                   "Set fanspeed percentage for hashfast, single value or range (default: 10-85)"),
     OPT_WITH_ARG("--hfa-name",
-    opt_set_charp, NULL, &opt_hfa_name,
-    "Set a unique name for a single hashfast device specified with --usb or the first device found"),
+                 opt_set_charp, NULL, &opt_hfa_name,
+                 "Set a unique name for a single hashfast device specified with --usb or the first device found"),
     OPT_WITHOUT_ARG("--hfa-noshed",
-    opt_set_bool, &opt_hfa_noshed,
-    "Disable hashfast dynamic core disabling feature"),
+                    opt_set_bool, &opt_hfa_noshed,
+                    "Disable hashfast dynamic core disabling feature"),
     OPT_WITH_ARG("--hfa-ntime-roll",
-    opt_set_intval, NULL, &opt_hfa_ntime_roll,
-    opt_hidden),
+                 opt_set_intval, NULL, &opt_hfa_ntime_roll,
+                 opt_hidden),
     OPT_WITH_ARG("--hfa-options",
-    opt_set_charp, NULL, &opt_hfa_options,
-    "Set hashfast options name:clock (comma separated)"),
+                 opt_set_charp, NULL, &opt_hfa_options,
+                 "Set hashfast options name:clock (comma separated)"),
     OPT_WITHOUT_ARG("--hfa-pll-bypass",
-    opt_set_bool, &opt_hfa_pll_bypass,
-    opt_hidden),
+                    opt_set_bool, &opt_hfa_pll_bypass,
+                    opt_hidden),
     OPT_WITH_ARG("--hfa-temp-overheat",
-    set_int_0_to_200, opt_show_intval, &opt_hfa_overheat,
-    "Set the hashfast overheat throttling temperature"),
+                 set_int_0_to_200, opt_show_intval, &opt_hfa_overheat,
+                 "Set the hashfast overheat throttling temperature"),
     OPT_WITH_ARG("--hfa-temp-target",
-    set_int_0_to_200, opt_show_intval, &opt_hfa_target,
-    "Set the hashfast target temperature (0 to disable)"),
+                 set_int_0_to_200, opt_show_intval, &opt_hfa_target,
+                 "Set the hashfast target temperature (0 to disable)"),
 #endif
 #ifdef USE_HASHRATIO
     OPT_WITH_CBARG("--hro-freq",
-    set_hashratio_freq, NULL, &opt_hashratio_freq,
-    "Set the hashratio clock frequency"),
+                   set_hashratio_freq, NULL, &opt_hashratio_freq,
+                   "Set the hashratio clock frequency"),
 #endif
     OPT_WITH_ARG("--hotplug",
-    set_int_0_to_9999, NULL, &hotplug_time,
+                 set_int_0_to_9999, NULL, &hotplug_time,
 #ifdef USE_USBUTILS
-    "Seconds between hotplug checks (0 means never check)"
+                 "Seconds between hotplug checks (0 means never check)"
 #else
-    opt_hidden
+                 opt_hidden
 #endif
                 ),
 #ifdef USE_ICARUS
     OPT_WITH_ARG("--icarus-options",
-    opt_set_charp, NULL, &opt_icarus_options,
-    opt_hidden),
+                 opt_set_charp, NULL, &opt_icarus_options,
+                 opt_hidden),
     OPT_WITH_ARG("--icarus-timing",
-    opt_set_charp, NULL, &opt_icarus_timing,
-    opt_hidden),
+                 opt_set_charp, NULL, &opt_icarus_timing,
+                 opt_hidden),
 #endif
 #if defined(HAVE_MODMINER)
     OPT_WITH_ARG("--kernel-path|-K",
-    opt_set_charp, opt_show_charp, &opt_kernel_path,
-    "Specify a path to where bitstream files are"),
+                 opt_set_charp, opt_show_charp, &opt_kernel_path,
+                 "Specify a path to where bitstream files are"),
 #endif
 #ifdef USE_KLONDIKE
     OPT_WITH_ARG("--klondike-options",
-    opt_set_charp, NULL, &opt_klondike_options,
-    "Set klondike options clock:temptarget"),
+                 opt_set_charp, NULL, &opt_klondike_options,
+                 "Set klondike options clock:temptarget"),
 #endif
     OPT_WITHOUT_ARG("--load-balance",
-    set_loadbalance, &pool_strategy,
-    "Change multipool strategy from failover to quota based balance"),
+                    set_loadbalance, &pool_strategy,
+                    "Change multipool strategy from failover to quota based balance"),
     OPT_WITH_ARG("--log|-l",
-    set_int_0_to_9999, opt_show_intval, &opt_log_interval,
-    "Interval in seconds between log output"),
+                 set_int_0_to_9999, opt_show_intval, &opt_log_interval,
+                 "Interval in seconds between log output"),
     OPT_WITHOUT_ARG("--lowmem",
-    opt_set_bool, &opt_lowmem,
-    "Minimise caching of shares for low memory applications"),
+                    opt_set_bool, &opt_lowmem,
+                    "Minimise caching of shares for low memory applications"),
 #ifdef USE_MINION
     OPT_WITH_ARG("--minion-chipreport",
-    set_int_0_to_100, opt_show_intval, &opt_minion_chipreport,
-    "Seconds to report chip 5min hashrate, range 0-100 (default: 0=disabled)"),
+                 set_int_0_to_100, opt_show_intval, &opt_minion_chipreport,
+                 "Seconds to report chip 5min hashrate, range 0-100 (default: 0=disabled)"),
     OPT_WITH_ARG("--minion-cores",
-    opt_set_charp, NULL, &opt_minion_cores,
-    opt_hidden),
+                 opt_set_charp, NULL, &opt_minion_cores,
+                 opt_hidden),
     OPT_WITHOUT_ARG("--minion-extra",
-    opt_set_bool, &opt_minion_extra,
-    opt_hidden),
+                    opt_set_bool, &opt_minion_extra,
+                    opt_hidden),
     OPT_WITH_ARG("--minion-freq",
-    opt_set_charp, NULL, &opt_minion_freq,
-    "Set minion chip frequencies in MHz, single value or comma list, range 100-1400 (default: 1200)"),
+                 opt_set_charp, NULL, &opt_minion_freq,
+                 "Set minion chip frequencies in MHz, single value or comma list, range 100-1400 (default: 1200)"),
     OPT_WITH_ARG("--minion-freqchange",
-    set_int_0_to_9999, opt_show_intval, &opt_minion_freqchange,
-    "Millisecond total time to do frequency changes (default: 1000)"),
+                 set_int_0_to_9999, opt_show_intval, &opt_minion_freqchange,
+                 "Millisecond total time to do frequency changes (default: 1000)"),
     OPT_WITH_ARG("--minion-freqpercent",
-    set_int_0_to_100, opt_show_intval, &opt_minion_freqpercent,
-    "Percentage to use when starting up a chip (default: 70%)"),
+                 set_int_0_to_100, opt_show_intval, &opt_minion_freqpercent,
+                 "Percentage to use when starting up a chip (default: 70%)"),
     OPT_WITHOUT_ARG("--minion-idlecount",
-    opt_set_bool, &opt_minion_idlecount,
-    "Report when IdleCount is >0 or changes"),
+                    opt_set_bool, &opt_minion_idlecount,
+                    "Report when IdleCount is >0 or changes"),
     OPT_WITH_ARG("--minion-ledcount",
-    set_int_0_to_100, opt_show_intval, &opt_minion_ledcount,
-    "Turn off led when more than this many chips below the ledlimit (default: 0)"),
+                 set_int_0_to_100, opt_show_intval, &opt_minion_ledcount,
+                 "Turn off led when more than this many chips below the ledlimit (default: 0)"),
     OPT_WITH_ARG("--minion-ledlimit",
-    set_int_0_to_200, opt_show_intval, &opt_minion_ledlimit,
-    "Turn off led when chips GHs are below this (default: 90)"),
+                 set_int_0_to_200, opt_show_intval, &opt_minion_ledlimit,
+                 "Turn off led when chips GHs are below this (default: 90)"),
     OPT_WITHOUT_ARG("--minion-noautofreq",
-    opt_set_bool, &opt_minion_noautofreq,
-    "Disable automatic frequency adjustment"),
+                    opt_set_bool, &opt_minion_noautofreq,
+                    "Disable automatic frequency adjustment"),
     OPT_WITHOUT_ARG("--minion-overheat",
-    opt_set_bool, &opt_minion_overheat,
-    "Enable directly halting any chip when the status exceeds 100C"),
+                    opt_set_bool, &opt_minion_overheat,
+                    "Enable directly halting any chip when the status exceeds 100C"),
     OPT_WITH_ARG("--minion-spidelay",
-    set_int_0_to_9999, opt_show_intval, &opt_minion_spidelay,
-    "Add a delay in microseconds after each SPI I/O"),
+                 set_int_0_to_9999, opt_show_intval, &opt_minion_spidelay,
+                 "Add a delay in microseconds after each SPI I/O"),
     OPT_WITH_ARG("--minion-spireset",
-    opt_set_charp, NULL, &opt_minion_spireset,
-    "SPI regular reset: iNNN for I/O count or sNNN for seconds - 0 means none"),
+                 opt_set_charp, NULL, &opt_minion_spireset,
+                 "SPI regular reset: iNNN for I/O count or sNNN for seconds - 0 means none"),
     OPT_WITH_ARG("--minion-spisleep",
-    set_int_0_to_9999, opt_show_intval, &opt_minion_spisleep,
-    "Sleep time in milliseconds when doing an SPI reset"),
+                 set_int_0_to_9999, opt_show_intval, &opt_minion_spisleep,
+                 "Sleep time in milliseconds when doing an SPI reset"),
     OPT_WITH_ARG("--minion-spiusec",
-    set_int_0_to_9999, NULL, &opt_minion_spiusec,
-    opt_hidden),
+                 set_int_0_to_9999, NULL, &opt_minion_spiusec,
+                 opt_hidden),
     OPT_WITH_ARG("--minion-temp",
-    opt_set_charp, NULL, &opt_minion_temp,
-    "Set minion chip temperature threshold, single value or comma list, range 120-160 (default: 135C)"),
+                 opt_set_charp, NULL, &opt_minion_temp,
+                 "Set minion chip temperature threshold, single value or comma list, range 120-160 (default: 135C)"),
 #endif
 #if defined(unix) || defined(__APPLE__)
     OPT_WITH_ARG("--monitor|-m",
-    opt_set_charp, NULL, &opt_stderr_cmd,
-    "Use custom pipe cmd for output messages"),
+                 opt_set_charp, NULL, &opt_stderr_cmd,
+                 "Use custom pipe cmd for output messages"),
 #endif // defined(unix)
 #ifdef USE_BITFURY
     OPT_WITH_ARG("--nfu-bits",
-    set_int_32_to_63, opt_show_intval, &opt_nfu_bits,
-    "Set nanofury bits for overclocking, range 32-63"),
+                 set_int_32_to_63, opt_show_intval, &opt_nfu_bits,
+                 "Set nanofury bits for overclocking, range 32-63"),
 #endif
     OPT_WITHOUT_ARG("--net-delay",
-    opt_set_bool, &opt_delaynet,
-    "Impose small delays in networking to not overload slow routers"),
+                    opt_set_bool, &opt_delaynet,
+                    "Impose small delays in networking to not overload slow routers"),
     OPT_WITHOUT_ARG("--no-pool-disable",
-    opt_set_invbool, &opt_disable_pool,
-    opt_hidden),
+                    opt_set_invbool, &opt_disable_pool,
+                    opt_hidden),
     OPT_WITHOUT_ARG("--no-submit-stale",
-    opt_set_invbool, &opt_submit_stale,
-    "Don't submit shares if they are detected as stale"),
+                    opt_set_invbool, &opt_submit_stale,
+                    "Don't submit shares if they are detected as stale"),
 #ifdef USE_BITFURY
     OPT_WITH_ARG("--osm-led-mode",
-    set_int_0_to_4, opt_show_intval, &opt_osm_led_mode,
-    "Set LED mode for OneStringMiner devices"),
+                 set_int_0_to_4, opt_show_intval, &opt_osm_led_mode,
+                 "Set LED mode for OneStringMiner devices"),
 #endif
     OPT_WITH_ARG("--pass|-p",
-    set_pass, NULL, &opt_set_null,
-    "Password for bitcoin JSON-RPC server"),
+                 set_pass, NULL, &opt_set_null,
+                 "Password for bitcoin JSON-RPC server"),
     OPT_WITHOUT_ARG("--per-device-stats",
-    opt_set_bool, &want_per_device_stats,
-    "Force verbose mode and output per-device statistics"),
+                    opt_set_bool, &want_per_device_stats,
+                    "Force verbose mode and output per-device statistics"),
     OPT_WITH_ARG("--pools",
-    opt_set_bool, NULL, &opt_set_null, opt_hidden),
+                 opt_set_bool, NULL, &opt_set_null, opt_hidden),
     OPT_WITHOUT_ARG("--protocol-dump|-P",
-    opt_set_bool, &opt_protocol,
-    "Verbose dump of protocol-level activities"),
+                    opt_set_bool, &opt_protocol,
+                    "Verbose dump of protocol-level activities"),
     OPT_WITH_ARG("--queue|-Q",
-    set_int_0_to_9999, opt_show_intval, &opt_queue,
-    "Maximum number of work items to have queued"),
+                 set_int_0_to_9999, opt_show_intval, &opt_queue,
+                 "Maximum number of work items to have queued"),
     OPT_WITHOUT_ARG("--quiet|-q",
-    opt_set_bool, &opt_quiet,
-    "Disable logging output, display status and errors"),
+                    opt_set_bool, &opt_quiet,
+                    "Disable logging output, display status and errors"),
     OPT_WITH_ARG("--quota|-U",
-    set_quota, NULL, &opt_set_null,
-    "quota;URL combination for server with load-balance strategy quotas"),
+                 set_quota, NULL, &opt_set_null,
+                 "quota;URL combination for server with load-balance strategy quotas"),
     OPT_WITHOUT_ARG("--real-quiet",
-    opt_set_bool, &opt_realquiet,
-    "Disable all output"),
+                    opt_set_bool, &opt_realquiet,
+                    "Disable all output"),
     OPT_WITH_ARG("--retries",
-    set_null, NULL, &opt_set_null,
-    opt_hidden),
+                 set_null, NULL, &opt_set_null,
+                 opt_hidden),
     OPT_WITH_ARG("--retry-pause",
-    set_null, NULL, &opt_set_null,
-    opt_hidden),
+                 set_null, NULL, &opt_set_null,
+                 opt_hidden),
 #ifdef USE_ICARUS
     OPT_WITH_ARG("--rock-freq",
-    set_float_125_to_500, &opt_show_floatval, &opt_rock_freq,
-    "Set RockMiner frequency in MHz, range 125-500"),
+                 set_float_125_to_500, &opt_show_floatval, &opt_rock_freq,
+                 "Set RockMiner frequency in MHz, range 125-500"),
 #endif
     OPT_WITH_ARG("--rotate",
-    set_rotate, NULL, &opt_set_null,
-    "Change multipool strategy from failover to regularly rotate at N minutes"),
+                 set_rotate, NULL, &opt_set_null,
+                 "Change multipool strategy from failover to regularly rotate at N minutes"),
     OPT_WITHOUT_ARG("--round-robin",
-    set_rr, &pool_strategy,
-    "Change multipool strategy from failover to round robin on failure"),
+                    set_rr, &pool_strategy,
+                    "Change multipool strategy from failover to round robin on failure"),
 #ifdef USE_FPGA_SERIAL
     OPT_WITH_CBARG("--scan-serial|-S",
-    add_serial, NULL, &opt_add_serial,
-    "Serial port to probe for Serial FPGA Mining device"),
+                   add_serial, NULL, &opt_add_serial,
+                   "Serial port to probe for Serial FPGA Mining device"),
 #endif
     OPT_WITH_ARG("--scan-time|-s",
-    set_int_0_to_9999, opt_show_intval, &opt_scantime,
-    "Upper bound on time spent scanning current work, in seconds"),
+                 set_int_0_to_9999, opt_show_intval, &opt_scantime,
+                 "Upper bound on time spent scanning current work, in seconds"),
     OPT_WITH_CBARG("--sched-start",
-    set_sched_start, NULL, &opt_set_sched_start,
-    "Set a time of day in HH:MM to start mining (a once off without a stop time)"),
+                   set_sched_start, NULL, &opt_set_sched_start,
+                   "Set a time of day in HH:MM to start mining (a once off without a stop time)"),
     OPT_WITH_CBARG("--sched-stop",
-    set_sched_stop, NULL, &opt_set_sched_stop,
-    "Set a time of day in HH:MM to stop mining (will quit without a start time)"),
+                   set_sched_stop, NULL, &opt_set_sched_stop,
+                   "Set a time of day in HH:MM to stop mining (will quit without a start time)"),
     OPT_WITH_CBARG("--sharelog",
-    set_sharelog, NULL, &opt_set_sharelog,
-    "Append share log to file"),
+                   set_sharelog, NULL, &opt_set_sharelog,
+                   "Append share log to file"),
     OPT_WITHOUT_ARG("--scrypt",
-    opt_set_bool, &opt_scrypt,
-    "Use the scrypt algorithm for mining (litecoin only)"),
+                    opt_set_bool, &opt_scrypt,
+                    "Use the scrypt algorithm for mining (litecoin only)"),
     OPT_WITH_ARG("--shares",
-    opt_set_intval, NULL, &opt_shares,
-    "Quit after mining N shares (default: unlimited)"),
+                 opt_set_intval, NULL, &opt_shares,
+                 "Quit after mining N shares (default: unlimited)"),
     OPT_WITH_ARG("--socks-proxy",
-    opt_set_charp, NULL, &opt_socks_proxy,
-    "Set socks4 proxy (host:port)"),
+                 opt_set_charp, NULL, &opt_socks_proxy,
+                 "Set socks4 proxy (host:port)"),
     OPT_WITH_ARG("--suggest-diff",
-    opt_set_intval, NULL, &opt_suggest_diff,
-    "Suggest miner difficulty for pool to user (default: none)"),
+                 opt_set_intval, NULL, &opt_suggest_diff,
+                 "Suggest miner difficulty for pool to user (default: none)"),
     OPT_WITH_ARG("--multi-version",
-    opt_set_intval, NULL, &opt_multi_version,
-    "Multi version"),
+                 opt_set_intval, NULL, &opt_multi_version,
+                 "Multi version"),
 #ifdef HAVE_SYSLOG_H
     OPT_WITHOUT_ARG("--syslog",
-    opt_set_bool, &use_syslog,
-    "Use system log for output messages (default: standard error)"),
+                    opt_set_bool, &use_syslog,
+                    "Use system log for output messages (default: standard error)"),
 #endif
 #if defined(USE_BITFORCE) || defined(USE_MODMINER) || defined(USE_BFLSC)
     OPT_WITH_CBARG("--temp-cutoff",
-    set_temp_cutoff, opt_show_intval, &opt_set_temp_cutoff,
-    "Temperature where a device will be automatically disabled, one value or comma separated list"),
+                   set_temp_cutoff, opt_show_intval, &opt_set_temp_cutoff,
+                   "Temperature where a device will be automatically disabled, one value or comma separated list"),
 #endif
     OPT_WITHOUT_ARG("--text-only|-T",
-    opt_set_invbool, &use_curses,
+                    opt_set_invbool, &use_curses,
 #ifdef HAVE_CURSES
-    "Disable ncurses formatted screen output"
+                    "Disable ncurses formatted screen output"
 #else
-    opt_hidden
+                    opt_hidden
 #endif
                    ),
     OPT_WITH_ARG("--url|-o",
-    set_url, NULL, &opt_set_null,
-    "URL for bitcoin JSON-RPC server"),
+                 set_url, NULL, &opt_set_null,
+                 "URL for bitcoin JSON-RPC server"),
 #ifdef USE_USBUTILS
     OPT_WITH_ARG("--usb",
-    opt_set_charp, NULL, &opt_usb_select,
-    "USB device selection"),
+                 opt_set_charp, NULL, &opt_usb_select,
+                 "USB device selection"),
     OPT_WITH_ARG("--usb-dump",
-    set_int_0_to_10, opt_show_intval, &opt_usbdump,
-    opt_hidden),
+                 set_int_0_to_10, opt_show_intval, &opt_usbdump,
+                 opt_hidden),
     OPT_WITHOUT_ARG("--usb-list-all",
-    opt_set_bool, &opt_usb_list_all,
-    opt_hidden),
+                    opt_set_bool, &opt_usb_list_all,
+                    opt_hidden),
 #endif
     OPT_WITH_ARG("--user|-u",
-    set_user, NULL, &opt_set_null,
-    "Username for bitcoin JSON-RPC server"),
+                 set_user, NULL, &opt_set_null,
+                 "Username for bitcoin JSON-RPC server"),
     OPT_WITH_ARG("--userpass|-O",
-    set_userpass, NULL, &opt_set_null,
-    "Username:Password pair for bitcoin JSON-RPC server"),
+                 set_userpass, NULL, &opt_set_null,
+                 "Username:Password pair for bitcoin JSON-RPC server"),
     OPT_WITHOUT_ARG("--verbose",
-    opt_set_bool, &opt_log_output,
-    "Log verbose output to stderr as well as status output"),
+                    opt_set_bool, &opt_log_output,
+                    "Log verbose output to stderr as well as status output"),
     OPT_WITHOUT_ARG("--widescreen",
-    opt_set_bool, &opt_widescreen,
-    "Use extra wide display without toggling"),
+                    opt_set_bool, &opt_widescreen,
+                    "Use extra wide display without toggling"),
     OPT_WITHOUT_ARG("--worktime",
-    opt_set_bool, &opt_worktime,
-    "Display extra work time debug information"),
+                    opt_set_bool, &opt_worktime,
+                    "Display extra work time debug information"),
     OPT_ENDTABLE
 };
 
@@ -2210,24 +2210,24 @@ char *display_devs(int *ndevs)
 static struct opt_table opt_cmdline_table[] =
 {
     OPT_WITH_ARG("--config|-c",
-    load_config, NULL, &opt_set_null,
-    "Load a JSON-format configuration file\n"
-    "See example.conf for an example configuration."),
+                 load_config, NULL, &opt_set_null,
+                 "Load a JSON-format configuration file\n"
+                 "See example.conf for an example configuration."),
     OPT_WITH_ARG("--default-config",
-    set_default_config, NULL, &opt_set_null,
-    "Specify the filename of the default config file\n"
-    "Loaded at start and used when saving without a name."),
+                 set_default_config, NULL, &opt_set_null,
+                 "Specify the filename of the default config file\n"
+                 "Loaded at start and used when saving without a name."),
     OPT_WITHOUT_ARG("--help|-h",
-    opt_verusage_and_exit, NULL,
-    "Print this message"),
+                    opt_verusage_and_exit, NULL,
+                    "Print this message"),
 #if defined(USE_USBUTILS)
     OPT_WITHOUT_ARG("--ndevs|-n",
-    display_devs, &nDevs,
-    "Display all USB devices and exit"),
+                    display_devs, &nDevs,
+                    "Display all USB devices and exit"),
 #endif
     OPT_WITHOUT_ARG("--version|-V",
-    opt_version_and_exit, packagename,
-    "Display version and exit"),
+                    opt_version_and_exit, packagename,
+                    "Display version and exit"),
     OPT_ENDTABLE
 };
 
@@ -3488,13 +3488,13 @@ share_result(json_t *val, json_t *res, json_t *err, const struct work *work,
         total_accepted++;
         pool->accepted++;
         //cgpu->diff_accepted += work->work_difficulty;
-        //total_diff_accepted += work->work_difficulty;		
+        //total_diff_accepted += work->work_difficulty;
         //pool->diff_accepted += work->work_difficulty;
 
-		cgpu->diff_accepted += pool->sdiff;
-		total_diff_accepted += pool->sdiff;
-		pool->diff_accepted += pool->sdiff;
-		
+        cgpu->diff_accepted += pool->sdiff;
+        total_diff_accepted += pool->sdiff;
+        pool->diff_accepted += pool->sdiff;
+
         mutex_unlock(&stats_lock);
 
         pool->seq_rejects = 0;
@@ -6721,12 +6721,12 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
         copy_time(&cgpu->last_message_tv, &total_tv_end);
         thr_mhs = (double)hashes_done / device_tdiff / 1000000;
 
-		//applog(LOG_DEBUG, "%s: hashes_done = %lld", __FUNCTION__, hashes_done);
+        //applog(LOG_DEBUG, "%s: hashes_done = %lld", __FUNCTION__, hashes_done);
 
         hashes_done /= 1000000;
 
-		//applog(LOG_DEBUG, "--- %s: hashes_done = %lld", __FUNCTION__, hashes_done);
-		
+        //applog(LOG_DEBUG, "--- %s: hashes_done = %lld", __FUNCTION__, hashes_done);
+
         applog(LOG_DEBUG, "[thread %d: %"PRIu64" Mhashes, %.1f mhash/sec]", thr_id, hashes_done, thr_mhs);
 
         mutex_lock(&hash_lock);
@@ -7223,7 +7223,7 @@ static void *stratum_sthread(void *userdata)
     uint64_t last_nonce2 = 0;
     uint32_t last_nonce = 0;
     char threadname[16];
-	uint32_t i=0;
+    uint32_t i=0;
 
     pthread_detach(pthread_self());
 
@@ -7263,11 +7263,11 @@ static void *stratum_sthread(void *userdata)
 
 
         nonce = *((uint32_t *)(work->data + 76));
-		applog(LOG_DEBUG, "%s: nonce = 0x%08x", __FUNCTION__, nonce);
+        applog(LOG_DEBUG, "%s: nonce = 0x%08x", __FUNCTION__, nonce);
         nonce2_64 = (uint64_t *)nonce2;
         *nonce2_64 = htole64(work->nonce2);
-		applog(LOG_DEBUG, "%s: *nonce2_64 = 0x%x", __FUNCTION__, *nonce2_64);
-		
+        applog(LOG_DEBUG, "%s: *nonce2_64 = 0x%x", __FUNCTION__, *nonce2_64);
+
         /* Filter out duplicate shares */
         if (unlikely(nonce == last_nonce && *nonce2_64 == last_nonce2))
         {
@@ -7289,18 +7289,18 @@ static void *stratum_sthread(void *userdata)
         sshare = calloc(sizeof(struct stratum_share), 1);
         hash32 = (uint32_t *)work->hash;
         submitted = false;
-		/*
-		applog(LOG_DEBUG, "%s: *hash32 = 0x%x", __FUNCTION__, *hash32);
-		for (i=0; i < 20; i++)
-		{
-			applog(LOG_DEBUG,"%s: work->data[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->data) + i));
-		}
-		for (i=0; i < 8; i++)
-		{
-			applog(LOG_DEBUG,"%s: work->hash[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->hash) + i));
-		}
-		*/
-		
+        /*
+        applog(LOG_DEBUG, "%s: *hash32 = 0x%x", __FUNCTION__, *hash32);
+        for (i=0; i < 20; i++)
+        {
+            applog(LOG_DEBUG,"%s: work->data[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->data) + i));
+        }
+        for (i=0; i < 8; i++)
+        {
+            applog(LOG_DEBUG,"%s: work->hash[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->hash) + i));
+        }
+        */
+
         sshare->sshare_time = time(NULL);
         /* This work item is freed in parse_stratum_response */
         sshare->work = work;
@@ -7516,7 +7516,7 @@ static bool pool_active(struct pool *pool, bool pinging)
     if (pool->has_gbt)
         applog(LOG_DEBUG, "Retrieving block template from pool %s", pool->rpc_url);
     else
-        applog(LOG_DEBUG, "Testing pool %s", pool->rpc_url);
+        applog(LOG_INFO, "Testing pool %s", pool->rpc_url);
 
     /* This is the central point we activate stratum when we can */
 retry_stratum:
@@ -7956,8 +7956,8 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
     uint32_t *data32, *swap32;
     uint64_t nonce2le;
     int i;
-	char strInfo[1024];
-	char *p = NULL;
+    char strInfo[1024];
+    char *p = NULL;
 
     cg_wlock(&pool->data_lock);
 
@@ -7965,7 +7965,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
      * from left to right and prevent overflow errors with small n2sizes */
     nonce2le = htole64(pool->nonce2);
     memcpy(pool->coinbase + pool->nonce2_offset, &nonce2le, pool->n2size);
-    work->nonce2 = pool->nonce2++;	
+    work->nonce2 = pool->nonce2++;
     work->nonce2_len = pool->n2size;
 
     /* Downgrade to a read lock to read off the pool variables */
@@ -7985,7 +7985,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
     flip32(swap32, data32);
 
     /* Copy the data template from header_bin : this has many info, including all the values as DASH*/
-    memcpy(work->data, pool->header_bin, 128);	// copy 128, because we want to copy the end of work.data padding bytes "80020000"
+    memcpy(work->data, pool->header_bin, 128);  // copy 128, because we want to copy the end of work.data padding bytes "80020000"
     memcpy(work->data + 36, merkle_root, 32);
 
     /* Store the stratum work diff to check it still matches the pool's
@@ -8014,11 +8014,11 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
 
     // calc_midstate(work);     // DASH do not need it
     set_target(work->target, work->sdiff);
-	/*
-	applog(LOG_NOTICE, "work->sdiff = 0x%x", work->sdiff);
-	p = bin2hex((const unsigned char *)work->target, 32);
-	applog(LOG_NOTICE, "work->target %s", p);
-	*/
+    /*
+    applog(LOG_NOTICE, "work->sdiff = 0x%x", work->sdiff);
+    p = bin2hex((const unsigned char *)work->target, 32);
+    applog(LOG_NOTICE, "work->target %s", p);
+    */
 
     local_work++;
     if((time(NULL) - local_work_lasttime) > 5)
@@ -8329,8 +8329,7 @@ static void submit_work_async(struct work *work)
 
 void inc_hw_errors(struct thr_info *thr)
 {
-    forcelog(LOG_INFO, "%s: %s%d: invalid nonce - HW error", __FUNCTION__, thr->cgpu->drv->name,
-             thr->cgpu->device_id);
+    //forcelog(LOG_INFO, "%s: %s%d: invalid nonce - HW error", __FUNCTION__, thr->cgpu->drv->name, thr->cgpu->device_id);
 
     mutex_lock(&stats_lock);
     hw_errors++;
@@ -8376,21 +8375,21 @@ static void rebuild_nonce(struct work *work, uint32_t nonce)
 /* For testing a nonce against diff 1 */
 bool test_nonce(struct work *work, uint32_t nonce)
 {
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
-	
+    applog(LOG_DEBUG, "%s", __FUNCTION__);
+
     uint32_t *hash_32 = (uint32_t *)(work->hash + 28);
     uint32_t diff1targ;
 
-	applog(LOG_DEBUG, "%s: 1 *hash_32 = 0x%08x", __FUNCTION__, *hash_32);
+    applog(LOG_DEBUG, "%s: 1 *hash_32 = 0x%08x", __FUNCTION__, *hash_32);
 
     rebuild_nonce(work, nonce);
 
-	applog(LOG_DEBUG, "%s: 2 *hash_32 = 0x%08x", __FUNCTION__, *hash_32);
+    applog(LOG_DEBUG, "%s: 2 *hash_32 = 0x%08x", __FUNCTION__, *hash_32);
 
-	applog(LOG_DEBUG, "%s opt_scrypt = %d", __FUNCTION__, opt_scrypt);
-	
+    applog(LOG_DEBUG, "%s opt_scrypt = %d", __FUNCTION__, opt_scrypt);
+
     diff1targ = opt_scrypt ? 0x0000ffffUL : 0;
-	applog(LOG_DEBUG, "%s: diff1targ = 0x%08x", __FUNCTION__, diff1targ);
+    applog(LOG_DEBUG, "%s: diff1targ = 0x%08x", __FUNCTION__, diff1targ);
 //    unsigned char* tmp = (unsigned char*)(work->data + 76);
 
     return (le32toh(*hash_32) <= diff1targ);
@@ -8491,15 +8490,15 @@ static bool new_nonce(struct thr_info *thr, uint32_t nonce)
  * nonce submitted by this device. */
 bool submit_nonce(struct thr_info *thr, struct work *work, uint32_t nonce)
 {
-	bool ret = false;
+    bool ret = false;
 
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+    applog(LOG_DEBUG, "%s", __FUNCTION__);
 
-	ret = new_nonce(thr, nonce);
-	applog(LOG_DEBUG, "%s ret1 = %d", __FUNCTION__, ret);
+    ret = new_nonce(thr, nonce);
+    applog(LOG_DEBUG, "%s ret1 = %d", __FUNCTION__, ret);
 
-	ret = test_nonce(work, nonce);
-	applog(LOG_DEBUG, "%s ret2 = %d", __FUNCTION__, ret);
+    ret = test_nonce(work, nonce);
+    applog(LOG_DEBUG, "%s ret2 = %d", __FUNCTION__, ret);
 
     if (new_nonce(thr, nonce) && test_nonce(work, nonce))
         submit_tested_work(thr, work);
@@ -8517,9 +8516,9 @@ bool submit_nonce(struct thr_info *thr, struct work *work, uint32_t nonce)
 
 bool submit_nonce_1(struct thr_info *thr, struct work *work, uint32_t nonce, int * nofull)
 {
-	bool ret = false;
-	
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+    bool ret = false;
+
+    applog(LOG_DEBUG, "%s", __FUNCTION__);
 
     if(nofull) *nofull = 0;
 
@@ -8547,12 +8546,12 @@ bool submit_nonce_1(struct thr_info *thr, struct work *work, uint32_t nonce, int
 
 void submit_nonce_2(struct work *work)
 {
-	applog(LOG_DEBUG, "%s", __FUNCTION__);
+    applog(LOG_DEBUG, "%s", __FUNCTION__);
 
     struct work *work_out;
     work_out = copy_work(work);
     submit_work_async(work_out);
-	applog(LOG_DEBUG, "%s end", __FUNCTION__);
+    applog(LOG_DEBUG, "%s end", __FUNCTION__);
 }
 
 bool submit_nonce_direct(struct thr_info *thr, struct work *work, uint32_t nonce)
@@ -9161,8 +9160,8 @@ void hash_driver_work(struct thr_info *mythr)
 
 
         hashes_done += hashes;
-		//if(hashes_done != 0)
-		//	applog(LOG_DEBUG, "%s: hashes_done = %lld", __FUNCTION__, hashes_done);
+        //if(hashes_done != 0)
+        //  applog(LOG_DEBUG, "%s: hashes_done = %lld", __FUNCTION__, hashes_done);
 
         cgtime(&tv_end);
         timersub(&tv_end, &tv_start, &diff);
@@ -9170,7 +9169,7 @@ void hash_driver_work(struct thr_info *mythr)
         if ((hashes_done && (diff.tv_sec > 0 || diff.tv_usec > 200000)) ||
             diff.tv_sec >= opt_log_interval)
         {
-        	//applog(LOG_DEBUG, "--- %s: hashes_done = %lld", __FUNCTION__, hashes_done);
+            //applog(LOG_DEBUG, "--- %s: hashes_done = %lld", __FUNCTION__, hashes_done);
             hashmeter(thr_id, hashes_done);
             hashes_done = 0;
             copy_time(&tv_start, &tv_end);
@@ -9994,11 +9993,11 @@ static void clean_up(bool restarting)
 
 int BinToHexStr(char *pStr, unsigned char *data, int len)
 {
-	int i;
-	int sigLen=0;
-	for(i=0;i<len;i++)
-		sigLen+=sprintf(pStr+sigLen,"%02X",data[i]);
-	return sigLen;
+    int i;
+    int sigLen=0;
+    for(i=0; i<len; i++)
+        sigLen+=sprintf(pStr+sigLen,"%02X",data[i]);
+    return sigLen;
 }
 
 

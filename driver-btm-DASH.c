@@ -1939,7 +1939,7 @@ void check_asic_reg(unsigned int which_chain, unsigned char mode, unsigned char 
             break;
 
         case CHIP_STATUS:
-            g_CHIP_STATUS_reg_value_num[which_chain] = 0;
+            g_CHIP_STATUS_reg_value_num[which_chain] = 0xffffffff;
 
             for(i=0; i<128; i++)
             {
@@ -2283,12 +2283,12 @@ void calculate_hash_rate(void)
         {
             if(g_HASH_RATE_reg_value_num[which_chain] == 0)
             {
-                applog(LOG_DEBUG,"%s: Chain%d get 0 HASH_RATE register value", __FUNCTION__, which_chain);
+                applog(LOG_ERR, "%s: Chain%d get 0 HASH_RATE register value", __FUNCTION__, which_chain);
                 if(status_error)
                 {
                     rate[which_chain] = 0;
                     suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-                    applog(LOG_ERR,"%s: 2 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
+                    applog(LOG_ERR, "%s: 0 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
                 }
                 continue;
             }
@@ -2323,7 +2323,7 @@ void calculate_hash_rate(void)
 
                     if(!find_asic)
                     {
-                        applog(LOG_DEBUG,"%s: Chain%d ASIC%d didn't send back HASH_RATE register value", __FUNCTION__, which_chain, which_asic);
+                        applog(LOG_ERR, "%s: Chain%d ASIC%d didn't send back HASH_RATE register value", __FUNCTION__, which_chain, which_asic);
                     }
                 }
 
@@ -2334,7 +2334,7 @@ void calculate_hash_rate(void)
                     {
                         rate[which_chain] = 0;
                         suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-                        applog(LOG_ERR,"%s: 1 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
+                        applog(LOG_ERR, "%s: 1 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
                     }
                 }
             }
@@ -2350,7 +2350,7 @@ void calculate_hash_rate(void)
                             rate_error[which_chain]++;
                             avg_hash_rate = false;
                             rt_hash_rate = false;
-                            applog(LOG_DEBUG,"%s: Chain%d ASIC%d is not rt hash rate", __FUNCTION__, which_chain, which_asic);
+                            applog(LOG_ERR, "%s: Chain%d ASIC%d is not rt hash rate", __FUNCTION__, which_chain, which_asic);
                             break;
                         }
                     }
@@ -2363,7 +2363,7 @@ void calculate_hash_rate(void)
                         {
                             avg_hash_rate = false;
                             rt_hash_rate = false;
-                            applog(LOG_DEBUG,"%s: Chain%d ASIC%d is not avg hash rate", __FUNCTION__, which_chain, which_asic);
+                            applog(LOG_ERR, "%s: Chain%d ASIC%d is not avg hash rate", __FUNCTION__, which_chain, which_asic);
                             break;
                         }
                     }
@@ -2373,7 +2373,7 @@ void calculate_hash_rate(void)
                 {
                     rate[which_chain] = 0;
                     suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
-                    applog(LOG_ERR,"%s: 2 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
+                    applog(LOG_ERR, "%s: 2 chain%d RT hash rate is %s\n", __FUNCTION__, which_chain, displayed_rate[which_chain]);
                 }
 
                 tmp_rate = 0;
@@ -2386,7 +2386,7 @@ void calculate_hash_rate(void)
                         tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
                         //applog(LOG_DEBUG,"%s: RT g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
                     }
-                    applog(LOG_DEBUG,"%s: chain%d RT hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);
+                    applog(LOG_DEBUG, "%s: chain%d RT hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);
 
                     rate_error[which_chain] = 0;
                     rate[which_chain] = tmp_rate * 1000 * 1000;
@@ -2403,7 +2403,7 @@ void calculate_hash_rate(void)
                         tmp_rate += g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff;
                         //applog(LOG_DEBUG,"%s: avg g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
                     }
-                    applog(LOG_DEBUG,"%s: chain%d avg hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);
+                    applog(LOG_DEBUG, "%s: chain%d avg hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);
 
                     //suffix_string_DASH(tmp_rate, (char * )displayed_avg_rate[which_chain], sizeof(displayed_avg_rate[which_chain]), 6, true);
                 }
@@ -3154,7 +3154,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
         {
             applog(LOG_NOTICE, "frequency = '%d'", dev.frequency);
             // timeout = 2^32 / (256 / AddrInterval) / Freq / core number
-            dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.95 * 40;
+            dev.timeout = 0xffffffff / (0x100 / (dev.addrInterval * 4)) / dev.frequency / dev.corenum * 0.90 * 40;
             applog(LOG_NOTICE,"dev.timeout = %d us", dev.timeout);
         }
         else
@@ -3175,7 +3175,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
     {
         return ret;
     }
-	sleep(FANINT);
+    sleep(FANINT);
     ret = create_bitmain_read_temp_pthread();
     if(ret == -7)
     {
@@ -3837,11 +3837,14 @@ void *bitmain_scanhash(void *arg)
                 else
                 {
                     submitnonceok = false;
-                    if ( chain_id > BITMAIN_MAX_CHAIN_NUM )
+                    if ( chain_id >= BITMAIN_MAX_CHAIN_NUM )
                     {
                         applog( LOG_ERR, "%s: Chain_ID [%d] Error!", __FUNCTION__, chain_id);
                     }
-                    dev.chain_hw[chain_id] ++;
+                    else
+                    {
+                        dev.chain_hw[chain_id] ++;
+                    }
                 }
             }
 
@@ -4209,7 +4212,7 @@ void *check_miner_status(void *arg)
         {
             gFan_Error = false;
         }
-		
+
         if(gMinerStatus_Low_Hashrate || gMinerStatus_Lost_connection_to_pool|| gMinerStatus_High_Temp || gFan_Error || gMinerStatus_Not_read_all_sensor)
         {
             stop = true;
@@ -4272,7 +4275,7 @@ int create_bitmain_check_miner_status_pthread(struct bitmain_DASH_info *info)
 
 void *get_hash_rate()
 {
-    uint32_t which_chain = 0;
+    uint32_t which_chain = 0, i = 0;
 
     while(1)
     {
@@ -4285,10 +4288,47 @@ void *get_hash_rate()
             }
             cgsleep_ms(10);
         }
-        check_rate = true;
+        //check_rate = true;
         //pthread_mutex_unlock(&reg_read_mutex);
 
         calculate_hash_rate();
+
+        /**/
+        for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+        {
+            if(dev.chain_exist[which_chain])
+            {
+                check_asic_reg(which_chain, 1, 0, CHIP_STATUS);
+            }
+            cgsleep_ms(10);
+        }
+
+        for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+        {
+            for(i=0; i<ASIC_NUM_EACH_CHAIN; i++)
+            {
+                if(g_CHIP_STATUS_reg_value[which_chain][i] != 0)
+                {
+                    if(g_CHIP_STATUS_reg_value[which_chain][i] == 0xffffffff)
+                    {
+                        applog(LOG_ERR, "%s: Chain%d ASIC%02d  didn't receive CHIP_STATUS value", __FUNCTION__, which_chain, i);
+                    }
+                    else
+                    {
+                        applog(LOG_ERR, "%s: Chain%d ASIC%02d  g_CHIP_STATUS_reg_value = 0x%08x", __FUNCTION__, which_chain, i, g_CHIP_STATUS_reg_value[which_chain][i]);
+                    }
+                }
+            }
+        }
+
+        for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+        {
+            if(dev.chain_exist[which_chain] == 1)
+            {
+                set_config(dev.dev_fd[which_chain], 1, 0, CHIP_STATUS, 0x80000000);
+                cgsleep_ms(5);
+            }
+        }
 
         sleep(READ_HASH_RATE_TIME_GAP);
     }
@@ -4459,7 +4499,7 @@ void *read_temp_func()
     unsigned char which_chain, which_sensor, read_temperature_time;
     signed char local_temp=0, remote_temp=0, temp_offset_value=0;
     unsigned int ret = 0, i = 0, tmpTemp = 0;
-	int read_temp_result = 0, how_many_chains = 0;
+    int read_temp_result = 0, how_many_chains = 0;
     bool not_read_out_temperature = false;
 
     applog(LOG_DEBUG, "%s", __FUNCTION__);
@@ -4521,7 +4561,7 @@ void *read_temp_func()
                     else
                     {
                         not_read_out_temperature = true;
-                        applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
+                        applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
                     }
 
                     // write config data to read back LOCAL_TEMPERATURE_VALUE
@@ -4562,7 +4602,7 @@ void *read_temp_func()
                     {
                         not_read_out_temperature = true;
                         dev.whether_read_out_temp[which_chain][which_sensor] = -1;
-                        applog(LOG_DEBUG, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
+                        applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
                     }
 
                     dev.chain_asic_temp[which_chain][which_sensor][0] = local_temp;
@@ -4592,7 +4632,7 @@ void *read_temp_func()
         }
         dev.temp_top1 = tmpTemp;
 
-		    
+
         read_temp_result = 0;
         how_many_chains = 0;
         for ( which_chain= 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
@@ -4605,7 +4645,7 @@ void *read_temp_func()
                     read_temp_result += dev.whether_read_out_temp[which_chain][which_sensor];
                     if(dev.whether_read_out_temp[which_chain][which_sensor] == -1)
                     {
-                        applog(LOG_WARNING, "%s: Don't read out temperature from Chain%d Sensor%d!", __FUNCTION__, which_chain, which_sensor);
+                        applog(LOG_ERR, "%s: Don't read out temperature from Chain%d Sensor%d!", __FUNCTION__, which_chain, which_sensor);
                     }
                     dev.whether_read_out_temp[which_chain][which_sensor] = 0;
                 }
