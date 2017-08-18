@@ -3175,7 +3175,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
     {
         return ret;
     }
-	sleep(FANINT);
+    sleep(FANINT);
     ret = create_bitmain_read_temp_pthread();
     if(ret == -7)
     {
@@ -3841,10 +3841,10 @@ void *bitmain_scanhash(void *arg)
                     {
                         applog( LOG_ERR, "%s: Chain_ID [%d] Error!", __FUNCTION__, chain_id);
                     }
-					else
-					{
-                    	dev.chain_hw[chain_id] ++;
-					}
+                    else
+                    {
+                        dev.chain_hw[chain_id] ++;
+                    }
                 }
             }
 
@@ -4212,7 +4212,7 @@ void *check_miner_status(void *arg)
         {
             gFan_Error = false;
         }
-		
+
         if(gMinerStatus_Low_Hashrate || gMinerStatus_Lost_connection_to_pool|| gMinerStatus_High_Temp || gFan_Error || gMinerStatus_Not_read_all_sensor)
         {
             stop = true;
@@ -4293,8 +4293,8 @@ void *get_hash_rate()
 
         calculate_hash_rate();
 
-		/**/
-		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+        /**/
+        for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
         {
             if(dev.chain_exist[which_chain])
             {
@@ -4303,32 +4303,32 @@ void *get_hash_rate()
             cgsleep_ms(10);
         }
 
-		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-		{
-			for(i=0; i<ASIC_NUM_EACH_CHAIN; i++)
-			{
-				if(g_CHIP_STATUS_reg_value[which_chain][i] != 0)
-				{
-					if(g_CHIP_STATUS_reg_value[which_chain][i] == 0xffffffff)
-					{
-						applog(LOG_ERR , "%s: Chain%d ASIC%02d  didn't receive CHIP_STATUS value", __FUNCTION__, which_chain, i);
-					}
-					else
-					{
-						applog(LOG_ERR , "%s: Chain%d ASIC%02d  g_CHIP_STATUS_reg_value = 0x%08x", __FUNCTION__, which_chain, i, g_CHIP_STATUS_reg_value[which_chain][i]);
-					}
-				}
-			}
-		}
+        for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+        {
+            for(i=0; i<ASIC_NUM_EACH_CHAIN; i++)
+            {
+                if(g_CHIP_STATUS_reg_value[which_chain][i] != 0)
+                {
+                    if(g_CHIP_STATUS_reg_value[which_chain][i] == 0xffffffff)
+                    {
+                        applog(LOG_ERR, "%s: Chain%d ASIC%02d  didn't receive CHIP_STATUS value", __FUNCTION__, which_chain, i);
+                    }
+                    else
+                    {
+                        applog(LOG_ERR, "%s: Chain%d ASIC%02d  g_CHIP_STATUS_reg_value = 0x%08x", __FUNCTION__, which_chain, i, g_CHIP_STATUS_reg_value[which_chain][i]);
+                    }
+                }
+            }
+        }
 
-		for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
-	    {
-	        if(dev.chain_exist[which_chain] == 1)
-	        {
-	            set_config(dev.dev_fd[which_chain], 1, 0, CHIP_STATUS, 0x80000000);
-	            cgsleep_ms(5);
-	        }
-	    }
+        for(which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
+        {
+            if(dev.chain_exist[which_chain] == 1)
+            {
+                set_config(dev.dev_fd[which_chain], 1, 0, CHIP_STATUS, 0x80000000);
+                cgsleep_ms(5);
+            }
+        }
 
         sleep(READ_HASH_RATE_TIME_GAP);
     }
@@ -4499,7 +4499,7 @@ void *read_temp_func()
     unsigned char which_chain, which_sensor, read_temperature_time;
     signed char local_temp=0, remote_temp=0, temp_offset_value=0;
     unsigned int ret = 0, i = 0, tmpTemp = 0;
-	int read_temp_result = 0, how_many_chains = 0;
+    int read_temp_result = 0, how_many_chains = 0;
     bool not_read_out_temperature = false;
 
     applog(LOG_DEBUG, "%s", __FUNCTION__);
@@ -4632,7 +4632,7 @@ void *read_temp_func()
         }
         dev.temp_top1 = tmpTemp;
 
-		    
+
         read_temp_result = 0;
         how_many_chains = 0;
         for ( which_chain= 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
