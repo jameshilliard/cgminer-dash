@@ -7516,7 +7516,7 @@ static bool pool_active(struct pool *pool, bool pinging)
     if (pool->has_gbt)
         applog(LOG_DEBUG, "Retrieving block template from pool %s", pool->rpc_url);
     else
-        applog(LOG_DEBUG, "Testing pool %s", pool->rpc_url);
+        applog(LOG_INFO, "Testing pool %s", pool->rpc_url);
 
     /* This is the central point we activate stratum when we can */
 retry_stratum:
@@ -8329,8 +8329,7 @@ static void submit_work_async(struct work *work)
 
 void inc_hw_errors(struct thr_info *thr)
 {
-    forcelog(LOG_INFO, "%s: %s%d: invalid nonce - HW error", __FUNCTION__, thr->cgpu->drv->name,
-             thr->cgpu->device_id);
+    //forcelog(LOG_INFO, "%s: %s%d: invalid nonce - HW error", __FUNCTION__, thr->cgpu->drv->name, thr->cgpu->device_id);
 
     mutex_lock(&stats_lock);
     hw_errors++;

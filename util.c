@@ -2738,7 +2738,7 @@ static bool setup_stratum_socket(struct pool *pool)
                    sockaddr_url, sockaddr_port);
             pool->probed = true;
         } else {
-            applog(LOG_DEBUG, "Failed to getaddrinfo for %s:%s",
+            applog(LOG_INFO, "Failed to getaddrinfo for %s:%s",
                    sockaddr_url, sockaddr_port);
         }
         return false;
