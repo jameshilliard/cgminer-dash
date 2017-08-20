@@ -4040,13 +4040,26 @@ inline int check_fan_ok()
 {
     int ret = 0;
     if(dev.fan_num < MIN_FAN_NUM)
+    {
         ret = 1;
+        goto err;
+    }
     if(dev.fan_speed_value[0] < (FAN1_MAX_SPEED * dev.fan_pwm / 130))
+    {
         ret = 2;
+        goto err;
+    }
     if(dev.fan_speed_value[1] < (FAN2_MAX_SPEED * dev.fan_pwm / 130))
+    {
         ret = 3;
-    if((dev.pwm_percent == 100) && (dev.fan_speed_value[0] < FAN1_MAX_SPEED * 90 / 100 || dev.fan_speed_value[1] < FAN1_MAX_SPEED * 90 / 100))
+        goto err;
+    }
+    if((dev.pwm_percent == 100) && (dev.fan_speed_value[0] < (FAN1_MAX_SPEED * 90 / 100) || dev.fan_speed_value[1] < (FAN2_MAX_SPEED * 90 / 100)))
+    {
         ret = 4;
+        goto err;
+    }
+err:
     if(ret != 0)
     {
         fan_error_num++;
@@ -5031,6 +5044,8 @@ static void bitmain_DASH_update(struct cgpu_info *bitmain)
     }
 }
 
+static double hwp = 0;
+
 static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
 {
     struct api_data *root = NULL;
@@ -5088,8 +5103,8 @@ static struct api_data *bitmain_api_stats(struct cgpu_info *cgpu)
     root = api_add_uint32(root, "temp_max", &(dev.temp_top1), copy_data);
 
     total_diff1 = total_diff_accepted + total_diff_rejected + total_diff_stale;
-    double hwp = (hw_errors + total_diff1) ?
-                 (double)(hw_errors) / (pow(2, (32 - DEVICE_DIFF_SET))) / (double)(hw_errors + total_diff1) : 0;
+    hwp = (hw_errors + total_diff1) ?
+          (double)(hw_errors) / (pow(2, (32 - DEVICE_DIFF_SET))) / (double)(hw_errors + total_diff1) : 0;
 
     root = api_add_percent(root, "Device Hardware%", &hwp, true);
     root = api_add_int(root, "no_matching_work", &hw_errors, true);
