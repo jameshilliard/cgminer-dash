@@ -3175,7 +3175,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
     {
         return ret;
     }
-	sleep(FANINT);
+    sleep(FANINT);
     ret = create_bitmain_read_temp_pthread();
     if(ret == -7)
     {
@@ -4035,6 +4035,31 @@ int create_bitmain_check_fan_pthread(void)
     cgsleep_ms(500);
 }
 
+int fan_error_num = 0;
+inline int check_fan_ok()
+{
+    int ret = 0;
+    if(dev.fan_num < MIN_FAN_NUM)
+        ret = 1;
+    if(dev.fan_speed_value[0] < (FAN1_MAX_SPEED * dev.fan_pwm / 130))
+        ret = 2;
+    if(dev.fan_speed_value[1] < (FAN2_MAX_SPEED * dev.fan_pwm / 130))
+        ret = 3;
+    if((dev.pwm_percent == 100) && (dev.fan_speed_value[0] < FAN1_MAX_SPEED * 90 / 100 || dev.fan_speed_value[1] < FAN1_MAX_SPEED * 90 / 100))
+        ret = 4;
+    if(ret != 0)
+    {
+        fan_error_num++;
+        if(fan_error_num > (FANINT * 10))
+            return ret;
+    }
+    else
+    {
+        fan_error_num = 0;
+        return 0;
+    }
+}
+
 void *check_miner_status(void *arg)
 {
     struct bitmain_DASH_info *info = (struct bitmain_DASH_info*)arg;
@@ -4049,6 +4074,7 @@ void *check_miner_status(void *arg)
     unsigned int asic_num = 0, error_asic = 0, avg_num = 0;
     unsigned int which_chain, which_asic, which_sensor;
     unsigned int offset = 0;
+    int fan_ret = 0;
 
     while(1)
     {
@@ -4176,40 +4202,31 @@ void *check_miner_status(void *arg)
         }
 
         // check fan
-        if((dev.fan_num < BITMAIN_MAX_FAN_NUM) ||
-           (dev.fan_speed_value[0] < (FAN1_MAX_SPEED * dev.fan_pwm / 130)) ||
-           (dev.fan_speed_value[1] < (FAN2_MAX_SPEED * dev.fan_pwm / 130)))
+        fan_ret = check_fan_ok();
+        if(fan_ret != 0)
         {
             gFan_Error = true;
-            applog(LOG_ERR,"%s: Lost fan or fan speed too low, close PIC and need reboot!!!", __FUNCTION__);
-            if(dev.fan_num < BITMAIN_MAX_FAN_NUM)
+            switch (fan_ret)
             {
-                applog(LOG_ERR,"%s: Lost fan! fan number is %d", __FUNCTION__, dev.fan_num);
-                if(!dev.fan_exist[0])
-                {
-                    applog(LOG_ERR,"%s: Lost FAN1!", __FUNCTION__);
-                }
-                if(!dev.fan_exist[1])
-                {
-                    applog(LOG_ERR,"%s: Lost FAN2!", __FUNCTION__);
-                }
-            }
-
-            if(dev.fan_speed_value[0] < (FAN1_MAX_SPEED * dev.fan_pwm / 130))
-            {
-                applog(LOG_ERR,"%s: FAN1 speed is too slow! FAN1 speed = %d, fan_pwm = %d", __FUNCTION__, dev.fan_speed_value[0], dev.fan_pwm);
-            }
-
-            if(dev.fan_speed_value[1] < (FAN2_MAX_SPEED * dev.fan_pwm / 130))
-            {
-                applog(LOG_ERR,"%s: FAN2 speed is too slow! FAN2 speed = %d, fan_pwm = %d", __FUNCTION__, dev.fan_speed_value[1], dev.fan_pwm);
+                case 1:
+                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan num is %d",dev.fan_num);
+                    break;
+                case 2:
+                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1 speed is too low %d pwm %d ",dev.fan_speed_value[0],dev.pwm_percent);
+                    break;
+                case 3:
+                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan2 speed is too low %d pwm %d ",dev.fan_speed_value[1],dev.pwm_percent);
+                    break;
+                case 4:
+                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1:%d Fan2:%d pwm %d",dev.fan_speed_value[0],dev.fan_speed_value[1],dev.pwm_percent);
+                    break;
             }
         }
         else
         {
             gFan_Error = false;
         }
-		
+
         if(gMinerStatus_Low_Hashrate || gMinerStatus_Lost_connection_to_pool|| gMinerStatus_High_Temp || gFan_Error || gMinerStatus_Not_read_all_sensor)
         {
             stop = true;
@@ -4459,7 +4476,7 @@ void *read_temp_func()
     unsigned char which_chain, which_sensor, read_temperature_time;
     signed char local_temp=0, remote_temp=0, temp_offset_value=0;
     unsigned int ret = 0, i = 0, tmpTemp = 0;
-	int read_temp_result = 0, how_many_chains = 0;
+    int read_temp_result = 0, how_many_chains = 0;
     bool not_read_out_temperature = false;
 
     applog(LOG_DEBUG, "%s", __FUNCTION__);
@@ -4592,7 +4609,7 @@ void *read_temp_func()
         }
         dev.temp_top1 = tmpTemp;
 
-		    
+
         read_temp_result = 0;
         how_many_chains = 0;
         for ( which_chain= 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
