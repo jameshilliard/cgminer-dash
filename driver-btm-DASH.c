@@ -3022,7 +3022,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 
     memcpy(&config_parameter, &config, sizeof(struct init_config));
 
-    sprintf(g_miner_version, "1.0.0.1");
+    sprintf(g_miner_version, "1.0.0.2");
 
     // start fans
 
