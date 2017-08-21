@@ -995,7 +995,7 @@ static char *set_quota(char *arg)
     pool = add_url();
     setup_url(pool, url);
     pool->quota = quota;
-    applog(LOG_INFO, "Setting pool %d to quota %d", pool->pool_no, pool->quota);
+    applog(LOG_DEBUG, "Setting pool %d to quota %d", pool->pool_no, pool->quota);
     adjust_quota_gcd();
 
     return NULL;
@@ -2682,7 +2682,7 @@ static void gbt_merkle_bins(struct pool *pool, json_t *transaction_arr)
             applog(LOG_DEBUG, "MH%d %s",i, hashhex);
         }
     }
-    applog(LOG_INFO, "Stored %d transactions from pool %d", pool->transactions,
+    applog(LOG_DEBUG, "Stored %d transactions from pool %d", pool->transactions,
            pool->pool_no);
 }
 
@@ -3764,7 +3764,7 @@ static bool submit_upstream_work(struct work *work, CURL *curl, bool resubmit)
 
     if (unlikely(!val))
     {
-        applog(LOG_INFO, "submit_upstream_work json_rpc_call failed");
+        applog(LOG_DEBUG, "submit_upstream_work json_rpc_call failed");
         if (!pool_tset(pool, &pool->submit_fail))
         {
             total_ro++;
@@ -3858,7 +3858,7 @@ static bool submit_upstream_work(struct work *work, CURL *curl, bool resubmit)
         char logline[256];
 
         get_statline(logline, sizeof(logline), cgpu);
-        applog(LOG_INFO, "%s", logline);
+        applog(LOG_DEBUG, "%s", logline);
     }
 
     json_decref(val);
@@ -4406,7 +4406,7 @@ static void __kill_work(void)
     if (!successful_connect)
         return;
 
-    forcelog(LOG_INFO, "Received kill message");
+    forcelog(LOG_DEBUG, "Received kill message");
 
 #ifdef USE_USBUTILS
     /* Best to get rid of it first so it doesn't
@@ -4706,7 +4706,7 @@ static void *submit_work_thread(void *userdata)
         }
 
         /* pause, then restart work-request loop */
-        applog(LOG_INFO, "json_rpc_call failed on submit_work, retrying");
+        applog(LOG_DEBUG, "json_rpc_call failed on submit_work, retrying");
     }
     push_curl_entry(ce, pool);
 
@@ -4885,7 +4885,7 @@ void pool_died(struct pool *pool)
             switch_pools(NULL);
         }
         else
-            applog(LOG_INFO, "Pool %d %s failed to return work", pool->pool_no, pool->rpc_url);
+            applog(LOG_DEBUG, "Pool %d %s failed to return work", pool->pool_no, pool->rpc_url);
     }
 }
 
@@ -4990,7 +4990,7 @@ double share_diff(const struct work *work)
     cg_wunlock(&control_lock);
 
     if (unlikely(new_best))
-        applog(LOG_INFO, "New best share: %s", best_share);
+        applog(LOG_DEBUG, "New best share: %s", best_share);
 
     return ret;
 }
@@ -5299,7 +5299,7 @@ static void signal_work_update(void)
 {
     int i;
 
-    applog(LOG_INFO, "Work update message received");
+    applog(LOG_DEBUG, "Work update message received");
 
     cgtime(&update_tv_start);
     rd_lock(&mining_thr_lock);
@@ -5327,7 +5327,7 @@ static void set_curblock(char *hexstr, unsigned char *bedata)
     strncpy(prev_block, &current_hash[ofs], 8);
     prev_block[8] = '\0';
 
-    applog(LOG_INFO, "New block: %s... diff %s", current_hash, block_diff);
+    applog(LOG_DEBUG, "New block: %s... diff %s", current_hash, block_diff);
 }
 
 /* Search to see if this string is from a block that has been seen before */
@@ -5471,7 +5471,7 @@ static bool test_work_current(struct work *work)
             {
                 /* Work is from new block and pool is up now
                  * current. */
-                applog(LOG_INFO, "Pool %d now up to date", pool->pool_no);
+                applog(LOG_DEBUG, "Pool %d now up to date", pool->pool_no);
                 memcpy(pool->prev_block, bedata, 32);
             }
         }
@@ -5900,7 +5900,7 @@ static void set_lowprio(void)
     int ret = nice(10);
 
     if (!ret)
-        applog(LOG_INFO, "Unable to set thread to low priority");
+        applog(LOG_DEBUG, "Unable to set thread to low priority");
 #else
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif
@@ -6748,7 +6748,7 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
                 fflush(stdout);
             }
             else
-                applog(LOG_INFO, "%s", logline);
+                applog(LOG_DEBUG, "%s", logline);
         }
     }
     else
@@ -6852,7 +6852,7 @@ static void hashmeter(int thr_id, uint64_t hashes_done)
             fflush(stdout);
         }
         else
-            applog(LOG_INFO, "%s", statusline);
+            applog(LOG_DEBUG, "%s", statusline);
     }
 }
 
@@ -6867,7 +6867,7 @@ static void stratum_share_result(json_t *val, json_t *res_val, json_t *err_val,
     srdiff = now_t - sshare->sshare_sent;
     if (opt_debug || srdiff > 0)
     {
-        applog(LOG_INFO, "Pool %d stratum share result lag time %d seconds",
+        applog(LOG_DEBUG, "Pool %d stratum share result lag time %d seconds",
                work->pool->pool_no, srdiff);
     }
     show_hash(work, hashshow);
@@ -6887,7 +6887,7 @@ static bool parse_stratum_response(struct pool *pool, char *s)
     val = JSON_LOADS(s, &err);
     if (!val)
     {
-        applog(LOG_INFO,"JSON decode failed(%d): %s", err.line, err.text);
+        applog(LOG_DEBUG,"JSON decode failed(%d): %s", err.line, err.text);
         goto out;
     }
 
@@ -6904,7 +6904,7 @@ static bool parse_stratum_response(struct pool *pool, char *s)
         else
             ss = strdup("(unknown reason)");
 
-        applog(LOG_INFO,"JSON-RPC non method decode failed: %s", ss);
+        applog(LOG_DEBUG,"JSON-RPC non method decode failed: %s", ss);
 
         free(ss);
 
@@ -7021,7 +7021,7 @@ void clear_pool_work(struct pool *pool)
     mutex_unlock(stgd_lock);
 
     if (cleared)
-        applog(LOG_INFO, "Cleared %d work items due to stratum disconnect on pool %d", cleared, pool->pool_no);
+        applog(LOG_DEBUG, "Cleared %d work items due to stratum disconnect on pool %d", cleared, pool->pool_no);
 }
 
 static int cp_prio(void)
@@ -7084,7 +7084,7 @@ void stratum_resumed(struct pool *pool)
 {
     if (pool_tclear(pool, &pool->idle))
     {
-        applog(LOG_INFO, "Stratum connection to pool %d resumed", pool->pool_no);
+        applog(LOG_DEBUG, "Stratum connection to pool %d resumed", pool->pool_no);
         pool_resus(pool);
     }
 }
@@ -7192,7 +7192,7 @@ static void *stratum_rthread(void *userdata)
          * has not had its idle flag cleared */
         stratum_resumed(pool);
         if (!parse_method(pool, s) && !parse_stratum_response(pool, s))
-            applog(LOG_INFO, "Unknown stratum msg: %s", s);
+            applog(LOG_DEBUG, "Unknown stratum msg: %s", s);
         else if (pool->swork.clean)
         {
             struct work *work = make_work();
@@ -7271,7 +7271,7 @@ static void *stratum_sthread(void *userdata)
         /* Filter out duplicate shares */
         if (unlikely(nonce == last_nonce && *nonce2_64 == last_nonce2))
         {
-            applog(LOG_INFO, "Filtering duplicate share to pool %d",
+            applog(LOG_DEBUG, "Filtering duplicate share to pool %d",
                    pool->pool_no);
             free_work(work);
             continue;
@@ -7324,7 +7324,7 @@ static void *stratum_sthread(void *userdata)
                      "{\"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\"], \"id\": %d, \"method\": \"mining.submit\"}",
                      pool->rpc_user, work->job_id, nonce2hex, work->ntime, noncehex, sshare->id);
 
-        applog(LOG_INFO, "Submitting share %08lx to pool %d",
+        applog(LOG_DEBUG, "Submitting share %08lx to pool %d",
                (long unsigned int)htole32(hash32[6]), pool->pool_no);
 
         /* Try resubmitting for up to 2 minutes if we fail to submit
@@ -7389,7 +7389,7 @@ static void *stratum_sthread(void *userdata)
             ssdiff = sshare->sshare_sent - sshare->sshare_time;
             if (opt_debug || ssdiff > 0)
             {
-                applog(LOG_INFO, "Pool %d stratum share submission lag time %d seconds",
+                applog(LOG_DEBUG, "Pool %d stratum share submission lag time %d seconds",
                        pool->pool_no, ssdiff);
             }
         }
@@ -7416,7 +7416,7 @@ static void *longpoll_thread(void *userdata);
 
 static bool stratum_works(struct pool *pool)
 {
-    applog(LOG_INFO, "Testing pool %d stratum %s", pool->pool_no, pool->stratum_url);
+    applog(LOG_DEBUG, "Testing pool %d stratum %s", pool->pool_no, pool->stratum_url);
     check_extranonce_option(pool, pool->stratum_url);
     if (!extract_sockaddr(pool->stratum_url, &pool->sockaddr_url, &pool->stratum_port))
         return false;
@@ -7516,7 +7516,7 @@ static bool pool_active(struct pool *pool, bool pinging)
     if (pool->has_gbt)
         applog(LOG_DEBUG, "Retrieving block template from pool %s", pool->rpc_url);
     else
-        applog(LOG_INFO, "Testing pool %s", pool->rpc_url);
+        applog(LOG_DEBUG, "Testing pool %s", pool->rpc_url);
 
     /* This is the central point we activate stratum when we can */
 retry_stratum:
@@ -7732,7 +7732,7 @@ static void pool_resus(struct pool *pool)
     if (pool_strategy == POOL_FAILOVER && pool->prio < cp_prio())
         applog(LOG_WARNING, "Pool %d %s alive, testing stability", pool->pool_no, pool->rpc_url);
     else
-        applog(LOG_INFO, "Pool %d %s alive", pool->pool_no, pool->rpc_url);
+        applog(LOG_DEBUG, "Pool %d %s alive", pool->pool_no, pool->rpc_url);
 }
 
 static bool work_filled;
@@ -8461,7 +8461,7 @@ bool submit_tested_work(struct thr_info *thr, struct work *work)
 
     if (!fulltest(work->hash, work->target))
     {
-        applog(LOG_INFO, "%s %s %d: Share above target",__FUNCTION__, thr->cgpu->drv->name,
+        applog(LOG_DEBUG, "%s %s %d: Share above target",__FUNCTION__, thr->cgpu->drv->name,
                thr->cgpu->device_id);
         return false;
     }
@@ -8592,7 +8592,7 @@ bool submit_noffset_nonce(struct thr_info *thr, struct work *work_in, uint32_t n
     if (!fulltest(work->hash, work->target))
     {
         free_work(work);
-        applog(LOG_INFO, "%s %d: Share above target", thr->cgpu->drv->name,
+        applog(LOG_DEBUG, "%s %d: Share above target", thr->cgpu->drv->name,
                thr->cgpu->device_id);
         goto  out;
     }
@@ -11353,7 +11353,7 @@ begin_bench:
             cp->getfail_occasions++;
             total_go++;
             if (!pool_localgen(cp) && max_queue < opt_queue)
-                applog(LOG_INFO, "Increasing queue to %d", ++max_queue);
+                applog(LOG_DEBUG, "Increasing queue to %d", ++max_queue);
         }
         pool = select_pool(lagging);
     retry:
