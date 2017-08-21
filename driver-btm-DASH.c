@@ -84,13 +84,15 @@ bool update_asic_num = false;
 signed char gTempOffsetValue[BITMAIN_MAX_CHAIN_NUM][BITMAIN_MAX_SUPPORT_TEMP_CHIP_NUM] = {{0}};
 unsigned char g_CHIP_ADDR_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};                   // record receive how many CHIP_ADDR register value each chain
 unsigned int g_CHIP_ADDR_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};             // record receive CHIP_ADDR register value each chain
-unsigned char g_GENERAL_I2C_COMMAND_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};     // record receive how many GENERAL_I2C_COMMAND register value each chain
-unsigned int g_GENERAL_I2C_COMMAND_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};   // record receive GENERAL_I2C_COMMAND register value each chain
 unsigned char g_HASH_RATE_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};                   // record receive how many HASH_RATE register value each chain
 unsigned int g_HASH_RATE_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};             // record receive HASH_RATE register value each chain
 unsigned int g_HASH_RATE_reg_value_from_which_asic[BITMAIN_MAX_CHAIN_NUM][128] = {{0}}; // record receive HASH_RATE register value from which asic
 unsigned char g_CHIP_STATUS_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};             // record receive how many CHIP_STATUS register value each chain
 unsigned int g_CHIP_STATUS_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};           // record receive CHIP_STATUS register value each chain
+unsigned char g_GENERAL_I2C_COMMAND_reg_value_num[BITMAIN_MAX_CHAIN_NUM] = {0};     // record receive how many GENERAL_I2C_COMMAND register value each chain
+unsigned int g_GENERAL_I2C_COMMAND_reg_value[BITMAIN_MAX_CHAIN_NUM][128] = {{0}};   // record receive GENERAL_I2C_COMMAND register value each chain
+
+bool g_chip_temp_return[BITMAIN_MAX_CHAIN_NUM][BITMAIN_REAL_TEMP_CHIP_NUM][2] = {{0}};
 
 uint64_t rate[BITMAIN_MAX_CHAIN_NUM] = {0};
 unsigned char rate_error[BITMAIN_MAX_CHAIN_NUM] = {0};  // record not receive all ASIC's HASH_RATE register value time
@@ -3812,7 +3814,7 @@ void *bitmain_scanhash(void *arg)
             }
             else
             {
-                applog(LOG_WARNING,"got a hw from Chain%d Asic%d", chain_id, ((Swap32(nonce) & 0xFC000000) >> 26) / dev.addrInterval);
+                applog(LOG_DEBUG,"got a hw from Chain%d Asic%d", chain_id, ((Swap32(nonce) & 0xFC000000) >> 26) / dev.addrInterval);
                 /*
                 ob_hex = bin2hex((uint8_t *)(endiandata), 80);
                 applog(LOG_WARNING, "workdata %s", ob_hex);
@@ -4332,11 +4334,11 @@ void *get_hash_rate()
                 {
                     if(g_CHIP_STATUS_reg_value[which_chain][i] == 0xffffffff)
                     {
-                        applog(LOG_ERR, "%s: Chain%d ASIC%02d  didn't receive CHIP_STATUS value", __FUNCTION__, which_chain, i);
+                        applog(LOG_DEBUG, "%s: Chain%d ASIC%02d  didn't receive CHIP_STATUS value", __FUNCTION__, which_chain, i);
                     }
                     else
                     {
-                        applog(LOG_ERR, "%s: Chain%d ASIC%02d  g_CHIP_STATUS_reg_value = 0x%08x", __FUNCTION__, which_chain, i, g_CHIP_STATUS_reg_value[which_chain][i]);
+                        applog(LOG_DEBUG, "%s: Chain%d ASIC%02d  g_CHIP_STATUS_reg_value = 0x%08x", __FUNCTION__, which_chain, i, g_CHIP_STATUS_reg_value[which_chain][i]);
                     }
                 }
             }
@@ -4368,7 +4370,30 @@ int create_bitmain_get_hash_rate_pthread(void)
     cgsleep_ms(500);
 }
 
+void process_i2creg(unsigned int chain_id, unsigned char chip_addr,unsigned int reg_data)
+{
+    int which_sensor = 0;
+    if ((reg_data & 0xc0000000) == 0)
+    {
+        for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+        {
 
+            if(TempChipAddr[which_sensor] == chip_addr)
+            {
+                if((reg_data & 0xff00) == 0x0)
+                {
+                    dev.chain_asic_temp[chain_id][which_sensor][0] = reg_data & 0xff;
+                    g_chip_temp_return[chain_id][which_sensor][0] = true;
+                }
+                else if ((reg_data & 0xff00) == 0x100)
+                {
+                    dev.chain_asic_temp[chain_id][which_sensor][1] = reg_data & 0xff;
+                    g_chip_temp_return[chain_id][which_sensor][1] = true;
+                }
+            }
+        }
+    }
+}
 void *bitmain_scanreg(void* args)
 {
     unsigned int i,j, not_reg_data_time = 0;
@@ -4479,7 +4504,7 @@ rerun_all:
                 if ( reg_addr == GENERAL_I2C_COMMAND)
                 {
                     //applog(LOG_ERR,"%s: the Chip%d GENERAL_I2C_COMMAND reg_value = 0x%08x @chain%d chip%d", __FUNCTION__, chip_addr/dev.addrInterval, reg_data, chain_id, chip_addr/dev.addrInterval);
-
+                    process_i2creg(chain_id,chip_addr,reg_data);
                     g_GENERAL_I2C_COMMAND_reg_value[chain_id][g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]] = reg_data;
                     g_GENERAL_I2C_COMMAND_reg_value_num[chain_id]++;
                 }
@@ -4520,7 +4545,7 @@ void *read_temp_func()
     unsigned char which_chain, which_sensor, read_temperature_time;
     signed char local_temp=0, remote_temp=0, temp_offset_value=0;
     unsigned int ret = 0, i = 0, tmpTemp = 0;
-    int read_temp_result = 0, how_many_chains = 0;
+    bool read_temp_result = false;
     bool not_read_out_temperature = false;
 
     applog(LOG_DEBUG, "%s", __FUNCTION__);
@@ -4528,106 +4553,37 @@ void *read_temp_func()
     while(1)
     {
         pthread_mutex_lock(&read_temp_mutex);
-
+        read_temp_result = false;
         for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
         {
             if ( dev.chain_exist[which_chain] == 1 )
             {
                 for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
                 {
-                    // check whether the GENERAL_I2C_COMMAND is busy
-                    do
-                    {
-                        check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
-                        read_temperature_time++;
-
-                        if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-                        {
-                            ret = 0xc0000000;
-                        }
-                        else
-                        {
-                            ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-                        }
-                    }
-                    while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
-                    read_temperature_time = 0;
-
                     // write config data to read back EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
                     set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(EXT_TEMP_VALUE_HIGH_BYTE) | DATA(0) & (~RW));
-
-                    // read back the EXTERNAL_TEMPERATURE_VALUE_HIGH_BYTE
+                    g_chip_temp_return[which_chain][which_sensor][1] = false;
+                    read_temperature_time = 0;
                     do
                     {
                         check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
                         read_temperature_time++;
+                        cgsleep_ms(100);
+                    }
+                    while((!g_chip_temp_return[which_chain][which_sensor][1]) && (read_temperature_time < READ_LOOP));
 
-                        if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-                        {
-                            ret = 0xc0000000;
-                        }
-                        else
-                        {
-                            ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-                        }
-                    }
-                    while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
-                    read_temperature_time = 0;
-
-                    if((ret & 0xc0000000) == 0)
-                    {
-                        remote_temp = (signed char)(ret & 0xff);
-                        applog(LOG_DEBUG, "%s: Chain%d Sensor%d remote_temp is %d", __FUNCTION__, which_chain, which_sensor, remote_temp);
-                    }
-                    else
-                    {
-                        not_read_out_temperature = true;
-                        applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out ASIC TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
-                    }
 
                     // write config data to read back LOCAL_TEMPERATURE_VALUE
                     set_config(dev.dev_fd[which_chain], 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(LOCAL_TEMP_VALUE) | DATA(0) & (~RW));
-
-                    // read back the LOCAL_TEMPERATURE_VALUE
+                    g_chip_temp_return[which_chain][which_sensor][0] = false;
+                    read_temperature_time = 0;
                     do
                     {
                         check_asic_reg(which_chain, 0, TempChipAddr[which_sensor], GENERAL_I2C_COMMAND);
                         read_temperature_time++;
-
-                        if(g_GENERAL_I2C_COMMAND_reg_value_num[which_chain] == 0)
-                        {
-                            ret = 0xc0000000;
-                        }
-                        else
-                        {
-                            ret = g_GENERAL_I2C_COMMAND_reg_value[which_chain][g_GENERAL_I2C_COMMAND_reg_value_num[which_chain]- 1];
-                        }
+                        cgsleep_ms(100);
                     }
-                    while((ret & 0xc0000000) && (read_temperature_time < READ_LOOP));
-                    read_temperature_time = 0;
-
-                    if((ret & 0xc0000000) == 0)
-                    {
-                        local_temp = (signed char)(ret & 0xff);
-                        dev.whether_read_out_temp[which_chain][which_sensor] = 1;
-                        if(local_temp > MAX_TEMP)
-                        {
-                            applog(LOG_ERR, "%s: Chain%d Sensor%d local_temp is %d, and it's higher than 85'C", __FUNCTION__, which_chain, which_sensor, local_temp);
-                        }
-                        else
-                        {
-                            applog(LOG_DEBUG, "%s: Chain%d Sensor%d local_temp is %d", __FUNCTION__, which_chain, which_sensor, local_temp);
-                        }
-                    }
-                    else
-                    {
-                        not_read_out_temperature = true;
-                        dev.whether_read_out_temp[which_chain][which_sensor] = -1;
-                        applog(LOG_ERR, "%s: Chain%d Sensor%d can't read out HASH BOARD TEMP. ret = 0x%08x\n", __FUNCTION__, which_chain, which_sensor, ret);
-                    }
-
-                    dev.chain_asic_temp[which_chain][which_sensor][0] = local_temp;
-                    dev.chain_asic_temp[which_chain][which_sensor][1] = remote_temp;
+                    while((!g_chip_temp_return[which_chain][which_sensor][0]) && (read_temperature_time < READ_LOOP));
                 }
             }
         }
@@ -4640,7 +4596,9 @@ void *read_temp_func()
             {
                 for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
                 {
-                    if ( dev.chain_asic_temp[which_chain][which_sensor][0] > tmpTemp )
+                    if(g_chip_temp_return[which_chain][which_sensor][0])
+                        read_temp_result = true;
+                    if ( dev.chain_asic_temp[which_chain][which_sensor][0] > tmpTemp)
                     {
                         tmpTemp = dev.chain_asic_temp[which_chain][which_sensor][0];
                         if(tmpTemp > MAX_TEMP)
@@ -4653,27 +4611,7 @@ void *read_temp_func()
         }
         dev.temp_top1 = tmpTemp;
 
-
-        read_temp_result = 0;
-        how_many_chains = 0;
-        for ( which_chain= 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
-        {
-            if ( dev.chain_exist[which_chain] == 1 )
-            {
-                how_many_chains++;
-                for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-                {
-                    read_temp_result += dev.whether_read_out_temp[which_chain][which_sensor];
-                    if(dev.whether_read_out_temp[which_chain][which_sensor] == -1)
-                    {
-                        applog(LOG_ERR, "%s: Don't read out temperature from Chain%d Sensor%d!", __FUNCTION__, which_chain, which_sensor);
-                    }
-                    dev.whether_read_out_temp[which_chain][which_sensor] = 0;
-                }
-            }
-        }
-
-        if(read_temp_result == (0 - how_many_chains * BITMAIN_REAL_TEMP_CHIP_NUM))
+        if(!read_temp_result)
         {
             gMinerStatus_Not_read_all_sensor = true;
             applog(LOG_ERR,"%s: can't read all sensor's temperature, close PIC and need reboot!!!", __FUNCTION__);
