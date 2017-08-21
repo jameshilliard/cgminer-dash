@@ -298,7 +298,7 @@ static bool knc_detect_one(void *ctx)
 	}
 
 	if (!cores) {
-		applog(LOG_NOTICE, "no KnCminer cores found");
+		applog(LOG_DEBUG, "no KnCminer cores found");
 		return false;
 	}
 

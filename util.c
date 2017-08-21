@@ -2284,10 +2284,10 @@ static bool parse_diff(struct pool *pool, json_t *val)
         int idiff = diff;
 
         if ((double)idiff == diff)
-            applog(LOG_NOTICE, "Pool %d difficulty changed to %d",
+            applog(LOG_DEBUG, "Pool %d difficulty changed to %d",
                    pool->pool_no, idiff);
         else
-            applog(LOG_NOTICE, "Pool %d difficulty changed to %.1f",
+            applog(LOG_DEBUG, "Pool %d difficulty changed to %.1f",
                    pool->pool_no, diff);
     }
     else
@@ -2325,7 +2325,7 @@ static bool parse_extranonce(struct pool *pool, json_t *val)
         quithere(1, "Failed to calloc pool->nonce1bin");
     hex2bin(pool->nonce1bin, pool->nonce1, pool->n1_len);
     pool->n2size = n2size;
-    applog(LOG_NOTICE, "Pool %d confirmed mining.extranonce.subscribe with extranonce1 %s extran2size %d",
+    applog(LOG_DEBUG, "Pool %d confirmed mining.extranonce.subscribe with extranonce1 %s extran2size %d",
            pool->pool_no, pool->nonce1, pool->n2size);
     cg_wunlock(&pool->data_lock);
     return true;
@@ -2446,7 +2446,7 @@ static bool show_message(struct pool *pool, json_t *val)
     msg = (char *)json_string_value(json_array_get(val, 0));
     if (!msg)
         return false;
-    applog(LOG_NOTICE, "Pool %d message: %s", pool->pool_no, msg);
+    applog(LOG_DEBUG, "Pool %d message: %s", pool->pool_no, msg);
     return true;
 }
 

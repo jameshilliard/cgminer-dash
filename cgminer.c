@@ -3507,10 +3507,10 @@ share_result(json_t *val, json_t *res, json_t *err, const struct work *work,
         if (!QUIET)
         {
             if (total_pools > 1)
-                applog(LOG_NOTICE, "Accepted %s %s %d pool %d %s%s",
+                applog(LOG_DEBUG, "Accepted %s %s %d pool %d %s%s",
                        hashshow, cgpu->drv->name, cgpu->device_id, work->pool->pool_no, resubmit ? "(resubmit)" : "", worktime);
             else
-                applog(LOG_NOTICE, "Accepted %s %s %d %s%s",
+                applog(LOG_DEBUG, "Accepted %s %s %d %s%s",
                        hashshow, cgpu->drv->name, cgpu->device_id, resubmit ? "(resubmit)" : "", worktime);
         }
         sharelog("accept", work);
@@ -3599,7 +3599,7 @@ share_result(json_t *val, json_t *res, json_t *err, const struct work *work,
                 }
             }
 
-            applog(LOG_NOTICE, "Rejected %s %s %d %s%s %s%s",
+            applog(LOG_DEBUG, "Rejected %s %s %d %s%s %s%s",
                    hashshow, cgpu->drv->name, cgpu->device_id, where, reason, resubmit ? "(resubmit)" : "", worktime);
             sharelog(disposition, work);
         }
@@ -4687,13 +4687,13 @@ static void *submit_work_thread(void *userdata)
     {
         if (opt_lowmem)
         {
-            applog(LOG_NOTICE, "Pool %d share being discarded to minimise memory cache", pool->pool_no);
+            applog(LOG_DEBUG, "Pool %d share being discarded to minimise memory cache", pool->pool_no);
             break;
         }
         resubmit = true;
         if (stale_work(work, true))
         {
-            applog(LOG_NOTICE, "Pool %d share became stale while retrying submit, discarding", pool->pool_no);
+            applog(LOG_DEBUG, "Pool %d share became stale while retrying submit, discarding", pool->pool_no);
 
             mutex_lock(&stats_lock);
             total_stale++;
@@ -5373,7 +5373,7 @@ static void set_blockdiff(const struct work *work)
     {
         suffix_string(ddiff, block_diff, sizeof(block_diff), 0);
         current_diff = ddiff;
-        applog(LOG_NOTICE, "Network diff set to %s", block_diff);
+        applog(LOG_DEBUG, "Network diff set to %s", block_diff);
     }
 }
 
@@ -5438,19 +5438,19 @@ static bool test_work_current(struct work *work)
         {
             if (work->stratum)
             {
-                applog(LOG_NOTICE, "Stratum from pool %d detected new block",
+                applog(LOG_DEBUG, "Stratum from pool %d detected new block",
                        pool->pool_no);
             }
             else
             {
-                applog(LOG_NOTICE, "%sLONGPOLL from pool %d detected new block",
+                applog(LOG_DEBUG, "%sLONGPOLL from pool %d detected new block",
                        work->gbt ? "GBT " : "", work->pool->pool_no);
             }
         }
         else if (have_longpoll && !pool->gbt_solo)
-            applog(LOG_NOTICE, "New block detected on network before pool notification");
+            applog(LOG_DEBUG, "New block detected on network before pool notification");
         else if (!pool->gbt_solo)
-            applog(LOG_NOTICE, "New block detected on network");
+            applog(LOG_DEBUG, "New block detected on network");
         restart_threads();
     }
     else
@@ -5489,12 +5489,12 @@ static bool test_work_current(struct work *work)
             {
                 if (work->stratum)
                 {
-                    applog(LOG_NOTICE, "Stratum from pool %d requested work restart",
+                    applog(LOG_DEBUG, "Stratum from pool %d requested work restart",
                            pool->pool_no);
                 }
                 else
                 {
-                    applog(LOG_NOTICE, "%sLONGPOLL from pool %d requested work restart",
+                    applog(LOG_DEBUG, "%sLONGPOLL from pool %d requested work restart",
                            work->gbt ? "GBT " : "", work->pool->pool_no);
                 }
                 restart_threads();
@@ -6936,7 +6936,7 @@ static bool parse_stratum_response(struct pool *pool, char *s)
 
         if (json_is_true(res_val))
         {
-            applog(LOG_NOTICE, "Accepted untracked stratum share from pool %d", pool->pool_no);
+            applog(LOG_DEBUG, "Accepted untracked stratum share from pool %d", pool->pool_no);
 
             /* We don't know what device this came from so we can't
              * attribute the work to the relevant cgpu */
@@ -6949,7 +6949,7 @@ static bool parse_stratum_response(struct pool *pool, char *s)
         }
         else
         {
-            applog(LOG_NOTICE, "Rejected untracked stratum share from pool %d", pool->pool_no);
+            applog(LOG_DEBUG, "Rejected untracked stratum share from pool %d", pool->pool_no);
 
             mutex_lock(&stats_lock);
             total_rejected++;
@@ -7166,7 +7166,7 @@ static void *stratum_rthread(void *userdata)
             s = recv_line(pool);
         if (!s)
         {
-            applog(LOG_NOTICE, "Stratum connection to pool %d interrupted", pool->pool_no);
+            applog(LOG_DEBUG, "Stratum connection to pool %d interrupted", pool->pool_no);
             pool->getfail_occasions++;
             total_go++;
 
@@ -7466,7 +7466,7 @@ static bool setup_gbt_solo(CURL *curl, struct pool *pool)
         applog(LOG_ERR, "Bitcoin address %s is NOT valid", opt_btc_address);
         goto out;
     }
-    applog(LOG_NOTICE, "Solo mining to valid address: %s", opt_btc_address);
+    applog(LOG_DEBUG, "Solo mining to valid address: %s", opt_btc_address);
     ret = true;
     address_to_pubkeyhash(pool->script_pubkey, opt_btc_address);
     hex2bin(scriptsig_header_bin, scriptsig_header, 41);
@@ -7619,7 +7619,7 @@ retry_stratum:
      * and if so, switch to that in preference to getwork if it works */
     if (pool->stratum_url && !opt_fix_protocol && stratum_works(pool))
     {
-        applog(LOG_NOTICE, "Switching pool %d %s to %s", pool->pool_no, pool->rpc_url, pool->stratum_url);
+        applog(LOG_DEBUG, "Switching pool %d %s to %s", pool->pool_no, pool->rpc_url, pool->stratum_url);
         if (!pool->rpc_url)
             pool->rpc_url = strdup(pool->stratum_url);
         pool->has_stratum = true;
@@ -8015,7 +8015,7 @@ static void gen_stratum_work(struct pool *pool, struct work *work)
     // calc_midstate(work);     // DASH do not need it
     set_target(work->target, work->sdiff);
     /*
-    applog(LOG_NOTICE, "work->sdiff = 0x%x", work->sdiff);
+    applog(LOG_DEBUG, "work->sdiff = 0x%x", work->sdiff);
     p = bin2hex((const unsigned char *)work->target, 32);
     applog(LOG_NOTICE, "work->target %s", p);
     */
@@ -8281,7 +8281,7 @@ static void submit_work_async(struct work *work)
         pool->diff_accepted += work->work_difficulty;
         mutex_unlock(&stats_lock);
 
-        applog(LOG_NOTICE, "Accepted %s %d benchmark share nonce %08x",
+        applog(LOG_DEBUG, "Accepted %s %d benchmark share nonce %08x",
                cgpu->drv->name, cgpu->device_id, *(uint32_t *)(work->data + 64 + 12));
         return;
     }
@@ -8289,12 +8289,12 @@ static void submit_work_async(struct work *work)
     if (stale_work(work, true))
     {
         if (opt_submit_stale)
-            applog(LOG_NOTICE, "Pool %d stale share detected, submitting as user requested", pool->pool_no);
+            applog(LOG_DEBUG, "Pool %d stale share detected, submitting as user requested", pool->pool_no);
         else if (pool->submit_old)
-            applog(LOG_NOTICE, "Pool %d stale share detected, submitting as pool requested", pool->pool_no);
+            applog(LOG_DEBUG, "Pool %d stale share detected, submitting as pool requested", pool->pool_no);
         else
         {
-            applog(LOG_NOTICE, "Pool %d stale share detected, discarding", pool->pool_no);
+            applog(LOG_DEBUG, "Pool %d stale share detected, discarding", pool->pool_no);
             sharelog("discard", work);
 
             mutex_lock(&stats_lock);
@@ -8422,7 +8422,7 @@ void update_work_stats(struct thr_info *thr, struct work *work)
         work->pool->solved++;
         found_blocks++;
         work->mandatory = true;
-        applog(LOG_NOTICE, "Found block for pool %d!", work->pool->pool_no);
+        applog(LOG_DEBUG, "Found block for pool %d!", work->pool->pool_no);
     }
 
     mutex_lock(&stats_lock);
@@ -10089,7 +10089,7 @@ retry:
         cg_wunlock(&control_lock);
 
         if (unlikely(first_pool))
-            applog(LOG_NOTICE, "Switching to pool %d %s - first alive pool", pool->pool_no, pool->rpc_url);
+            applog(LOG_DEBUG, "Switching to pool %d %s - first alive pool", pool->pool_no, pool->rpc_url);
 
         pool_resus(pool);
         switch_pools(NULL);
@@ -10990,7 +10990,7 @@ int main(int argc, char *argv[])
     applog(LOG_WARNING, "Started %s", packagename);
     if (cnfbuf)
     {
-        applog(LOG_NOTICE, "Loaded configuration file %s", cnfbuf);
+        applog(LOG_DEBUG, "Loaded configuration file %s", cnfbuf);
         switch (fileconf_load)
         {
             case 0:
@@ -11186,7 +11186,7 @@ int main(int argc, char *argv[])
     }
 
     /* Look for at least one active pool before starting */
-    applog(LOG_NOTICE, "Probing for an alive pool");
+    applog(LOG_DEBUG, "Probing for an alive pool");
     probe_pools();
     do
     {
