@@ -1031,7 +1031,7 @@ int disable_PIC16F1704_dc_dc_new(void)
     }
     else
     {
-        applog(LOG_NOTICE,"%s ok", __FUNCTION__);
+        applog(LOG_DEBUG,"%s ok", __FUNCTION__);
         return 1;   // ok
     }
 }
@@ -3024,7 +3024,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 
     memcpy(&config_parameter, &config, sizeof(struct init_config));
 
-    sprintf(g_miner_version, "1.0.0.4");
+    sprintf(g_miner_version, "1.0.0.5");
 
     // start fans
 
@@ -4240,7 +4240,7 @@ void *check_miner_status(void *arg)
         {
             stop = true;
             status_error = true;
-            if(gMinerStatus_High_Temp || gFan_Error || gMinerStatus_Not_read_all_sensor)
+            if((!once_error) && (gMinerStatus_High_Temp || gFan_Error || gMinerStatus_Not_read_all_sensor))
             {
                 once_error = true;
                 for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
