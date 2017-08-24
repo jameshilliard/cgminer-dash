@@ -60,6 +60,7 @@ pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;  // used when cpu operate
 pthread_mutex_t iic_mutex = PTHREAD_MUTEX_INITIALIZER;  // used when cpu communicate with pic
 pthread_mutex_t reg_read_mutex = PTHREAD_MUTEX_INITIALIZER;     // used when read ASIC register periodic in pthread
 pthread_mutex_t read_temp_mutex = PTHREAD_MUTEX_INITIALIZER;        // used when read temperature
+pthread_mutex_t work_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 unsigned int gChipOffset = 0;   // record register CHIP_OFFSET value
 unsigned int gCoreOffset = 0;   // record register CORE_OFFSET value
@@ -2267,7 +2268,6 @@ void calculate_hash_rate(void)
             {
                 for(which_asic=0; which_asic < ASIC_NUM_EACH_CHAIN; which_asic++)
                 {
-
                     if(!g_HASH_RATE_reg_value_from_which_asic[which_chain][i] && !status_error)
                     {
                         applog(LOG_ERR, "%s: Chain%d ASIC%d didn't send back HASH_RATE register value", __FUNCTION__, which_chain, which_asic);
@@ -3242,27 +3242,6 @@ void calibration_sensor_offset(void)
     }
 }
 
-void check_sensor_ID(void)
-{
-    unsigned char which_chain, which_sensor, read_temperature_time;
-    signed char manufacturer_id=0;
-    unsigned int ret = 0;
-    bool not_read_out_temperature = false;
-    applog(LOG_DEBUG, "%s", __FUNCTION__);
-    for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
-    {
-        if ( dev.chain_exist[which_chain] == 1 )
-        {
-            for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
-            {
-                read_i2c_reg(which_chain,which_sensor,ID, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(MANUFACTURER_ID) | DATA(0) & (~RW));
-                manufacturer_id = sensor_id[which_chain][which_sensor];
-                applog(LOG_ERR, "%s: Chain%d Sensor%d Manufacturer ID = 0x%02x", __FUNCTION__, which_chain, which_sensor, manufacturer_id);
-            }
-        }
-    }
-}
-
 void set_temperature_offset_value(void)
 {
     unsigned char which_chain, which_sensor, read_temperature_time;
@@ -3295,6 +3274,27 @@ void set_temperature_offset_value(void)
                 {
                     applog(LOG_NOTICE, "%s: Chain%d Sensor%d temp offset : %02d, ",__FUNCTION__, which_chain, which_sensor, send_back_gTempOffsetValue[which_chain][which_sensor]);
                 }
+            }
+        }
+    }
+}
+
+void check_sensor_ID(void)
+{
+    unsigned char which_chain, which_sensor, read_temperature_time;
+    signed char manufacturer_id=0;
+    unsigned int ret = 0;
+    bool not_read_out_temperature = false;
+    applog(LOG_DEBUG, "%s", __FUNCTION__);
+    for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
+    {
+        if ( dev.chain_exist[which_chain] == 1 )
+        {
+            for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
+            {
+                read_i2c_reg(which_chain,which_sensor,ID, REGADDRVALID | DEVICEADDR(TMP451_IIC_SALVE_ADDR) | REGADDR(MANUFACTURER_ID) | DATA(0) & (~RW));
+                manufacturer_id = sensor_id[which_chain][which_sensor];
+                applog(LOG_ERR, "%s: Chain%d Sensor%d Manufacturer ID = 0x%02x", __FUNCTION__, which_chain, which_sensor, manufacturer_id);
             }
         }
     }
@@ -3469,8 +3469,9 @@ void *bitmain_scanhash(void *arg)
             //if signature enabled,check SIG_INFO register
             goto crc_error;
         }
-
+        pthread_mutex_lock(&work_queue_mutex);
         work = info->work_queue[work_id];
+        pthread_mutex_unlock(&work_queue_mutex);
         if(work)
         {
             //applog(LOG_ERR,"%s: work_id = 0x%02x", __FUNCTION__, work_id);
@@ -3790,7 +3791,7 @@ void *check_miner_status(void *arg)
     double ghs = 0;
     int i = 0, j = 0;
     cgtime(&tv_end);
-
+    cgtime(&tv_send);
     copy_time(&tv_start, &tv_end);
     copy_time(&tv_send_job,&tv_send);
     bool stop = false;
@@ -4091,7 +4092,6 @@ void process_i2creg(unsigned int chain_id, unsigned char chip_addr,unsigned int 
     {
         for (which_sensor = 0 ; which_sensor < BITMAIN_REAL_TEMP_CHIP_NUM; which_sensor++ )
         {
-
             if(TempChipAddr[which_sensor] == chip_addr)
             {
                 if((reg_data & 0xff00) == 0x0)
@@ -4210,7 +4210,7 @@ rerun_all:
                 }
                 pthread_mutex_unlock(&reg_mutex);
                 which_chip = chip_addr/dev.addrInterval;
-                if(which_chip > ASIC_NUM_EACH_CHAIN)
+                if(which_chip >= ASIC_NUM_EACH_CHAIN)
                     continue;
 
                 if(reg_addr == CHIP_ADDR)
@@ -4394,7 +4394,9 @@ void *DASH_fill_work(void *usrdata)
         {
             cgtime(&last_send);
         more_work:
+            pthread_mutex_lock(&work_queue_mutex);
             work = get_work(thr, thr->id);
+            pthread_mutex_unlock(&work_queue_mutex);
             if (unlikely(!work))
             {
                 applog(LOG_ERR, "Work Error![%d]", workid);
@@ -4428,6 +4430,7 @@ void *DASH_fill_work(void *usrdata)
             workdata.crc16 = (workdata.crc16 >> 8) | ((workdata.crc16 & 0xff) << 8);
             memcpy((unsigned char *)&workdata + WORK_INPUT_LENGTH_WITHOUT_CRC, &workdata.crc16, 2);
 
+            pthread_mutex_lock(&work_queue_mutex);
             if(info->work_queue[workid])
             {
                 free_work(info->work_queue[workid]);
@@ -4436,6 +4439,7 @@ void *DASH_fill_work(void *usrdata)
 
             if ( workid >= BITMAIN_MAX_QUEUE_NUM ) applog(LOG_ERR, "WorkID Error![%d]", workid);
             info->work_queue[workid] = copy_work(work);
+            pthread_mutex_unlock(&work_queue_mutex);
 
             applog(LOG_DEBUG, "ChainID[%d] Wirte Work. workid=%d", chainid, workid);
             DASH_write(info->dev_fd[chainid], (uint8_t *)&workdata, WORK_INPUT_LENGTH_WITH_CRC);
