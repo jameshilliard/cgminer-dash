@@ -2254,7 +2254,8 @@ void calculate_hash_rate(void)
         {
             if(g_HASH_RATE_reg_value_num[which_chain] == 0)
             {
-                if(status_error)
+                rate_error[which_chain]++;
+                if((rate_error[which_chain] > 3) || status_error)
                 {
                     rate[which_chain] = 0;
                     suffix_string_DASH(rate[which_chain], (char * )displayed_rate[which_chain], sizeof(displayed_rate[which_chain]), 6, true);
@@ -2305,6 +2306,7 @@ void calculate_hash_rate(void)
                         applog(LOG_DEBUG,"%s: avg g_HASH_RATE_reg_value[%d][%d] = 0x%08x", __FUNCTION__, which_chain, which_asic, g_HASH_RATE_reg_value[which_chain][which_asic] & 0x7fffffff);
                     }
                     applog(LOG_DEBUG, "%s: chain%d avg hash rate is %0.2fGHz/s", __FUNCTION__, which_chain, (double)tmp_rate/1000000);
+                    rate_error[which_chain] = 0;
                 }
             }
             tmp_rt_rate_all_chain += rate[which_chain];
@@ -3509,58 +3511,34 @@ void *bitmain_scanhash(void *arg)
 
             Xhash(hash1, endiandata);
             memcpy(work->hash, hash1, 32);
-            /*
-            for (i=0; i < 8; i++)
-            {
-                applog(LOG_DEBUG,"%s: work->hash[%d] = 0x%08x", __FUNCTION__, i, *((uint32_t *)(&work->hash) + i));
-            }
-            */
 
             if(*((uint32_t *)(&work->hash) + 7) <= DEVICE_DIFF_SET_MASK)
             {
                 update_work_stats(thr, work);
-
+                submitnonceok = true;
                 if (fulltest(hash1, work->target))
                 {
-                    submitnonceok = true;
                     submit_nonce_direct(thr,work,Swap32(nonce));
                 }
             }
             else
             {
                 applog(LOG_DEBUG,"got a hw from Chain%d Asic%d", chain_id, ((Swap32(nonce) & 0xFC000000) >> 26) / dev.addrInterval);
-                /*
-                ob_hex = bin2hex((uint8_t *)(endiandata), 80);
-                applog(LOG_WARNING, "workdata %s", ob_hex);
-                free(ob_hex);
-                */
-
                 inc_hw_errors(thr);
-
-                if(submitfull)
+                submitnonceok = false;
+                if ( chain_id >= BITMAIN_MAX_CHAIN_NUM )
                 {
-                    submitnonceok = true;
+                    applog( LOG_ERR, "%s: Chain_ID [%d] Error!", __FUNCTION__, chain_id);
                 }
                 else
                 {
-                    submitnonceok = false;
-                    if ( chain_id >= BITMAIN_MAX_CHAIN_NUM )
-                    {
-                        applog( LOG_ERR, "%s: Chain_ID [%d] Error!", __FUNCTION__, chain_id);
-                    }
-                    else
-                    {
-                        dev.chain_hw[chain_id] ++;
-                    }
+                    dev.chain_hw[chain_id] ++;
                 }
             }
-
 
             if(submitnonceok)
             {
                 h += 0x1UL << (DEVICE_DIFF_SET- DEVICE_DIFF_STANDARD);
-
-                //which_asic_nonce = ((nonce & 0xFC000000) >> 26) / dev.addrInterval;
                 which_asic_nonce = ((Swap32(nonce) & 0xFC000000) >> 26) / dev.addrInterval;
                 applog(LOG_DEBUG,"%s: chain %d which_asic_nonce %d ", __FUNCTION__, chain_id, which_asic_nonce);
 
@@ -3673,9 +3651,9 @@ void *check_fan_thr(void *arg)
                 {
                     fan0_exist = 1;
                     dev.fan_exist[0] = 1;
-                    if( fan0Speed > FAN1_MAX_SPEED)
+                    if( fan0Speed > FAN_WANN_SPEED)
                     {
-                        fan0Speed = FAN1_MAX_SPEED;
+                        fan0Speed = FAN_WANN_SPEED;
                     }
                 }
                 else
@@ -3708,9 +3686,9 @@ void *check_fan_thr(void *arg)
                 {
                     fan1_exist = 1;
                     dev.fan_exist[1] = 1;
-                    if( fan1Speed > FAN2_MAX_SPEED)
+                    if( fan1Speed > FAN_WANN_SPEED)
                     {
-                        fan1Speed = FAN2_MAX_SPEED;
+                        fan1Speed = FAN_WANN_SPEED;
                     }
                 }
                 else
@@ -3808,7 +3786,7 @@ void *check_miner_status(void *arg)
         timersub(&tv_end, &tv_start, &diff);
 
         // 10 minutes
-        if (diff.tv_sec > 600)
+        if (diff.tv_sec > 120)
         {
             asic_num = 0, error_asic = 0, avg_num = 0;
 

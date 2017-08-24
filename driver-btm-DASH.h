@@ -14,16 +14,9 @@
 #define BITMAIN_DEFAULT_BAUD            115200
 
 // default ticket mask
-//#define DEVICE_DIFF_SET                   0x1B
-//#define DEVICE_DIFF_SET_MASK          0x31
 
 #define DEVICE_DIFF_SET                 0x1D
 #define DEVICE_DIFF_SET_MASK            0x7
-
-//#define DEVICE_DIFF_SET                   0x16
-//#define DEVICE_DIFF_SET_MASK          0x3ff
-//#define DEVICE_DIFF_SET                   0x18
-//#define DEVICE_DIFF_SET_MASK          0xff
 
 #define DEVICE_DIFF_STANDARD            0x16
 #define DEVICE_DIFF_STANDARD_MASK       0x003fffffull
@@ -31,6 +24,7 @@
 #define BITMAIN_MAX_FAN_NUM             2
 #define PWM_PERIOD_NS                   100000
 #define MIN_FAN_NUM                     1
+#define FAN_WANN_SPEED                  6600
 #define FAN1_MAX_SPEED                  6000
 #define FAN2_MAX_SPEED                  4300
 #define FAN_SPEED_OK_PERCENT            (0.85)
