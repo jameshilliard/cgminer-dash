@@ -59,7 +59,6 @@ int const i2c_slave_addr[BITMAIN_MAX_CHAIN_NUM] = {0xa0,0xa2,0xa4,0xa6};
 pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;  // used when cpu operates i2c interface
 pthread_mutex_t iic_mutex = PTHREAD_MUTEX_INITIALIZER;  // used when cpu communicate with pic
 pthread_mutex_t reg_read_mutex = PTHREAD_MUTEX_INITIALIZER;     // used when read ASIC register periodic in pthread
-pthread_mutex_t read_temp_mutex = PTHREAD_MUTEX_INITIALIZER;        // used when read temperature
 pthread_mutex_t work_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 unsigned int gChipOffset = 0;   // record register CHIP_OFFSET value
@@ -1900,7 +1899,6 @@ void set_config(unsigned int fd, unsigned char mode, unsigned char asic_addr, un
     applog(LOG_DEBUG, "%s: reg_addr: 0x%02x : 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x" ,__FUNCTION__, reg_addr,buf[0], buf[1], buf[2],
            buf[3],buf[4], buf[5], buf[6], buf[7],buf[8]);
     */
-    cgsleep_ms(1);
     DASH_write(fd, buf, CONFIG_LENTH);
 }
 
@@ -2270,7 +2268,7 @@ void calculate_hash_rate(void)
                 {
                     if(!g_HASH_RATE_reg_value_from_which_asic[which_chain][i] && !status_error)
                     {
-                        applog(LOG_ERR, "%s: Chain%d ASIC%d didn't send back HASH_RATE register value", __FUNCTION__, which_chain, which_asic);
+                        applog(LOG_DEBUG, "%s: Chain%d ASIC%d didn't send back HASH_RATE register value", __FUNCTION__, which_chain, which_asic);
                     }
                 }
 
@@ -2515,6 +2513,7 @@ int DASH_write(int fd, const void *buf, size_t bufLen)
         ret = -1;
 
     flock(fd,LOCK_EX);
+    cgsleep_ms(1);
     ret = write(fd, header, ASIC_INPUT_HEADER_LENGTH);
     ret += write(fd, buf, bufLen);
 
@@ -2927,7 +2926,7 @@ int bitmain_DASH_init(struct bitmain_DASH_info *info)
 
     memcpy(&config_parameter, &config, sizeof(struct init_config));
 
-    sprintf(g_miner_version, "1.0.0.5");
+    sprintf(g_miner_version, "1.0.0.6");
     dev.addrInterval = 1;
     // start fans
 
@@ -4283,7 +4282,6 @@ void *read_temp_func()
 
     while(1)
     {
-        pthread_mutex_lock(&read_temp_mutex);
         read_temp_result = false;
         for ( which_chain = 0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++ )
         {
@@ -4329,9 +4327,6 @@ void *read_temp_func()
         {
             gMinerStatus_Not_read_all_sensor = false;
         }
-
-        pthread_mutex_unlock(&read_temp_mutex);
-
         sleep(READ_TEMPERATURE_TIME_GAP);
     }
 }
@@ -4848,10 +4843,9 @@ static void get_bitmain_statline_before(char *buf, size_t bufsiz, struct cgpu_in
 static void bitmain_DASH_shutdown(struct thr_info *thr)
 {
     thr_info_cancel(check_miner_status_id);
-    thr_info_cancel(read_temp_id);
+    thr_info_cancel(check_fan_id);
     thr_info_cancel(read_hash_rate);
     thr_info_cancel(read_temp_id);
-    //thr_info_cancel(send_mac_thr);
 }
 
 struct device_drv bitmainD1_drv =
