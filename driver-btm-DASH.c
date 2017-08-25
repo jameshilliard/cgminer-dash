@@ -518,7 +518,7 @@ int read_PIC16F1704_flash_pointer_new(unsigned char *flash_addr_h, unsigned char
         }
         *flash_addr_h = read_back_data[2];
         *flash_addr_l = read_back_data[3];
-        applog(LOG_NOTICE,"%s ok! flash_addr_h = 0x%02x, flash_addr_l = 0x%02x\n\n", __FUNCTION__, *flash_addr_h, *flash_addr_l);
+        applog(LOG_NOTICE,"%s ok! flash_addr_h = 0x%02x, flash_addr_l = 0x%02x", __FUNCTION__, *flash_addr_h, *flash_addr_l);
         return 1;   // ok
     }
 }
@@ -568,7 +568,7 @@ int read_PIC16F1704_flash_data_new(unsigned char *buf)
 
     if((read_back_data[1] != READ_DATA_FROM_PIC_FLASH) || (read_back_data[0] != 20))
     {
-        applog(LOG_ERR,"%s failed!\n\n", __FUNCTION__);
+        applog(LOG_ERR,"%s failed!", __FUNCTION__);
         return 0;   // error
     }
     else
@@ -2851,7 +2851,7 @@ void set_PWM(unsigned char pwm_percent)
         temp_pwm_percent = MIN_PWM_PERCENT;
     }
 
-    if(temp_pwm_percent > MAX_PWM_PERCENT)
+    if(temp_pwm_percent > MAX_PWM_PERCENT || gMinerStatus_Not_read_all_sensor)
     {
         temp_pwm_percent = MAX_PWM_PERCENT;
     }
@@ -3875,11 +3875,11 @@ void *check_miner_status(void *arg)
             if(gMinerStatus_High_Temp_Counter > 2)
             {
                 gMinerStatus_High_Temp = true;
-                applog(LOG_ERR,"%s: the temperature is too high, close PIC and need reboot!!!", __FUNCTION__);
+                applog_e(status_error,LOG_ERR,"%s: the temperature is too high, close PIC and need reboot!!!", __FUNCTION__);
             }
             else
             {
-                applog(LOG_ERR, "Temperature is higher than 85'C for %d time", gMinerStatus_High_Temp_Counter);
+                applog_e(status_error,LOG_ERR, "Temperature is higher than 85'C for %d time", gMinerStatus_High_Temp_Counter);
             }
         }
         else
@@ -3895,7 +3895,7 @@ void *check_miner_status(void *arg)
         if(diff.tv_sec > 120)
         {
             gMinerStatus_Lost_connection_to_pool = true;
-            applog(LOG_ERR, "%s: We have lost internet for %d seconds, so don't send work to hashboard anymore", __FUNCTION__, diff.tv_sec);
+            applog_e(status_error,LOG_ERR, "%s: We have lost internet for %d seconds, so don't send work to hashboard anymore", __FUNCTION__, diff.tv_sec);
         }
         else
         {
@@ -3910,16 +3910,16 @@ void *check_miner_status(void *arg)
             switch (fan_ret)
             {
                 case 1:
-                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan num is %d",dev.fan_num);
+                    applog_e(status_error,LOG_ERR, "Fan Err! Disable PIC! Fan num is %d",dev.fan_num);
                     break;
                 case 2:
-                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1 speed is too low %d pwm %d ",dev.fan_speed_value[0],dev.pwm_percent);
+                    applog_e(status_error,LOG_ERR, "Fan Err! Disable PIC! Fan1 speed is too low %d pwm %d ",dev.fan_speed_value[0],dev.pwm_percent);
                     break;
                 case 3:
-                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan2 speed is too low %d pwm %d ",dev.fan_speed_value[1],dev.pwm_percent);
+                    applog_e(status_error,LOG_ERR, "Fan Err! Disable PIC! Fan2 speed is too low %d pwm %d ",dev.fan_speed_value[1],dev.pwm_percent);
                     break;
                 case 4:
-                    applog(LOG_ERR, "Fan Err! Disable PIC! Fan1:%d Fan2:%d pwm %d",dev.fan_speed_value[0],dev.fan_speed_value[1],dev.pwm_percent);
+                    applog_e(status_error,LOG_ERR, "Fan Err! Disable PIC! Fan1:%d Fan2:%d pwm %d",dev.fan_speed_value[0],dev.fan_speed_value[1],dev.pwm_percent);
                     break;
             }
         }
@@ -3931,9 +3931,9 @@ void *check_miner_status(void *arg)
         if(gMinerStatus_Low_Hashrate || gMinerStatus_Lost_connection_to_pool|| gMinerStatus_High_Temp || gFan_Error || gMinerStatus_Not_read_all_sensor)
         {
             stop = true;
-            status_error = true;
-            if((!once_error) && (gMinerStatus_High_Temp || gFan_Error || gMinerStatus_Not_read_all_sensor))
+            if((!once_error) && (gMinerStatus_High_Temp || gFan_Error ))
             {
+                status_error = true;
                 once_error = true;
                 for(which_chain=0; which_chain < BITMAIN_MAX_CHAIN_NUM; which_chain++)
                 {
@@ -4288,7 +4288,7 @@ void *read_temp_func()
                         tmpTemp = dev.chain_asic_temp[which_chain][which_sensor][0];
                         if(tmpTemp > MAX_TEMP)
                         {
-                            applog(LOG_ERR,"%s: Chain%d sensor%d local temp is %d `C, higher than MAX_TEMP", __FUNCTION__, which_chain, which_sensor, tmpTemp);
+                            applog_e(status_error,LOG_ERR,"%s: Chain%d sensor%d local temp is %d `C, higher than MAX_TEMP", __FUNCTION__, which_chain, which_sensor, tmpTemp);
                         }
                     }
                 }
@@ -4299,7 +4299,7 @@ void *read_temp_func()
         if(!read_temp_result)
         {
             gMinerStatus_Not_read_all_sensor = true;
-            applog(LOG_ERR,"%s: can't read all sensor's temperature, close PIC and need reboot!!!", __FUNCTION__);
+            applog_e(status_error,LOG_ERR,"%s: can't read all sensor's temperature, close PIC and need reboot!!!", __FUNCTION__);
         }
         else
         {

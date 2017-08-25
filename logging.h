@@ -34,6 +34,17 @@ extern void _simplelog(int prio, const char *str, bool force);
 
 #define IN_FMT_FFL " in %s %s():%d"
 
+#define applog_e(error,prio, fmt, ...) do { \
+    if (!error && (opt_debug || prio != LOG_DEBUG)) { \
+        if (use_syslog || opt_log_output || prio <= opt_log_level) { \
+            char tmp42[LOGBUFSIZ]; \
+            snprintf(tmp42, sizeof(tmp42), fmt, ##__VA_ARGS__); \
+            _applog(prio, tmp42, false); \
+        } \
+    } \
+} while (0)
+
+
 #define applog(prio, fmt, ...) do { \
     if (opt_debug || prio != LOG_DEBUG) { \
         if (use_syslog || opt_log_output || prio <= opt_log_level) { \

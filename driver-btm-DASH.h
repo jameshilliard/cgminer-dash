@@ -36,8 +36,8 @@
 #define MIN_FAN_TEMP                    35
 #define PWM_ADJUST_FACTOR               ((100 - MIN_PWM_PERCENT)/(MAX_FAN_TEMP - MIN_FAN_TEMP))
 #define FANINT                          1
-#define FAN0                            "256"   // front fan
-#define FAN1                            "254"   // back fan
+#define FAN0                            "256:"   // front fan
+#define FAN1                            "254:"   // back fan
 #define PROCFILENAME                    "/proc/interrupts"
 
 
